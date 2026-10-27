@@ -1,0 +1,883 @@
+package com.wildforge.player;
+
+import com.wildforge.item.ItemStack;
+import com.wildforge.inventory.Inventory;
+import com.wildforge.item.ItemType;
+import com.wildforge.world.BlockType;
+import com.wildforge.world.TerrainMesh;
+
+import org.joml.Vector3f;
+import org.lwjgl.glfw.GLFW;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+
+public final class Player {
+
+public static final int HOTBAR_SLOTS = Inventory.HOTBAR_SLOTS;
+public static final int HOTBAR_START_INDEX = Inventory.HOTBAR_START_INDEX;
+public static final int MAIN_INVENTORY_SLOTS = Inventory.MAIN_INVENTORY_SLOTS;
+public static final int TOTAL_INVENTORY_SLOTS = Inventory.TOTAL_SLOTS;
+
+private static final int PLAYER_SAVE_MAGIC = 0x5746504C;
+private static final int PLAYER_SAVE_VERSION = 1;
+
+private static final float WALK_SPEED = 5.0f;
+private static final float JUMP_SPEED = 7.0f;
+private static final float GRAVITY = 20.0f;
+private static final float EYE_HEIGHT = 1.65f;
+private static final float PLAYER_HEIGHT = 1.80f;
+private static final float PLAYER_RADIUS = 0.30f;
+private static final float MAX_STEP_HEIGHT = 1.01f;
+private static final float MAX_STEP_DOWN_HEIGHT = 0.05f;
+private static final float MOUSE_SENSITIVITY = 0.12f;
+
+private static final float STEP_UP_SMOOTHING = 10.0f;
+private static final float STEP_DOWN_SMOOTHING = 22.0f;
+
+private static final float WALK_BOB_AMOUNT = 0.008f;
+private static final float WALK_BOB_DISTANCE = 2.2f;
+
+private final Camera camera = new Camera();
+
+private final Inventory inventory = new Inventory();
+private final BlockInteraction blockInteraction =
+    new BlockInteraction(inventory);
+
+private float x = 16.0f;
+private float z = 27.0f;
+private float feetY;
+
+private float verticalVelocity = 0.0f;
+
+private boolean grounded = false;
+private boolean jumpWasPressed = false;
+private boolean inventoryOpen = false;
+private boolean mouseCaptured = true;
+private boolean inventoryKeyWasPressed = false;
+
+// Camera-only offsets; these do not affect physical collision.
+private float stepCameraOffset = 0.0f;
+private float walkBobOffset = 0.0f;
+private float walkBobPhase = 0.0f;
+
+private double lastMouseX;
+private double lastMouseY;
+private boolean firstMouseMove = true;
+
+private long windowHandle;
+
+public Player(TerrainMesh terrain) {
+    if (terrain == null) {
+        throw new IllegalArgumentException("Terrain cannot be null");
+    }
+
+
+    // Put starter blocks in the hotbar so they are immediately usable.
+    inventory.setStack(HOTBAR_START_INDEX,
+            new ItemStack(ItemType.DIRT_BLOCK, 32));
+    inventory.setStack(HOTBAR_START_INDEX + 1,
+            new ItemStack(ItemType.STONE_BLOCK, 32));
+    inventory.setStack(HOTBAR_START_INDEX + 2,
+            new ItemStack(ItemType.GRASS_BLOCK, 16));
+
+    // At spawn, use the world surface. Runtime ground checks are relative
+    // to the player's feet so roofs/overhangs are not mistaken for ground.
+    feetY = terrain.getHeightAt(x, z);
+    grounded = true;
+
+    updateCameraPosition();
+}
+
+public Camera getCamera() {
+    return camera;
+}
+
+public boolean isMouseCaptured() {
+    return mouseCaptured;
+}
+
+public boolean isInventoryOpen() {
+    return inventoryOpen;
+}
+
+public int getSelectedSlot() {
+    return inventory.getSelectedHotbarSlot();
+}
+
+public ItemStack getCursorStack() {
+    return inventory.getCursorStack();
+}
+
+public ItemStack getInventoryStack(int slot) {
+    return inventory.getStack(slot);
+}
+
+public ItemType getHotbarItem(int slot) {
+    if (slot < 0 || slot >= HOTBAR_SLOTS) {
+        return null;
+    }
+
+    ItemStack stack = getInventoryStack(HOTBAR_START_INDEX + slot);
+    return stack == null ? null : stack.getItemType();
+}
+
+public ItemType getSelectedItem() {
+    return getHotbarItem(inventory.getSelectedHotbarSlot());
+}
+
+public BlockType getSelectedBlock() {
+    ItemType selectedItem = getSelectedItem();
+    if (selectedItem == null || selectedItem.getPlacedBlock() == null) {
+        return BlockType.AIR;
+    }
+    return selectedItem.getPlacedBlock();
+}
+
+public int getItemCount(ItemType itemType) {
+    return inventory.getItemCount(itemType);
+}
+
+/** Saves the player's position, view direction, hotbar, and inventory. */
+public void saveTo(Path path) throws IOException {
+    if (path == null) {
+        throw new IllegalArgumentException("Save path cannot be null");
+    }
+
+    Path absolutePath = path.toAbsolutePath();
+    Files.createDirectories(absolutePath.getParent());
+    Path temporaryPath = absolutePath.resolveSibling(
+            absolutePath.getFileName().toString() + ".tmp");
+
+    try {
+        try (DataOutputStream output = new DataOutputStream(
+                new BufferedOutputStream(
+                        Files.newOutputStream(temporaryPath)))) {
+            output.writeInt(PLAYER_SAVE_MAGIC);
+            output.writeInt(PLAYER_SAVE_VERSION);
+            output.writeFloat(x);
+            output.writeFloat(z);
+            output.writeFloat(feetY);
+            output.writeFloat(verticalVelocity);
+            output.writeFloat(camera.getYaw());
+            output.writeFloat(camera.getPitch());
+            output.writeInt(inventory.getSelectedHotbarSlot());
+
+            for (int slot = 0; slot < TOTAL_INVENTORY_SLOTS; slot++) {
+                ItemStack stack = inventory.getStack(slot);
+                if (stack == null || stack.isEmpty()) {
+                    // ID zero remains the empty-slot marker, matching
+                    // existing player saves.
+                    output.writeByte(0);
+                    output.writeInt(0);
+                } else {
+                    output.writeByte(stack.getItemType().getId());
+                    output.writeInt(stack.getCount());
+                }
+            }
+        }
+
+        try {
+            Files.move(
+                    temporaryPath,
+                    absolutePath,
+                    StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE
+            );
+        } catch (AtomicMoveNotSupportedException ignored) {
+            Files.move(
+                    temporaryPath,
+                    absolutePath,
+                    StandardCopyOption.REPLACE_EXISTING
+            );
+        }
+    } finally {
+        Files.deleteIfExists(temporaryPath);
+    }
+}
+
+/** Loads player state while validating it against the current world. */
+public void loadFrom(Path path, TerrainMesh terrain) throws IOException {
+    if (path == null || terrain == null) {
+        throw new IllegalArgumentException(
+                "Save path and terrain are required");
+    }
+
+    float loadedX;
+    float loadedZ;
+    float loadedFeetY;
+    float loadedVerticalVelocity;
+    float loadedYaw;
+    float loadedPitch;
+    int loadedSelectedSlot;
+    ItemStack[] loadedInventory = new ItemStack[TOTAL_INVENTORY_SLOTS];
+
+    try (DataInputStream input = new DataInputStream(
+            new BufferedInputStream(Files.newInputStream(path)))) {
+        if (input.readInt() != PLAYER_SAVE_MAGIC) {
+            throw new IOException("Not a Wildforge player save");
+        }
+
+        int saveVersion = input.readInt();
+        if (saveVersion != PLAYER_SAVE_VERSION) {
+            throw new IOException(
+                    "Unsupported player save version: " + saveVersion);
+        }
+
+        loadedX = input.readFloat();
+        loadedZ = input.readFloat();
+        loadedFeetY = input.readFloat();
+        loadedVerticalVelocity = input.readFloat();
+        loadedYaw = input.readFloat();
+        loadedPitch = input.readFloat();
+        loadedSelectedSlot = input.readInt();
+
+        if (!Float.isFinite(loadedX)
+                || !Float.isFinite(loadedZ)
+                || !Float.isFinite(loadedFeetY)
+                || !Float.isFinite(loadedVerticalVelocity)
+                || !Float.isFinite(loadedYaw)
+                || !Float.isFinite(loadedPitch)
+                || loadedX < PLAYER_RADIUS
+                || loadedX > TerrainMesh.WORLD_SIZE - PLAYER_RADIUS
+                || loadedZ < PLAYER_RADIUS
+                || loadedZ > TerrainMesh.WORLD_SIZE - PLAYER_RADIUS
+                || loadedFeetY < 0.0f
+                || loadedFeetY + PLAYER_HEIGHT > TerrainMesh.WORLD_HEIGHT
+                || loadedSelectedSlot < 0
+                || loadedSelectedSlot >= HOTBAR_SLOTS) {
+            throw new IOException("Player save contains invalid values");
+        }
+
+        for (int slot = 0; slot < TOTAL_INVENTORY_SLOTS; slot++) {
+            int typeId = input.readUnsignedByte();
+            int count = input.readInt();
+
+            if (typeId == 0) {
+                if (count != 0) {
+                    throw new IOException(
+                            "Empty player slot has a nonzero count");
+                }
+                loadedInventory[slot] = null;
+            } else {
+                ItemType itemType = ItemType.fromId(typeId);
+                if (itemType == null
+                        || count < 1
+                        || count > itemType.getMaxStackSize()) {
+                    throw new IOException(
+                            "Player save contains an invalid item stack");
+                }
+                loadedInventory[slot] =
+                        new ItemStack(itemType, count);
+            }
+        }
+
+        if (input.read() != -1) {
+            throw new IOException("Player save contains trailing data");
+        }
+    }
+
+    inventory.setContents(loadedInventory);
+    x = loadedX;
+    z = loadedZ;
+    feetY = loadedFeetY;
+    verticalVelocity = loadedVerticalVelocity;
+    inventory.setSelectedHotbarSlot(loadedSelectedSlot);
+    camera.rotate(
+            loadedYaw - camera.getYaw(),
+            camera.getPitch() - loadedPitch
+    );
+
+    grounded = false;
+    if (!canOccupy(terrain, x, z, feetY)) {
+        x = 16.0f;
+        z = 27.0f;
+        feetY = terrain.getHeightAt(x, z);
+        verticalVelocity = 0.0f;
+        grounded = true;
+    } else {
+        float ground = getFootprintGround(terrain, x, z);
+        if (verticalVelocity <= 0.0f
+                && Math.abs(feetY - ground) <= 0.06f) {
+            feetY = ground;
+            verticalVelocity = 0.0f;
+            grounded = true;
+        }
+    }
+
+    updateCameraPosition();
+}
+
+public void setInventoryOpen(boolean open) {
+    if (!open) {
+        returnCursorStackToInventory();
+    }
+
+    inventoryOpen = open;
+
+    if (open) {
+        releaseMouse();
+    } else {
+        captureMouse();
+    }
+}
+
+public void toggleInventory() {
+    setInventoryOpen(!inventoryOpen);
+}
+
+/**
+ * Returns any stack held by the inventory cursor to the inventory.
+ * If the inventory has no room, the cursor stack is left untouched.
+ */
+public void returnCursorStackToInventory() {
+    inventory.returnCursorStackToInventory();
+}
+
+public void selectHotbarSlot(int slot) {
+    inventory.selectHotbarSlot(slot);
+}
+
+public void scrollHotbar(double amount) {
+    inventory.scrollHotbar(amount);
+}
+
+public void onMouseMove(double mouseX, double mouseY) {
+    if (!mouseCaptured || inventoryOpen) {
+        lastMouseX = mouseX;
+        lastMouseY = mouseY;
+        firstMouseMove = true;
+        return;
+    }
+
+    if (firstMouseMove) {
+        lastMouseX = mouseX;
+        lastMouseY = mouseY;
+        firstMouseMove = false;
+        return;
+    }
+
+    float deltaX = (float) (mouseX - lastMouseX);
+    float deltaY = (float) (mouseY - lastMouseY);
+
+    lastMouseX = mouseX;
+    lastMouseY = mouseY;
+
+    camera.rotate(
+            deltaX * MOUSE_SENSITIVITY,
+            deltaY * MOUSE_SENSITIVITY
+    );
+}
+
+public void moveMouse(float deltaX, float deltaY) {
+    if (mouseCaptured && !inventoryOpen) {
+        camera.rotate(
+                deltaX * MOUSE_SENSITIVITY,
+                deltaY * MOUSE_SENSITIVITY
+        );
+    }
+}
+
+public void captureMouse() {
+    mouseCaptured = true;
+    firstMouseMove = true;
+
+    if (windowHandle != 0) {
+        GLFW.glfwSetInputMode(
+                windowHandle,
+                GLFW.GLFW_CURSOR,
+                GLFW.GLFW_CURSOR_DISABLED
+        );
+    }
+}
+
+public void releaseMouse() {
+    mouseCaptured = false;
+    firstMouseMove = true;
+
+    if (windowHandle != 0) {
+        GLFW.glfwSetInputMode(
+                windowHandle,
+                GLFW.GLFW_CURSOR,
+                GLFW.GLFW_CURSOR_NORMAL
+        );
+    }
+}
+
+public void captureMouse(long window) {
+    windowHandle = window;
+    captureMouse();
+}
+
+public void releaseMouse(long window) {
+    windowHandle = window;
+    releaseMouse();
+}
+
+public void clickInventorySlot(int slot, boolean rightClick) {
+    inventory.clickSlot(slot, rightClick);
+}
+
+public void clickInventorySlot(int slot, int mouseButton) {
+    inventory.clickSlot(slot, mouseButton);
+}
+
+public boolean addItem(ItemType itemType, int amount) {
+    return inventory.addItem(itemType, amount);
+}
+
+public boolean canAddItem(ItemType itemType) {
+    return inventory.canAddItem(itemType);
+}
+
+public boolean canAddItem(ItemType itemType, int amount) {
+    return inventory.canAddItem(itemType, amount);
+}
+
+public void mineBlock(TerrainMesh terrain) {
+    blockInteraction.mineBlock(terrain, camera);
+}
+
+public void placeBlock(TerrainMesh terrain) {
+    blockInteraction.placeBlock(
+            terrain,
+            camera,
+            x,
+            z,
+            feetY,
+            PLAYER_RADIUS,
+            PLAYER_HEIGHT
+    );
+}
+
+public void update(
+        long window,
+        TerrainMesh terrain,
+        float deltaTime) {
+
+    windowHandle = window;
+
+    if (deltaTime <= 0.0f) {
+        return;
+    }
+
+    boolean inventoryPressed =
+            isKeyDown(window, GLFW.GLFW_KEY_E);
+
+    if (inventoryPressed && !inventoryKeyWasPressed) {
+        toggleInventory();
+    }
+
+    inventoryKeyWasPressed = inventoryPressed;
+
+    for (int i = 0; i < HOTBAR_SLOTS; i++) {
+        if (isKeyDown(window, GLFW.GLFW_KEY_1 + i)) {
+            selectHotbarSlot(i);
+        }
+    }
+
+    if (inventoryOpen || !mouseCaptured) {
+        return;
+    }
+
+    updateMovement(window, terrain, deltaTime);
+}
+
+private void updateMovement(
+        long window,
+        TerrainMesh terrain,
+        float deltaTime) {
+
+    float dt = Math.min(deltaTime, 0.05f);
+
+    float smoothingRate = stepCameraOffset < 0.0f
+            ? STEP_UP_SMOOTHING
+            : STEP_DOWN_SMOOTHING;
+
+    float smoothing =
+            1.0f - (float) Math.exp(-smoothingRate * dt);
+
+    stepCameraOffset += (0.0f - stepCameraOffset) * smoothing;
+
+    Vector3f look = camera.getLookDirection();
+
+    float forwardLength = (float) Math.sqrt(
+            look.x * look.x + look.z * look.z);
+
+    float forwardX = forwardLength > 0.0001f
+            ? look.x / forwardLength : 0.0f;
+    float forwardZ = forwardLength > 0.0001f
+            ? look.z / forwardLength : 0.0f;
+
+    float rightX = -forwardZ;
+    float rightZ = forwardX;
+
+    float moveX = 0.0f;
+    float moveZ = 0.0f;
+
+    if (isKeyDown(window, GLFW.GLFW_KEY_W)) {
+        moveX += forwardX;
+        moveZ += forwardZ;
+    }
+    if (isKeyDown(window, GLFW.GLFW_KEY_S)) {
+        moveX -= forwardX;
+        moveZ -= forwardZ;
+    }
+    if (isKeyDown(window, GLFW.GLFW_KEY_D)) {
+        moveX += rightX;
+        moveZ += rightZ;
+    }
+    if (isKeyDown(window, GLFW.GLFW_KEY_A)) {
+        moveX -= rightX;
+        moveZ -= rightZ;
+    }
+
+    float moveLength = (float) Math.sqrt(
+            moveX * moveX + moveZ * moveZ);
+
+    if (moveLength > 0.0001f) {
+        moveX /= moveLength;
+        moveZ /= moveLength;
+    }
+
+    float startX = x;
+    float startZ = z;
+
+    float ground = getFootprintGround(terrain, x, z);
+
+    if (verticalVelocity <= 0.0f
+            && feetY >= ground - 0.06f
+            && feetY <= ground + 0.06f) {
+
+        feetY = ground;
+        verticalVelocity = 0.0f;
+        grounded = true;
+
+    } else if (feetY > ground + 0.06f
+            || feetY < ground - 0.06f) {
+
+        grounded = false;
+    }
+
+    boolean jumpPressed = isKeyDown(window, GLFW.GLFW_KEY_SPACE);
+
+    if (jumpPressed && !jumpWasPressed && grounded) {
+        verticalVelocity = JUMP_SPEED;
+        grounded = false;
+    }
+
+    jumpWasPressed = jumpPressed;
+
+    float distance = WALK_SPEED * dt;
+
+    int steps = Math.max(1, (int) Math.ceil(
+            Math.max(
+                    Math.abs(moveX * distance),
+                    Math.abs(moveZ * distance)) / 0.04f));
+
+    float stepX = moveX * distance / steps;
+    float stepZ = moveZ * distance / steps;
+
+    for (int i = 0; i < steps; i++) {
+        if (stepX != 0.0f) {
+            float targetX = clamp(
+                    x + stepX,
+                    PLAYER_RADIUS,
+                    TerrainMesh.WORLD_SIZE - PLAYER_RADIUS);
+
+            attemptHorizontalMove(terrain, targetX, z);
+        }
+
+        if (stepZ != 0.0f) {
+            float targetZ = clamp(
+                    z + stepZ,
+                    PLAYER_RADIUS,
+                    TerrainMesh.WORLD_SIZE - PLAYER_RADIUS);
+
+            attemptHorizontalMove(terrain, x, targetZ);
+        }
+    }
+
+    if (!grounded) {
+        float previousFeetY = feetY;
+
+        verticalVelocity -= GRAVITY * dt;
+
+        float nextFeetY = feetY + verticalVelocity * dt;
+        ground = getFootprintGround(terrain, x, z);
+
+        if (verticalVelocity <= 0.0f
+                && previousFeetY >= ground - 0.001f
+                && nextFeetY <= ground
+                && canOccupy(terrain, x, z, ground)) {
+
+            feetY = ground;
+            verticalVelocity = 0.0f;
+            grounded = true;
+
+        } else if (canOccupy(terrain, x, z, nextFeetY)) {
+
+            feetY = nextFeetY;
+
+        } else {
+            verticalVelocity = 0.0f;
+
+            if (nextFeetY < previousFeetY) {
+                ground = getFootprintGround(terrain, x, z);
+
+                if (previousFeetY >= ground - 0.001f
+                        && previousFeetY <= ground + 0.10f
+                        && canOccupy(terrain, x, z, ground)) {
+                    feetY = ground;
+                    grounded = true;
+                }
+            }
+        }
+    } else {
+        float currentGround = getFootprintGround(terrain, x, z);
+
+        if (currentGround >= feetY - MAX_STEP_DOWN_HEIGHT
+                && currentGround <= feetY + 0.06f
+                && canOccupy(terrain, x, z, currentGround)) {
+
+            feetY = currentGround;
+            verticalVelocity = 0.0f;
+
+        } else {
+            grounded = false;
+        }
+    }
+
+    float movedX = x - startX;
+    float movedZ = z - startZ;
+
+    float horizontalDistance = (float) Math.sqrt(
+            movedX * movedX + movedZ * movedZ);
+
+    float targetWalkBob = 0.0f;
+    if (grounded && horizontalDistance > 0.0001f) {
+        walkBobPhase += horizontalDistance
+                * ((float) (Math.PI * 2.0) / WALK_BOB_DISTANCE);
+        targetWalkBob = (float) Math.sin(walkBobPhase) * WALK_BOB_AMOUNT;
+    }
+
+    // Exponential smoothing is stable across different frame rates and
+    // avoids the previous camera-position mutations that were immediately
+    // overwritten by updateCameraPosition().
+    float bobSmoothing = 1.0f - (float) Math.exp(-10.0f * dt);
+    walkBobOffset += (targetWalkBob - walkBobOffset) * bobSmoothing;
+
+    updateCameraPosition();
+}
+
+private void attemptHorizontalMove(
+        TerrainMesh terrain,
+        float targetX,
+        float targetZ) {
+
+    float currentGround =
+            getFootprintGround(terrain, x, z);
+
+    // Check every block column touched by the player's footprint. Looking
+    // only at the center column causes the player to collide with a step
+    // before the center crosses into that column, making auto-step
+    // impossible.
+    float targetGround =
+            getHighestGroundUnderFootprint(
+                    terrain, targetX, targetZ);
+
+    boolean onGround = grounded
+            && verticalVelocity <= 0.0f
+            && Math.abs(feetY - currentGround) < 0.15f;
+
+    if (onGround) {
+        float difference = targetGround - feetY;
+
+        if (difference > 0.05f) {
+            if (difference > MAX_STEP_HEIGHT
+                    || !canOccupy(
+                            terrain, targetX, targetZ, targetGround)) {
+                return;
+            }
+
+            stepCameraOffset =
+                    feetY + stepCameraOffset - targetGround;
+
+            x = targetX;
+            z = targetZ;
+            feetY = targetGround;
+
+            verticalVelocity = 0.0f;
+            grounded = true;
+            return;
+        }
+
+        if (difference >= -MAX_STEP_DOWN_HEIGHT) {
+            if (!canOccupy(
+                    terrain, targetX, targetZ, targetGround)) {
+                return;
+            }
+
+            if (difference < -0.05f) {
+                stepCameraOffset =
+                        feetY + stepCameraOffset - targetGround;
+            }
+
+            x = targetX;
+            z = targetZ;
+            feetY = targetGround;
+
+            verticalVelocity = 0.0f;
+            grounded = true;
+            return;
+        }
+
+        if (canOccupy(terrain, targetX, targetZ, feetY)) {
+            x = targetX;
+            z = targetZ;
+            grounded = false;
+            verticalVelocity = 0.0f;
+        }
+
+        return;
+    }
+
+    if (canOccupy(terrain, targetX, targetZ, feetY)) {
+        x = targetX;
+        z = targetZ;
+    }
+}
+
+private float getFootprintGround(
+        TerrainMesh terrain,
+        float centerX,
+        float centerZ) {
+
+    // Ground support comes from anywhere under the player's footprint,
+    // but only at or below the feet. This keeps the player grounded while
+    // stepping onto a block before their center crosses its grid boundary,
+    // without mistaking a roof for the floor.
+    return findHighestGroundUnderFootprint(
+            terrain, centerX, centerZ, feetY + 0.06f);
+}
+
+private float getHighestGroundUnderFootprint(
+        TerrainMesh terrain,
+        float centerX,
+        float centerZ) {
+
+    return findHighestGroundUnderFootprint(
+            terrain, centerX, centerZ, feetY + MAX_STEP_HEIGHT);
+}
+
+private float findHighestGroundUnderFootprint(
+        TerrainMesh terrain,
+        float centerX,
+        float centerZ,
+        float highestAllowedSurface) {
+
+    int minX = Math.max(
+            0,
+            (int) Math.floor(centerX - PLAYER_RADIUS + 0.001f));
+    int maxX = Math.min(
+            TerrainMesh.WORLD_SIZE - 1,
+            (int) Math.floor(centerX + PLAYER_RADIUS - 0.001f));
+    int minZ = Math.max(
+            0,
+            (int) Math.floor(centerZ - PLAYER_RADIUS + 0.001f));
+    int maxZ = Math.min(
+            TerrainMesh.WORLD_SIZE - 1,
+            (int) Math.floor(centerZ + PLAYER_RADIUS - 0.001f));
+
+    int highestBlockToCheck = Math.min(
+            TerrainMesh.WORLD_HEIGHT - 1,
+            (int) Math.floor(highestAllowedSurface - 1.0f + 0.001f));
+
+    float highestGround = Float.NEGATIVE_INFINITY;
+
+    for (int bx = minX; bx <= maxX; bx++) {
+        for (int bz = minZ; bz <= maxZ; bz++) {
+            for (int by = highestBlockToCheck; by >= 0; by--) {
+                if (terrain.getBlockAt(bx, by, bz).isSolid()) {
+                    highestGround = Math.max(
+                            highestGround, by + 1.0f);
+                    break;
+                }
+            }
+        }
+    }
+
+    return highestGround == Float.NEGATIVE_INFINITY
+            ? 0.0f : highestGround;
+}
+
+private boolean canOccupy(
+        TerrainMesh terrain,
+        float targetX,
+        float targetZ,
+        float targetFeetY) {
+
+    int minX = (int) Math.floor(
+            targetX - PLAYER_RADIUS + 0.001f);
+    int maxX = (int) Math.floor(
+            targetX + PLAYER_RADIUS - 0.001f);
+
+    int minZ = (int) Math.floor(
+            targetZ - PLAYER_RADIUS + 0.001f);
+    int maxZ = (int) Math.floor(
+            targetZ + PLAYER_RADIUS - 0.001f);
+
+    if (minX < 0 || maxX >= TerrainMesh.WORLD_SIZE
+            || minZ < 0 || maxZ >= TerrainMesh.WORLD_SIZE) {
+        return false;
+    }
+
+    if (targetFeetY < 0.0f
+            || targetFeetY + PLAYER_HEIGHT > TerrainMesh.WORLD_HEIGHT) {
+        return false;
+    }
+
+    int minY = Math.max(
+            0, (int) Math.floor(targetFeetY + 0.001f));
+
+    int maxY = Math.min(
+            TerrainMesh.WORLD_HEIGHT - 1,
+            (int) Math.floor(
+                    targetFeetY + PLAYER_HEIGHT - 0.001f));
+
+    for (int bx = minX; bx <= maxX; bx++) {
+        for (int bz = minZ; bz <= maxZ; bz++) {
+            for (int by = minY; by <= maxY; by++) {
+                if (terrain.getBlockAt(bx, by, bz).isSolid()) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+private void updateCameraPosition() {
+    camera.setPosition(
+            x,
+            feetY + EYE_HEIGHT + stepCameraOffset + walkBobOffset,
+            z
+    );
+}
+
+private boolean isKeyDown(long window, int key) {
+    return GLFW.glfwGetKey(window, key) == GLFW.GLFW_PRESS;
+}
+
+private float clamp(float value, float min, float max) {
+    return Math.max(min, Math.min(max, value));
+}
+}

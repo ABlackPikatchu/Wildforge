@@ -1,0 +1,13 @@
+# Gradle-generated files
+.gradle/
+build/
+
+# Local game saves and JVM crash reports
+saves/
+hs_err_pid*.log
+replay_pid*.log
+
+# IDE-local files
+.idea/
+*.iml
+.vscode/launch.json
