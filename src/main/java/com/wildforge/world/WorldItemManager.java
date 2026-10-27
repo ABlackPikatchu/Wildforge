@@ -1,6 +1,9 @@
 
 package com.wildforge.world;
 
+import com.wildforge.entity.DroppedItemEntity;
+import com.wildforge.entity.Entity;
+import com.wildforge.entity.EntityManager;
 import com.wildforge.item.ItemType;
 import com.wildforge.player.Player;
 
@@ -10,21 +13,25 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Owns physical item drops for a world.
+ * World-facing API for spawning, updating, and collecting dropped items.
+ * The EntityManager owns their lifecycle.
  */
 public final class WorldItemManager {
-    private static final float PICKUP_DISTANCE = 1.5f;
 
-    private final List<WorldItem> items = new ArrayList<>();
+    private static final float PICKUP_HORIZONTAL_DISTANCE = 2.0f;
+    private static final float PICKUP_VERTICAL_DISTANCE = 2.5f;
+
+    private final EntityManager entityManager = new EntityManager();
 
     public void spawn(
             ItemType itemType,
             int count,
             float x,
             float y,
-            float z
+            float z,
+            TerrainMesh terrain
     ) {
-        if (itemType == null || count <= 0) {
+        if (itemType == null || count <= 0 || terrain == null) {
             return;
         }
 
@@ -33,63 +40,83 @@ public final class WorldItemManager {
 
         while (remaining > 0) {
             int stackCount = Math.min(remaining, maxStack);
-            items.add(new WorldItem(itemType, stackCount, x, y, z));
+
+            entityManager.spawn(new DroppedItemEntity(
+                    itemType,
+                    stackCount,
+                    x,
+                    y,
+                    z,
+                    terrain
+            ));
+
             remaining -= stackCount;
         }
     }
 
-    public List<WorldItem> getItems() {
-        return Collections.unmodifiableList(items);
+    public List<DroppedItemEntity> getItems() {
+        List<DroppedItemEntity> result = new ArrayList<>();
+
+        for (Entity entity : entityManager.getEntities()) {
+            if (entity instanceof DroppedItemEntity) {
+                result.add((DroppedItemEntity) entity);
+            }
+        }
+
+        return Collections.unmodifiableList(result);
     }
 
     public int size() {
-        return items.size();
+        return entityManager.size();
     }
 
     public void clear() {
-        items.clear();
+        entityManager.clear();
     }
 
-    /**
-     * Advances drop animation and collects nearby stacks when the
-     * player's inventory can accept the entire stack.
-     */
     public void update(float deltaTime, Player player) {
         if (deltaTime <= 0.0f || player == null) {
             return;
         }
 
-        for (WorldItem item : items) {
-            item.update(deltaTime);
-        }
+        entityManager.removeRemoved();
 
-        float playerCenterY = player.getFeetY() + 0.8f;
-        float pickupDistanceSquared =
-                PICKUP_DISTANCE * PICKUP_DISTANCE;
+        float playerCenterY = player.getFeetY() + 0.9f;
+        float horizontalDistanceSquared =
+                PICKUP_HORIZONTAL_DISTANCE * PICKUP_HORIZONTAL_DISTANCE;
 
-        Iterator<WorldItem> iterator = items.iterator();
+        Iterator<Entity> iterator =
+                entityManager.getEntities().iterator();
+
+        // EntityManager exposes a read-only list. Mark collected entities
+        // for removal; EntityManager cleans them up on its next update.
         while (iterator.hasNext()) {
-            WorldItem item = iterator.next();
+            Entity entity = iterator.next();
 
-            float dx = item.getX() - player.getX();
-            float dy = item.getY() - playerCenterY;
-            float dz = item.getZ() - player.getZ();
-
-            float distanceSquared =
-                    dx * dx + dy * dy + dz * dz;
-
-            if (distanceSquared > pickupDistanceSquared) {
+            if (!(entity instanceof DroppedItemEntity)) {
                 continue;
             }
 
-            ItemType type = item.getItemType();
-            int count = item.getCount();
+            DroppedItemEntity item = (DroppedItemEntity) entity;
 
-            // Never delete a drop unless the entire stack was added.
-            if (player.canAddItem(type, count)
-                    && player.addItem(type, count)) {
-                iterator.remove();
+            float dx = item.getX() - player.getX();
+            float dz = item.getZ() - player.getZ();
+            float dy = Math.abs(item.getY() - playerCenterY);
+
+            if (dx * dx + dz * dz > horizontalDistanceSquared
+                    || dy > PICKUP_VERTICAL_DISTANCE) {
+                continue;
+            }
+
+            if (player.canAddItem(item.getItemType(), item.getCount())
+                    && player.addItem(
+                            item.getItemType(),
+                            item.getCount())) {
+                item.remove();
             }
         }
+
+        // A second update flushes removals safely after pickup.
+        entityManager.update(deltaTime);
     }
 }

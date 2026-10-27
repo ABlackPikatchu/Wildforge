@@ -53,7 +53,8 @@ public final class BlockInteraction {
                     dropCount,
                     hit.x + 0.5f,
                     hit.y + 0.35f,
-                    hit.z + 0.5f
+                    hit.z + 0.5f,
+                    terrain
             );
         }
     }

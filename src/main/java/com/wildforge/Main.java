@@ -394,11 +394,9 @@ public final class Main implements InputController.Callbacks {
 
         try {
             saveManager.loadTerrain(activeSaveSlot, terrain);
-            saveManager.loadTerrain(activeSaveSlot, terrain);
+
             worldItems.clear();
             player = new Player(terrain, worldItems);
-            saveManager.loadPlayer(activeSaveSlot, player, terrain);
-            player = new Player(terrain);
             saveManager.loadPlayer(activeSaveSlot, player, terrain);
 
             worldLoaded = true;
@@ -409,9 +407,11 @@ public final class Main implements InputController.Callbacks {
             System.err.println("Could not load world: " + e.getMessage());
             statusMessage = "LOAD FAILED";
             screenMode = HudRenderer.ScreenMode.SAVE_SELECT;
+
             if (player != null) {
                 player.releaseMouse(window);
             }
+
             refreshSaveSlots();
         }
     }
@@ -579,8 +579,8 @@ public final class Main implements InputController.Callbacks {
 
             if (screenMode == HudRenderer.ScreenMode.PLAYING) {
                 player.update(window, terrain, deltaTime);
+
                 if (screenMode == HudRenderer.ScreenMode.PLAYING) {
-                    player.update(window, terrain, deltaTime);
                     worldItems.update(deltaTime, player);
                 }
             }

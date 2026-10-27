@@ -11,6 +11,54 @@ import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.lwjgl.opengl.GL11.GL_BLEND;
+import static org.lwjgl.opengl.GL11.GL_CULL_FACE;
+import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
+import static org.lwjgl.opengl.GL11.GL_FALSE;
+import static org.lwjgl.opengl.GL11.GL_FLOAT;
+import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
+import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
+import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
+import static org.lwjgl.opengl.GL11.glBindTexture;
+import static org.lwjgl.opengl.GL11.glBlendFunc;
+import static org.lwjgl.opengl.GL11.glDisable;
+import static org.lwjgl.opengl.GL11.glDrawArrays;
+import static org.lwjgl.opengl.GL11.glEnable;
+import static org.lwjgl.opengl.GL11.glIsEnabled;
+import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
+import static org.lwjgl.opengl.GL13.glActiveTexture;
+import static org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER;
+import static org.lwjgl.opengl.GL15.GL_DYNAMIC_DRAW;
+import static org.lwjgl.opengl.GL15.glBindBuffer;
+import static org.lwjgl.opengl.GL15.glBufferData;
+import static org.lwjgl.opengl.GL15.glDeleteBuffers;
+import static org.lwjgl.opengl.GL15.glGenBuffers;
+import static org.lwjgl.opengl.GL20.GL_COMPILE_STATUS;
+import static org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER;
+import static org.lwjgl.opengl.GL20.GL_LINK_STATUS;
+import static org.lwjgl.opengl.GL20.GL_VERTEX_SHADER;
+import static org.lwjgl.opengl.GL20.glAttachShader;
+import static org.lwjgl.opengl.GL20.glCompileShader;
+import static org.lwjgl.opengl.GL20.glCreateProgram;
+import static org.lwjgl.opengl.GL20.glCreateShader;
+import static org.lwjgl.opengl.GL20.glDeleteProgram;
+import static org.lwjgl.opengl.GL20.glDeleteShader;
+import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
+import static org.lwjgl.opengl.GL20.glGetProgramInfoLog;
+import static org.lwjgl.opengl.GL20.glGetProgrami;
+import static org.lwjgl.opengl.GL20.glGetShaderInfoLog;
+import static org.lwjgl.opengl.GL20.glGetShaderi;
+import static org.lwjgl.opengl.GL20.glGetUniformLocation;
+import static org.lwjgl.opengl.GL20.glLinkProgram;
+import static org.lwjgl.opengl.GL20.glShaderSource;
+import static org.lwjgl.opengl.GL20.glUniform1i;
+import static org.lwjgl.opengl.GL20.glUniform2f;
+import static org.lwjgl.opengl.GL20.glUseProgram;
+import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
+import static org.lwjgl.opengl.GL30.GL_TEXTURE_2D_ARRAY;
+import static org.lwjgl.opengl.GL30.glBindVertexArray;
+import static org.lwjgl.opengl.GL30.glDeleteVertexArrays;
+import static org.lwjgl.opengl.GL30.glGenVertexArrays;
 import static org.lwjgl.opengl.GL33.*;
 
 public final class HudRenderer {
@@ -782,44 +830,48 @@ public final class HudRenderer {
                 sideLayer = BlockTextures.STONE;
             }
             default -> {
-                return;
+                // Use the block's texture layer for other block types.
+                topLayer = blockType.getId();
+                sideLayer = blockType.getId();
             }
         }
 
-        float left = slotX + 12;
-        float top = slotY + 7;
-        float middle = left + 12;
-        float right = left + 24;
-        float topQuarter = top + 6;
-        float center = top + 12;
-        float bottomQuarter = top + 18;
-        float bottom = top + 24;
+        // Larger 30x30 icon, centered inside the 48x48 slot.
+        float left = slotX + 9;
+        float top = slotY + 4;
+        float middle = left + 15;
+        float right = left + 30;
 
-        // Top face of a small isometric cube.
+        float topQuarter = top + 7.5f;
+        float center = top + 15;
+        float bottomQuarter = top + 22.5f;
+        float bottom = top + 30;
+
+        // Top face.
         appendTexturedQuad(
                 data,
-                middle, top, 0.5f, 1f,
-                left, topQuarter, 0f, 0.5f,
-                middle, center, 0.5f, 0f,
-                right, topQuarter, 1f, 0.5f,
+                middle, top,          0.5f, 1f,
+                left, topQuarter,     0f,   0.5f,
+                middle, center,       0.5f, 0f,
+                right, topQuarter,    1f,   0.5f,
                 topLayer, 1.0f);
 
-        // Left face.
+        // Left face: top uses v=0, bottom uses v=1.
         appendTexturedQuad(
                 data,
-                left, topQuarter, 0f, 1f,
-                middle, center, 1f, 1f,
-                middle, bottom, 1f, 0f,
-                left, bottomQuarter, 0f, 0f,
+                left, topQuarter,     0f, 0f,
+                middle, center,       1f, 0f,
+                middle, bottom,       1f, 1f,
+                left, bottomQuarter,  0f, 1f,
                 sideLayer, 0.68f);
 
-        // Right face.
+        // Right face: top uses v=0, bottom uses v=1.
         appendTexturedQuad(
                 data,
-                middle, center, 0f, 1f,
-                right, topQuarter, 1f, 1f,
-                right, bottomQuarter, 1f, 0f,
-                middle, bottom, 0f, 0f,
+                middle, center,       0f, 0f,
+                right, topQuarter,    1f, 0f,
+                right, bottomQuarter, 1f, 1f,
+                middle, bottom,       0f, 1f,
                 sideLayer, 0.86f);
     }
 
