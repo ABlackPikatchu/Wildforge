@@ -111,6 +111,7 @@ public final class BlockInteraction {
         }
 
         if (terrain.setBlock(bx, by, bz, blockToPlace)) {
+            worldItems.onBlockPlaced(bx, by, bz);
             inventory.removeItem(itemType, 1);
         }
     }

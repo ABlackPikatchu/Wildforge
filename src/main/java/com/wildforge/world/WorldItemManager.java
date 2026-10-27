@@ -9,17 +9,20 @@ import com.wildforge.player.Player;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * World-facing API for spawning, updating, and collecting dropped items.
- * The EntityManager owns their lifecycle.
+ * World-facing API for spawning, updating, merging, and collecting drops.
+ * EntityManager owns entity lifecycle and removal.
  */
 public final class WorldItemManager {
 
-    private static final float PICKUP_HORIZONTAL_DISTANCE = 2.0f;
-    private static final float PICKUP_VERTICAL_DISTANCE = 2.5f;
+    private static final float PICKUP_HORIZONTAL_DISTANCE = 1.0f;
+    private static final float PICKUP_VERTICAL_DISTANCE = 1.25f;
+
+    private static final float MERGE_HORIZONTAL_DISTANCE = 0.65f;
+    private static final float MERGE_VERTICAL_DISTANCE = 0.5f;
 
     private final EntityManager entityManager = new EntityManager();
 
@@ -35,21 +38,27 @@ public final class WorldItemManager {
             return;
         }
 
+        ThreadLocalRandom random = ThreadLocalRandom.current();
         int remaining = count;
         int maxStack = itemType.getMaxStackSize();
 
         while (remaining > 0) {
             int stackCount = Math.min(remaining, maxStack);
 
-            entityManager.spawn(new DroppedItemEntity(
+            float spawnX = x + random.nextFloat(-0.25f, 0.25f);
+            float spawnY = y + random.nextFloat(0.0f, 0.2f);
+            float spawnZ = z + random.nextFloat(-0.25f, 0.25f);
+
+            DroppedItemEntity item = new DroppedItemEntity(
                     itemType,
                     stackCount,
-                    x,
-                    y,
-                    z,
+                    spawnX,
+                    spawnY,
+                    spawnZ,
                     terrain
-            ));
+            );
 
+            entityManager.spawn(item);
             remaining -= stackCount;
         }
     }
@@ -58,7 +67,8 @@ public final class WorldItemManager {
         List<DroppedItemEntity> result = new ArrayList<>();
 
         for (Entity entity : entityManager.getEntities()) {
-            if (entity instanceof DroppedItemEntity) {
+            if (entity instanceof DroppedItemEntity
+                    && !entity.isRemoved()) {
                 result.add((DroppedItemEntity) entity);
             }
         }
@@ -74,26 +84,88 @@ public final class WorldItemManager {
         entityManager.clear();
     }
 
+    /**
+     * Resolves drops that overlap a newly placed block.
+     */
+    public void onBlockPlaced(int blockX, int blockY, int blockZ) {
+        for (DroppedItemEntity item : getItems()) {
+            item.onBlockPlaced(blockX, blockY, blockZ);
+        }
+    }
+
     public void update(float deltaTime, Player player) {
-        if (deltaTime <= 0.0f || player == null) {
+        if (!Float.isFinite(deltaTime) || deltaTime <= 0.0f) {
             return;
         }
 
         entityManager.removeRemoved();
 
+        // Physics first, then merge stacks that have settled close together.
+        entityManager.update(deltaTime);
+        mergeNearbyStacks();
+
+        if (player != null) {
+            collectNearbyItems(player);
+        }
+
+        // Clean up stacks collected or emptied during merging.
+        entityManager.removeRemoved();
+    }
+
+    private void mergeNearbyStacks() {
+        List<DroppedItemEntity> items = getItems();
+
+        float horizontalDistanceSquared =
+                MERGE_HORIZONTAL_DISTANCE * MERGE_HORIZONTAL_DISTANCE;
+
+        for (int i = 0; i < items.size(); i++) {
+            DroppedItemEntity first = items.get(i);
+
+            if (first.isRemoved()
+                    || first.getCount() >= first.getItemType().getMaxStackSize()) {
+                continue;
+            }
+
+            for (int j = i + 1; j < items.size(); j++) {
+                DroppedItemEntity second = items.get(j);
+
+                if (second.isRemoved()
+                        || first.getItemType() != second.getItemType()) {
+                    continue;
+                }
+
+                float dx = first.getX() - second.getX();
+                float dy = first.getY() - second.getY();
+                float dz = first.getZ() - second.getZ();
+
+                if (dx * dx + dz * dz > horizontalDistanceSquared
+                        || Math.abs(dy) > MERGE_VERTICAL_DISTANCE) {
+                    continue;
+                }
+
+                int remainder = first.addItems(second.getCount());
+                int transferred = second.getCount() - remainder;
+
+                if (transferred > 0) {
+                    second.removeItems(transferred);
+                }
+
+                if (first.getCount()
+                        >= first.getItemType().getMaxStackSize()) {
+                    break;
+                }
+            }
+        }
+    }
+
+    private void collectNearbyItems(Player player) {
         float playerCenterY = player.getFeetY() + 0.9f;
         float horizontalDistanceSquared =
                 PICKUP_HORIZONTAL_DISTANCE * PICKUP_HORIZONTAL_DISTANCE;
 
-        Iterator<Entity> iterator =
-                entityManager.getEntities().iterator();
-
-        // EntityManager exposes a read-only list. Mark collected entities
-        // for removal; EntityManager cleans them up on its next update.
-        while (iterator.hasNext()) {
-            Entity entity = iterator.next();
-
-            if (!(entity instanceof DroppedItemEntity)) {
+        for (Entity entity : entityManager.getEntities()) {
+            if (!(entity instanceof DroppedItemEntity)
+                    || entity.isRemoved()) {
                 continue;
             }
 
@@ -115,8 +187,5 @@ public final class WorldItemManager {
                 item.remove();
             }
         }
-
-        // A second update flushes removals safely after pickup.
-        entityManager.update(deltaTime);
     }
 }
