@@ -9,6 +9,7 @@ import com.wildforge.player.Player;
 import com.wildforge.render.HudRenderer;
 import com.wildforge.render.Renderer;
 import com.wildforge.world.TerrainMesh;
+import com.wildforge.world.WorldItemManager;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.glfw.GLFWNativeWin32;
@@ -30,6 +31,7 @@ public final class Main implements InputController.Callbacks {
     private InputController inputController;
     private TerrainMesh terrain;
     private Player player;
+    private final WorldItemManager worldItems = new WorldItemManager();
     private final SaveManager saveManager = new SaveManager();
 
     // GLFW writes dimensions into caller-provided arrays. Reuse them rather
@@ -130,7 +132,7 @@ public final class Main implements InputController.Callbacks {
         GL.createCapabilities();
 
         terrain = new TerrainMesh();
-        player = new Player(terrain);
+        player = new Player(terrain, worldItems);
         renderer = new Renderer(terrain);
         player.releaseMouse(window);
         refreshSaveSlots();
@@ -392,6 +394,10 @@ public final class Main implements InputController.Callbacks {
 
         try {
             saveManager.loadTerrain(activeSaveSlot, terrain);
+            saveManager.loadTerrain(activeSaveSlot, terrain);
+            worldItems.clear();
+            player = new Player(terrain, worldItems);
+            saveManager.loadPlayer(activeSaveSlot, player, terrain);
             player = new Player(terrain);
             saveManager.loadPlayer(activeSaveSlot, player, terrain);
 
@@ -573,6 +579,10 @@ public final class Main implements InputController.Callbacks {
 
             if (screenMode == HudRenderer.ScreenMode.PLAYING) {
                 player.update(window, terrain, deltaTime);
+                if (screenMode == HudRenderer.ScreenMode.PLAYING) {
+                    player.update(window, terrain, deltaTime);
+                    worldItems.update(deltaTime, player);
+                }
             }
 
             glfwGetFramebufferSize(

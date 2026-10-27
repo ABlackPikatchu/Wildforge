@@ -1,3 +1,4 @@
+
 package com.wildforge.player;
 
 import com.wildforge.inventory.Inventory;
@@ -6,29 +7,30 @@ import com.wildforge.item.ItemType;
 import com.wildforge.world.BlockType;
 import com.wildforge.world.TerrainMesh;
 import com.wildforge.world.TerrainMesh.RayHit;
+import com.wildforge.world.WorldItemManager;
 import org.joml.Vector3f;
 
-/**
- * Handles player-driven block targeting, mining, drops, and placement.
- *
- * This class deliberately leaves movement, collision, camera control,
- * inventory storage, and world storage in their existing classes.
- */
 public final class BlockInteraction {
     private static final float REACH = 6.0f;
 
     private final Inventory inventory;
+    private final WorldItemManager worldItems;
 
-    public BlockInteraction(Inventory inventory) {
-        if (inventory == null) {
-            throw new IllegalArgumentException("Inventory cannot be null");
+    public BlockInteraction(
+            Inventory inventory,
+            WorldItemManager worldItems
+    ) {
+        if (inventory == null || worldItems == null) {
+            throw new IllegalArgumentException(
+                    "Inventory and world item manager cannot be null");
         }
+
         this.inventory = inventory;
+        this.worldItems = worldItems;
     }
 
     /**
-     * Mines the targeted breakable block. If the block has a drop, mining
-     * is refused unless the complete drop can fit in the inventory.
+     * Mines the targeted breakable block and spawns its drop in the world.
      */
     public void mineBlock(TerrainMesh terrain, Camera camera) {
         if (terrain == null || camera == null) {
@@ -44,16 +46,15 @@ public final class BlockInteraction {
         ItemType dropItem = hit.block.getDropItem();
         int dropCount = hit.block.getDropCount();
 
-        // Do not destroy a block if its complete drop cannot be collected.
-        // Blocks with no drop can still be mined with a full inventory.
-        if (dropItem != null && dropCount > 0
-                && !inventory.canAddItem(dropItem, dropCount)) {
-            return;
-        }
-
         if (terrain.setBlock(hit.x, hit.y, hit.z, BlockType.AIR)
                 && dropItem != null && dropCount > 0) {
-            inventory.addItem(dropItem, dropCount);
+            worldItems.spawn(
+                    dropItem,
+                    dropCount,
+                    hit.x + 0.5f,
+                    hit.y + 0.35f,
+                    hit.z + 0.5f
+            );
         }
     }
 
@@ -68,8 +69,8 @@ public final class BlockInteraction {
             float playerZ,
             float playerFeetY,
             float playerRadius,
-            float playerHeight) {
-
+            float playerHeight
+    ) {
         if (terrain == null || camera == null) {
             return;
         }

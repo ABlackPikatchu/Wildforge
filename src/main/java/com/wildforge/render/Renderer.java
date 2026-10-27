@@ -1,16 +1,20 @@
 
 package com.wildforge.render;
 
+import com.wildforge.item.ItemType;
 import com.wildforge.player.Camera;
 import com.wildforge.player.Player;
 import com.wildforge.world.BlockType;
 import com.wildforge.world.TerrainMesh;
+import com.wildforge.world.WorldItem;
+import com.wildforge.world.WorldItemManager;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.lwjgl.system.MemoryStack;
 
 import java.nio.FloatBuffer;
+import java.util.List;
 
 import static org.lwjgl.opengl.GL33.*;
 
@@ -26,6 +30,7 @@ public final class Renderer {
     private int shaderProgram;
     private int terrainMvpLocation = -1;
     private int textureSamplerLocation = -1;
+
     private int vao;
     private int vbo;
     private int vertexCount;
@@ -37,6 +42,10 @@ public final class Renderer {
     private int outlineVao;
     private int outlineVbo;
 
+    // Physical dropped-item rendering.
+    private int worldItemsVao;
+    private int worldItemsVbo;
+
     public Renderer(TerrainMesh terrain) {
         this.terrain = terrain;
         this.blockTextures = new BlockTextures();
@@ -45,6 +54,7 @@ public final class Renderer {
         initializeShaders();
         initializeTerrain();
         initializeOutline();
+        initializeWorldItems();
     }
 
     private void initializeShaders() {
@@ -98,19 +108,29 @@ public final class Renderer {
                 glGetUniformLocation(shaderProgram, "uMvp");
         textureSamplerLocation =
                 glGetUniformLocation(shaderProgram, "uBlockTextures");
+
         requireUniform(terrainMvpLocation, "uMvp", "terrain");
-        requireUniform(textureSamplerLocation, "uBlockTextures", "terrain");
+        requireUniform(
+                textureSamplerLocation,
+                "uBlockTextures",
+                "terrain"
+        );
 
         glUseProgram(shaderProgram);
         glUniform1i(textureSamplerLocation, 0);
         glUseProgram(0);
     }
 
-    private void requireUniform(int location, String name, String programName) {
+    private void requireUniform(
+            int location,
+            String name,
+            String programName
+    ) {
         if (location < 0) {
             throw new IllegalStateException(
                     "Required uniform '" + name + "' missing from "
-                            + programName + " shader program");
+                            + programName + " shader program"
+            );
         }
     }
 
@@ -224,6 +244,7 @@ public final class Renderer {
                 glGetUniformLocation(outlineProgram, "uMvp");
         outlineColorLocation =
                 glGetUniformLocation(outlineProgram, "uColor");
+
         requireUniform(outlineMvpLocation, "uMvp", "outline");
         requireUniform(outlineColorLocation, "uColor", "outline");
 
@@ -249,6 +270,48 @@ public final class Renderer {
         glBindVertexArray(0);
     }
 
+    /**
+     * Creates the vertex buffer used to draw physical item drops.
+     * The vertex format matches the terrain format:
+     * x, y, z, u, v, texture layer, shade.
+     */
+    private void initializeWorldItems() {
+        worldItemsVao = glGenVertexArrays();
+        worldItemsVbo = glGenBuffers();
+
+        glBindVertexArray(worldItemsVao);
+        glBindBuffer(GL_ARRAY_BUFFER, worldItemsVbo);
+
+        int stride =
+                TerrainMesh.FLOATS_PER_VERTEX * Float.BYTES;
+
+        glVertexAttribPointer(
+                0, 3, GL_FLOAT, false, stride, 0L
+        );
+        glEnableVertexAttribArray(0);
+
+        glVertexAttribPointer(
+                1, 2, GL_FLOAT, false, stride,
+                3L * Float.BYTES
+        );
+        glEnableVertexAttribArray(1);
+
+        glVertexAttribPointer(
+                2, 1, GL_FLOAT, false, stride,
+                5L * Float.BYTES
+        );
+        glEnableVertexAttribArray(2);
+
+        glVertexAttribPointer(
+                3, 1, GL_FLOAT, false, stride,
+                6L * Float.BYTES
+        );
+        glEnableVertexAttribArray(3);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
     private void updateTerrainIfNeeded() {
         if (terrainVersion == terrain.getVersion()) {
             return;
@@ -262,6 +325,159 @@ public final class Renderer {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         terrainVersion = terrain.getVersion();
+    }
+
+    /**
+     * Renders all physical item drops using the existing block texture array.
+     */
+    private void renderWorldItems(
+            Matrix4f mvp,
+            WorldItemManager manager
+    ) {
+        if (manager == null || manager.getItems().isEmpty()) {
+            return;
+        }
+
+        List<WorldItem> items = manager.getItems();
+
+        // Six faces, two triangles per face, three vertices per triangle.
+        float[] vertices = new float[items.size() * 36 * 7];
+        int offset = 0;
+
+        for (WorldItem item : items) {
+            int textureLayer =
+                    getItemTextureLayer(item.getItemType());
+
+            offset = appendItemCube(
+                    vertices,
+                    offset,
+                    item,
+                    textureLayer
+            );
+        }
+
+        glUseProgram(shaderProgram);
+
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            FloatBuffer matrixBuffer = stack.mallocFloat(16);
+            mvp.get(matrixBuffer);
+
+            glUniformMatrix4fv(
+                    terrainMvpLocation,
+                    false,
+                    matrixBuffer
+            );
+        }
+
+        blockTextures.bind(0);
+
+        glBindVertexArray(worldItemsVao);
+        glBindBuffer(GL_ARRAY_BUFFER, worldItemsVbo);
+        glBufferData(GL_ARRAY_BUFFER, vertices, GL_DYNAMIC_DRAW);
+
+        glDrawArrays(
+                GL_TRIANGLES,
+                0,
+                offset / TerrainMesh.FLOATS_PER_VERTEX
+        );
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
+    /**
+     * Gets the appropriate texture layer for a dropped item.
+     */
+    private int getItemTextureLayer(ItemType itemType) {
+        if (itemType == null) {
+            return BlockType.DIRT.getSideTextureLayer();
+        }
+
+        BlockType placedBlock = itemType.getPlacedBlock();
+
+        if (placedBlock != null) {
+            return placedBlock.getSideTextureLayer();
+        }
+
+        // Coal currently uses the coal-ore texture until item textures
+        // are introduced separately.
+        if (itemType == ItemType.COAL) {
+            return BlockType.COAL_ORE.getSideTextureLayer();
+        }
+
+        return BlockType.DIRT.getSideTextureLayer();
+    }
+
+    /**
+     * Adds one small rotating cube to the combined vertex array.
+     */
+    private int appendItemCube(
+            float[] out,
+            int offset,
+            WorldItem item,
+            int textureLayer
+    ) {
+        float half = 0.16f;
+
+        float[][] corners = {
+                {-half, -half, -half}, // 0
+                { half, -half, -half}, // 1
+                { half,  half, -half}, // 2
+                {-half,  half, -half}, // 3
+                {-half, -half,  half}, // 4
+                { half, -half,  half}, // 5
+                { half,  half,  half}, // 6
+                {-half,  half,  half}  // 7
+        };
+
+        int[][] faces = {
+                {4, 5, 6, 4, 6, 7}, // front
+                {1, 0, 3, 1, 3, 2}, // back
+                {5, 1, 2, 5, 2, 6}, // right
+                {0, 4, 7, 0, 7, 3}, // left
+                {7, 6, 2, 7, 2, 3}, // top
+                {0, 1, 5, 0, 5, 4}  // bottom
+        };
+
+        float[] shades = {
+                1.0f, 0.8f, 0.85f, 0.65f, 1.0f, 0.55f
+        };
+
+        float[][] uv = {
+                {0, 0}, {1, 0}, {1, 1},
+                {0, 0}, {1, 1}, {0, 1}
+        };
+
+        // Rotate the drop around the vertical axis.
+        float angle = item.getAge() * 1.5f;
+        float cos = (float) Math.cos(angle);
+        float sin = (float) Math.sin(angle);
+
+        float centerX = item.getX();
+        float centerY = item.getRenderY();
+        float centerZ = item.getZ();
+
+        for (int face = 0; face < faces.length; face++) {
+            for (int vertex = 0; vertex < 6; vertex++) {
+                float[] corner = corners[faces[face][vertex]];
+
+                float rotatedX =
+                        corner[0] * cos + corner[2] * sin;
+                float rotatedZ =
+                        -corner[0] * sin + corner[2] * cos;
+
+                out[offset++] = centerX + rotatedX;
+                out[offset++] = centerY + corner[1];
+                out[offset++] = centerZ + rotatedZ;
+
+                out[offset++] = uv[vertex][0];
+                out[offset++] = uv[vertex][1];
+                out[offset++] = textureLayer;
+                out[offset++] = shades[face];
+            }
+        }
+
+        return offset;
     }
 
     public void render(
@@ -290,13 +506,18 @@ public final class Renderer {
         Matrix4f view = camera.getViewMatrix();
         Matrix4f mvp = projection.mul(view, new Matrix4f());
 
-        // Draw textured terrain.
+        // Draw the terrain.
         glUseProgram(shaderProgram);
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
             FloatBuffer matrixBuffer = stack.mallocFloat(16);
             mvp.get(matrixBuffer);
-            glUniformMatrix4fv(terrainMvpLocation, false, matrixBuffer);
+
+            glUniformMatrix4fv(
+                    terrainMvpLocation,
+                    false,
+                    matrixBuffer
+            );
         }
 
         blockTextures.bind(0);
@@ -305,9 +526,16 @@ public final class Renderer {
         glDrawArrays(GL_TRIANGLES, 0, vertexCount);
         glBindVertexArray(0);
 
+        // Draw physical item drops with the same shader and textures.
+        renderWorldItems(
+                mvp,
+                player == null ? null : player.getWorldItems()
+        );
+
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
         glUseProgram(0);
 
+        // Preserve the existing block-target outline.
         renderTargetOutline(mvp, camera, player);
     }
 
@@ -348,12 +576,21 @@ public final class Renderer {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             FloatBuffer matrixBuffer = stack.mallocFloat(16);
             mvp.get(matrixBuffer);
-            glUniformMatrix4fv(outlineMvpLocation, false, matrixBuffer);
+
+            glUniformMatrix4fv(
+                    outlineMvpLocation,
+                    false,
+                    matrixBuffer
+            );
         }
 
-        glUniform3f(outlineColorLocation, 0.08f, 0.07f, 0.05f);
+        glUniform3f(
+                outlineColorLocation,
+                0.08f, 0.07f, 0.05f
+        );
 
         glLineWidth(1.5f);
+
         glBindVertexArray(outlineVao);
         glDrawArrays(GL_LINES, 0, 24);
         glBindVertexArray(0);
@@ -408,8 +645,11 @@ public final class Renderer {
             float mouseY,
             int width,
             int height,
-            HudRenderer.ScreenMode screenMode) {
-        return hud.buttonAt(mouseX, mouseY, width, height, screenMode);
+            HudRenderer.ScreenMode screenMode
+    ) {
+        return hud.buttonAt(
+                mouseX, mouseY, width, height, screenMode
+        );
     }
 
     public void renderUi(
@@ -423,8 +663,15 @@ public final class Renderer {
             boolean[] saveSlotsExist
     ) {
         hud.render(
-                width, height, player, mouseX, mouseY,
-                screenMode, statusMessage, saveSlotsExist);
+                width,
+                height,
+                player,
+                mouseX,
+                mouseY,
+                screenMode,
+                statusMessage,
+                saveSlotsExist
+        );
     }
 
     public void close() {
@@ -434,9 +681,11 @@ public final class Renderer {
         if (vao != 0) {
             glDeleteVertexArrays(vao);
         }
+
         if (vbo != 0) {
             glDeleteBuffers(vbo);
         }
+
         if (shaderProgram != 0) {
             glDeleteProgram(shaderProgram);
         }
@@ -444,11 +693,21 @@ public final class Renderer {
         if (outlineVao != 0) {
             glDeleteVertexArrays(outlineVao);
         }
+
         if (outlineVbo != 0) {
             glDeleteBuffers(outlineVbo);
         }
+
         if (outlineProgram != 0) {
             glDeleteProgram(outlineProgram);
+        }
+
+        if (worldItemsVao != 0) {
+            glDeleteVertexArrays(worldItemsVao);
+        }
+
+        if (worldItemsVbo != 0) {
+            glDeleteBuffers(worldItemsVbo);
         }
     }
 }

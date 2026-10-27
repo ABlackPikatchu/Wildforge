@@ -5,6 +5,7 @@ import com.wildforge.inventory.Inventory;
 import com.wildforge.item.ItemType;
 import com.wildforge.world.BlockType;
 import com.wildforge.world.TerrainMesh;
+import com.wildforge.world.WorldItemManager;
 
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
@@ -48,8 +49,8 @@ private static final float WALK_BOB_DISTANCE = 2.2f;
 private final Camera camera = new Camera();
 
 private final Inventory inventory = new Inventory();
-private final BlockInteraction blockInteraction =
-    new BlockInteraction(inventory);
+private final WorldItemManager worldItems;
+private final BlockInteraction blockInteraction;
 
 private float x = 16.0f;
 private float z = 27.0f;
@@ -75,12 +76,21 @@ private boolean firstMouseMove = true;
 private long windowHandle;
 
 public Player(TerrainMesh terrain) {
+    this(terrain, new WorldItemManager());
+}
+
+public Player(TerrainMesh terrain, WorldItemManager worldItems) {
     if (terrain == null) {
         throw new IllegalArgumentException("Terrain cannot be null");
     }
+    if (worldItems == null) {
+        throw new IllegalArgumentException(
+                "World item manager cannot be null");
+    }
 
+    this.worldItems = worldItems;
+    this.blockInteraction = new BlockInteraction(inventory, worldItems);
 
-    // Put starter blocks in the hotbar so they are immediately usable.
     inventory.setStack(HOTBAR_START_INDEX,
             new ItemStack(ItemType.DIRT_BLOCK, 32));
     inventory.setStack(HOTBAR_START_INDEX + 1,
@@ -88,12 +98,25 @@ public Player(TerrainMesh terrain) {
     inventory.setStack(HOTBAR_START_INDEX + 2,
             new ItemStack(ItemType.GRASS_BLOCK, 16));
 
-    // At spawn, use the world surface. Runtime ground checks are relative
-    // to the player's feet so roofs/overhangs are not mistaken for ground.
     feetY = terrain.getHeightAt(x, z);
     grounded = true;
-
     updateCameraPosition();
+}
+
+public float getX() {
+    return x;
+}
+
+public float getZ() {
+    return z;
+}
+
+public float getFeetY() {
+    return feetY;
+}
+
+public WorldItemManager getWorldItems() {
+    return worldItems;
 }
 
 public Camera getCamera() {
