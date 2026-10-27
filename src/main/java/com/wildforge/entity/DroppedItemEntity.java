@@ -6,17 +6,13 @@ import com.wildforge.world.TerrainMesh;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-/**
- * A physical stack of items dropped into the world.
- */
 public final class DroppedItemEntity extends Entity {
 
     private static final float HALF_SIZE = 0.16f;
     private static final float GRAVITY = 18.0f;
     private static final float BOUNCE_DAMPING = 0.28f;
     private static final float MIN_BOUNCE_SPEED = 0.8f;
-    private static final float GROUND_BOB_AMOUNT = 0.045f;
-    private static final float HORIZONTAL_FRICTION = 0.04f;
+    private static final float BOB_AMOUNT = 0.045f;
 
     private final ItemType itemType;
     private final TerrainMesh terrain;
@@ -35,14 +31,13 @@ public final class DroppedItemEntity extends Entity {
     ) {
         super(x, y, z);
 
-        if (itemType == null) {
-            throw new IllegalArgumentException("Item type cannot be null");
+        if (itemType == null || terrain == null) {
+            throw new IllegalArgumentException(
+                    "Item type and terrain are required"
+            );
         }
         if (count < 1 || count > itemType.getMaxStackSize()) {
             throw new IllegalArgumentException("Invalid dropped stack count");
-        }
-        if (terrain == null) {
-            throw new IllegalArgumentException("Terrain cannot be null");
         }
 
         this.itemType = itemType;
@@ -51,7 +46,6 @@ public final class DroppedItemEntity extends Entity {
         this.bobPhase = ThreadLocalRandom.current()
                 .nextFloat(0.0f, (float) (Math.PI * 2.0));
 
-        // Give each dropped stack a slightly different initial toss.
         ThreadLocalRandom random = ThreadLocalRandom.current();
         setVelocity(
                 random.nextFloat(-1.2f, 1.2f),
@@ -73,13 +67,13 @@ public final class DroppedItemEntity extends Entity {
     }
 
     /**
-     * Adds items without exceeding this item's maximum stack size.
+     * Adds items without exceeding the maximum stack size.
      *
-     * @return the number of items that could not fit
+     * @return the number of items that did not fit
      */
     public int addItems(int amount) {
-        if (amount <= 0) {
-            return amount;
+        if (amount <= 0 || isRemoved()) {
+            return Math.max(amount, 0);
         }
 
         int space = itemType.getMaxStackSize() - count;
@@ -90,9 +84,9 @@ public final class DroppedItemEntity extends Entity {
     }
 
     /**
-     * Removes items from this stack.
+     * Removes items and marks an empty stack for removal.
      *
-     * @return the number of items actually removed
+     * @return the number of items removed
      */
     public int removeItems(int amount) {
         if (amount <= 0 || isRemoved()) {
@@ -110,15 +104,52 @@ public final class DroppedItemEntity extends Entity {
     }
 
     /**
-     * Render-only bobbing; physical collision uses the real position.
+     * Pulls this item horizontally toward the player.
      */
+    public void attractToward(
+            float playerX,
+            float playerZ,
+            float deltaTime
+    ) {
+        if (isRemoved() || deltaTime <= 0.0f) {
+            return;
+        }
+
+        final float magnetRange = 4.0f;
+        final float acceleration = 9.0f;
+        final float maxSpeed = 4.0f;
+
+        float dx = playerX - x;
+        float dz = playerZ - z;
+        float distanceSquared = dx * dx + dz * dz;
+
+        if (distanceSquared < 0.0001f
+                || distanceSquared > magnetRange * magnetRange) {
+            return;
+        }
+
+        float distance = (float) Math.sqrt(distanceSquared);
+
+        velocityX += dx / distance * acceleration * deltaTime;
+        velocityZ += dz / distance * acceleration * deltaTime;
+
+        float speed = (float) Math.sqrt(
+                velocityX * velocityX + velocityZ * velocityZ
+        );
+
+        if (speed > maxSpeed) {
+            float scale = maxSpeed / speed;
+            velocityX *= scale;
+            velocityZ *= scale;
+        }
+    }
+
     public float getRenderY() {
         if (!grounded) {
             return y;
         }
 
-        return y + (float) Math.sin(age * 3.0f + bobPhase)
-                * GROUND_BOB_AMOUNT;
+        return y + (float) Math.sin(age * 3.0f + bobPhase) * BOB_AMOUNT;
     }
 
     @Override
@@ -127,18 +158,16 @@ public final class DroppedItemEntity extends Entity {
             return;
         }
 
-        // Avoid huge simulation steps after pauses or frame hitches.
         float dt = Math.min(deltaTime, 0.05f);
         age += dt;
-
         velocityY -= GRAVITY * dt;
 
         moveHorizontal(dt);
         moveVertical(dt);
     }
 
-    private void moveHorizontal(float deltaTime) {
-        float nextX = x + velocityX * deltaTime;
+    private void moveHorizontal(float dt) {
+        float nextX = x + velocityX * dt;
 
         if (!collidesAt(nextX, y, z)) {
             x = nextX;
@@ -146,7 +175,7 @@ public final class DroppedItemEntity extends Entity {
             velocityX = 0.0f;
         }
 
-        float nextZ = z + velocityZ * deltaTime;
+        float nextZ = z + velocityZ * dt;
 
         if (!collidesAt(x, y, nextZ)) {
             z = nextZ;
@@ -155,17 +184,16 @@ public final class DroppedItemEntity extends Entity {
         }
 
         if (grounded) {
-            float friction = (float) Math.pow(
-                    HORIZONTAL_FRICTION, deltaTime
-            );
+            // Gentle friction still allows magnet attraction to move items.
+            float friction = (float) Math.pow(0.35f, dt);
             velocityX *= friction;
             velocityZ *= friction;
         }
     }
 
-    private void moveVertical(float deltaTime) {
+    private void moveVertical(float dt) {
         float oldY = y;
-        float nextY = y + velocityY * deltaTime;
+        float nextY = y + velocityY * dt;
 
         if (!collidesAt(x, nextY, z)) {
             y = nextY;
@@ -174,7 +202,6 @@ public final class DroppedItemEntity extends Entity {
         }
 
         if (velocityY <= 0.0f) {
-            // Find the highest solid block top crossed while falling.
             float oldBottom = oldY - HALF_SIZE;
             float nextBottom = nextY - HALF_SIZE;
             float highestFloor = Float.NEGATIVE_INFINITY;
@@ -193,12 +220,12 @@ public final class DroppedItemEntity extends Entity {
                             continue;
                         }
 
-                        float blockTop = by + 1.0f;
+                        float top = by + 1.0f;
 
-                        if (oldBottom >= blockTop - 0.0001f
-                                && nextBottom <= blockTop
-                                && blockTop > highestFloor) {
-                            highestFloor = blockTop;
+                        if (oldBottom >= top - 0.0001f
+                                && nextBottom <= top
+                                && top > highestFloor) {
+                            highestFloor = top;
                         }
                     }
                 }
@@ -215,11 +242,9 @@ public final class DroppedItemEntity extends Entity {
                     velocityY = 0.0f;
                     grounded = true;
                 }
-
                 return;
             }
         } else {
-            // Find the lowest ceiling underside crossed while rising.
             float oldTop = oldY + HALF_SIZE;
             float nextTop = nextY + HALF_SIZE;
             float lowestCeiling = Float.POSITIVE_INFINITY;
@@ -238,12 +263,10 @@ public final class DroppedItemEntity extends Entity {
                             continue;
                         }
 
-                        float blockBottom = by;
-
-                        if (oldTop <= blockBottom + 0.0001f
-                                && nextTop >= blockBottom
-                                && blockBottom < lowestCeiling) {
-                            lowestCeiling = blockBottom;
+                        if (oldTop <= by + 0.0001f
+                                && nextTop >= by
+                                && by < lowestCeiling) {
+                            lowestCeiling = by;
                         }
                     }
                 }
@@ -257,20 +280,17 @@ public final class DroppedItemEntity extends Entity {
             }
         }
 
-        // Defensive fallback for overlaps or unusual terrain geometry.
+        // Defensive fallback for unusual overlaps.
         velocityY = 0.0f;
         grounded = false;
     }
 
     /**
-     * Moves an item out of a newly placed solid block if they overlap.
+     * Moves an item out of a newly placed block if they overlap.
      */
     public void onBlockPlaced(int blockX, int blockY, int blockZ) {
-        if (isRemoved()) {
-            return;
-        }
-
-        if (!overlapsBlockAt(x, y, z, blockX, blockY, blockZ)) {
+        if (isRemoved() || !overlapsBlockAt(
+                x, y, z, blockX, blockY, blockZ)) {
             return;
         }
 
@@ -287,7 +307,7 @@ public final class DroppedItemEntity extends Entity {
         float bestY = y;
         float bestZ = z;
         float bestDistance = Float.POSITIVE_INFINITY;
-        boolean foundPosition = false;
+        boolean found = false;
 
         for (float[] candidate : candidates) {
             if (collidesAt(candidate[0], candidate[1], candidate[2])) {
@@ -304,27 +324,25 @@ public final class DroppedItemEntity extends Entity {
                 bestX = candidate[0];
                 bestY = candidate[1];
                 bestZ = candidate[2];
-                foundPosition = true;
+                found = true;
             }
         }
 
-        // If the immediate faces are blocked, look for space above.
-        if (!foundPosition) {
+        if (!found) {
             for (float offset = 0.25f; offset <= 4.0f; offset += 0.25f) {
-                float candidateY =
-                        blockY + 1.0f + HALF_SIZE + offset;
+                float candidateY = blockY + 1.0f + HALF_SIZE + offset;
 
                 if (!collidesAt(x, candidateY, z)) {
                     bestX = x;
                     bestY = candidateY;
                     bestZ = z;
-                    foundPosition = true;
+                    found = true;
                     break;
                 }
             }
         }
 
-        if (foundPosition) {
+        if (found) {
             setPosition(bestX, bestY, bestZ);
             velocityY = Math.max(0.0f, velocityY);
             grounded = false;
@@ -347,11 +365,7 @@ public final class DroppedItemEntity extends Entity {
                 && centerZ - HALF_SIZE < blockZ + 1.0f;
     }
 
-    private boolean collidesAt(
-            float centerX,
-            float centerY,
-            float centerZ
-    ) {
+    private boolean collidesAt(float centerX, float centerY, float centerZ) {
         float minX = centerX - HALF_SIZE;
         float maxX = centerX + HALF_SIZE;
         float minY = centerY - HALF_SIZE;

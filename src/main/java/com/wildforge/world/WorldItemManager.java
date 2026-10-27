@@ -12,14 +12,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-/**
- * World-facing API for spawning, updating, merging, and collecting drops.
- * EntityManager owns entity lifecycle and removal.
- */
 public final class WorldItemManager {
 
-    private static final float PICKUP_HORIZONTAL_DISTANCE = 1.0f;
-    private static final float PICKUP_VERTICAL_DISTANCE = 1.25f;
+    private static final float MAGNET_DISTANCE = 1.0f;
+    private static final float PICKUP_HORIZONTAL_DISTANCE = 0.5f;
+    private static final float PICKUP_VERTICAL_DISTANCE = 1.0f;
 
     private static final float MERGE_HORIZONTAL_DISTANCE = 0.65f;
     private static final float MERGE_VERTICAL_DISTANCE = 0.5f;
@@ -49,16 +46,15 @@ public final class WorldItemManager {
             float spawnY = y + random.nextFloat(0.0f, 0.2f);
             float spawnZ = z + random.nextFloat(-0.25f, 0.25f);
 
-            DroppedItemEntity item = new DroppedItemEntity(
+            entityManager.spawn(new DroppedItemEntity(
                     itemType,
                     stackCount,
                     spawnX,
                     spawnY,
                     spawnZ,
                     terrain
-            );
+            ));
 
-            entityManager.spawn(item);
             remaining -= stackCount;
         }
     }
@@ -77,16 +73,13 @@ public final class WorldItemManager {
     }
 
     public int size() {
-        return entityManager.size();
+        return getItems().size();
     }
 
     public void clear() {
         entityManager.clear();
     }
 
-    /**
-     * Resolves drops that overlap a newly placed block.
-     */
     public void onBlockPlaced(int blockX, int blockY, int blockZ) {
         for (DroppedItemEntity item : getItems()) {
             item.onBlockPlaced(blockX, blockY, blockZ);
@@ -98,23 +91,38 @@ public final class WorldItemManager {
             return;
         }
 
+        float dt = Math.min(deltaTime, 0.05f);
         entityManager.removeRemoved();
 
-        // Physics first, then merge stacks that have settled close together.
-        entityManager.update(deltaTime);
+        // Attract items before their physics update.
+        if (player != null) {
+            float magnetDistanceSquared =
+                    MAGNET_DISTANCE * MAGNET_DISTANCE;
+
+            for (DroppedItemEntity item : getItems()) {
+                float dx = player.getX() - item.getX();
+                float dz = player.getZ() - item.getZ();
+
+                if (dx * dx + dz * dz <= magnetDistanceSquared) {
+                    item.attractToward(player.getX(), player.getZ(), dt);
+                }
+            }
+        }
+
+        // Physics runs even if no player reference is available.
+        entityManager.update(dt);
+
         mergeNearbyStacks();
 
         if (player != null) {
             collectNearbyItems(player);
         }
 
-        // Clean up stacks collected or emptied during merging.
         entityManager.removeRemoved();
     }
 
     private void mergeNearbyStacks() {
         List<DroppedItemEntity> items = getItems();
-
         float horizontalDistanceSquared =
                 MERGE_HORIZONTAL_DISTANCE * MERGE_HORIZONTAL_DISTANCE;
 
@@ -143,8 +151,9 @@ public final class WorldItemManager {
                     continue;
                 }
 
-                int remainder = first.addItems(second.getCount());
-                int transferred = second.getCount() - remainder;
+                int originalSecondCount = second.getCount();
+                int remainder = first.addItems(originalSecondCount);
+                int transferred = originalSecondCount - remainder;
 
                 if (transferred > 0) {
                     second.removeItems(transferred);
@@ -163,13 +172,10 @@ public final class WorldItemManager {
         float horizontalDistanceSquared =
                 PICKUP_HORIZONTAL_DISTANCE * PICKUP_HORIZONTAL_DISTANCE;
 
-        for (Entity entity : entityManager.getEntities()) {
-            if (!(entity instanceof DroppedItemEntity)
-                    || entity.isRemoved()) {
+        for (DroppedItemEntity item : getItems()) {
+            if (item.isRemoved()) {
                 continue;
             }
-
-            DroppedItemEntity item = (DroppedItemEntity) entity;
 
             float dx = item.getX() - player.getX();
             float dz = item.getZ() - player.getZ();
@@ -181,9 +187,7 @@ public final class WorldItemManager {
             }
 
             if (player.canAddItem(item.getItemType(), item.getCount())
-                    && player.addItem(
-                            item.getItemType(),
-                            item.getCount())) {
+                    && player.addItem(item.getItemType(), item.getCount())) {
                 item.remove();
             }
         }

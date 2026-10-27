@@ -73,6 +73,7 @@ public final class Renderer {
 
     private static final float TARGET_REACH = 6.0f;
     private static final float OUTLINE_OFFSET = 0.002f;
+    private static final float ITEM_HALF_SIZE = 0.16f;
 
     private final TerrainMesh terrain;
     private final HudRenderer hud;
@@ -326,7 +327,21 @@ public final class Renderer {
             return;
         }
 
-        float[] vertices = new float[items.size() * 36 * TerrainMesh.FLOATS_PER_VERTEX];
+        int visibleCopies = 0;
+        for (DroppedItemEntity item : items) {
+            if (!item.isRemoved()) {
+                visibleCopies += getVisibleItemCopies(item.getCount());
+            }
+        }
+
+        if (visibleCopies == 0) {
+            return;
+        }
+
+        float[] vertices = new float[
+                visibleCopies * 36 * TerrainMesh.FLOATS_PER_VERTEX
+        ];
+
         int offset = 0;
 
         for (DroppedItemEntity item : items) {
@@ -355,11 +370,23 @@ public final class Renderer {
         glBindVertexArray(worldItemsVao);
         glBindBuffer(GL_ARRAY_BUFFER, worldItemsVbo);
         glBufferData(GL_ARRAY_BUFFER, vertices, GL_DYNAMIC_DRAW);
-
         glDrawArrays(GL_TRIANGLES, 0, offset / TerrainMesh.FLOATS_PER_VERTEX);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
+    }
+
+    private int getVisibleItemCopies(int count) {
+        if (count <= 1) {
+            return 1;
+        }
+        if (count <= 4) {
+            return 2;
+        }
+        if (count <= 16) {
+            return 3;
+        }
+        return 4;
     }
 
     private BlockType getItemBlockType(ItemType itemType) {
@@ -398,7 +425,6 @@ public final class Renderer {
             return 1;
         }
 
-        // The current BlockType IDs map directly to BlockTextures layers.
         return blockType.getId();
     }
 
@@ -408,7 +434,56 @@ public final class Renderer {
             DroppedItemEntity item,
             BlockType blockType
     ) {
-        float half = 0.16f;
+        int copies = getVisibleItemCopies(item.getCount());
+
+        for (int i = 0; i < copies; i++) {
+            float offsetX = 0.0f;
+            float offsetY = 0.0f;
+            float offsetZ = 0.0f;
+            float angleOffset = 0.0f;
+
+            if (copies == 2) {
+                offsetX = i == 0 ? -0.055f : 0.055f;
+                offsetZ = i == 0 ? 0.035f : -0.035f;
+                angleOffset = i * 0.65f;
+            } else if (copies == 3) {
+                offsetX = (i - 1) * 0.065f;
+                offsetZ = i == 1 ? 0.045f : -0.035f;
+                offsetY = i == 1 ? 0.025f : 0.0f;
+                angleOffset = i * 0.8f;
+            } else if (copies >= 4) {
+                offsetX = (i % 2 == 0) ? -0.065f : 0.065f;
+                offsetZ = (i < 2) ? -0.055f : 0.055f;
+                offsetY = (i == 0 || i == 3) ? 0.025f : 0.0f;
+                angleOffset = i * 0.7f;
+            }
+
+            offset = appendSingleItemCube(
+                    out,
+                    offset,
+                    item,
+                    blockType,
+                    offsetX,
+                    offsetY,
+                    offsetZ,
+                    angleOffset
+            );
+        }
+
+        return offset;
+    }
+
+    private int appendSingleItemCube(
+            float[] out,
+            int offset,
+            DroppedItemEntity item,
+            BlockType blockType,
+            float offsetX,
+            float offsetY,
+            float offsetZ,
+            float angleOffset
+    ) {
+        float half = ITEM_HALF_SIZE;
 
         float[][] corners = {
                 {-half, -half, -half},
@@ -422,29 +497,28 @@ public final class Renderer {
         };
 
         int[][] faces = {
-                {4, 5, 6, 4, 6, 7}, // front
-                {1, 0, 3, 1, 3, 2}, // back
-                {5, 1, 2, 5, 2, 6}, // right
-                {0, 4, 7, 0, 7, 3}, // left
-                {7, 6, 2, 7, 2, 3}, // top
-                {0, 1, 5, 0, 5, 4}  // bottom
+                {4, 5, 6, 4, 6, 7},
+                {1, 0, 3, 1, 3, 2},
+                {5, 1, 2, 5, 2, 6},
+                {0, 4, 7, 0, 7, 3},
+                {7, 6, 2, 7, 2, 3},
+                {0, 1, 5, 0, 5, 4}
         };
 
         float[] shades = {1.0f, 0.8f, 0.85f, 0.65f, 1.0f, 0.55f};
 
-        // UVs are ordered to keep the top of the texture at the top of each face.
         float[][] uv = {
                 {0, 1}, {1, 1}, {1, 0},
                 {0, 1}, {1, 0}, {0, 0}
         };
 
-        float angle = item.getAge() * 1.5f;
+        float angle = item.getAge() * 1.5f + angleOffset;
         float cos = (float) Math.cos(angle);
         float sin = (float) Math.sin(angle);
 
-        float centerX = item.getX();
-        float centerY = item.getRenderY();
-        float centerZ = item.getZ();
+        float centerX = item.getX() + offsetX;
+        float centerY = item.getRenderY() + offsetY;
+        float centerZ = item.getZ() + offsetZ;
 
         for (int face = 0; face < faces.length; face++) {
             int textureLayer;
