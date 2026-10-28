@@ -80,3 +80,17 @@ tasks.register('generateContent', JavaExec) {
 tasks.named('processResources') {
     dependsOn tasks.named('generateContent')
 }
+
+// Isolated save regression suite. Never touches the user's saves/ folder.
+tasks.register('saveCheck', JavaExec) {
+    group = 'verification'
+    description = 'Check save compatibility, incomplete saves and save selection'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.core.SaveManagerSmokeTest'
+}
+
+// Run both smoke suites with the standard Gradle verification task.
+tasks.named('check') {
+    dependsOn tasks.named('contentCheck'), tasks.named('saveCheck')
+}

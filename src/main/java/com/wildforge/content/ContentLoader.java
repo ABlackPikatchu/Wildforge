@@ -207,6 +207,16 @@ public final class ContentLoader {
         if (items.getByNumericId(7) != null) {
             throw new IOException("Legacy item numeric ID 7 must remain unused");
         }
+        // Until world storage and inventory are fully registry-backed, every
+        // generated definition must also have an enum-backed runtime entry.
+        // Otherwise a new JSON block can pass validation but never render or
+        // be represented in saves/inventory (the earlier cobblestone bug).
+        if (blocks.size() != BlockType.values().length
+                || items.size() != ItemType.values().length) {
+            throw new IOException("Generated content is not fully registered in runtime enums: "
+                    + blocks.size() + " blocks vs " + BlockType.values().length
+                    + ", " + items.size() + " items vs " + ItemType.values().length);
+        }
     }
 
     private static JsonObject readObject(ClassLoader loader, String resource) throws IOException {

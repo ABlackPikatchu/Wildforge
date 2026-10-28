@@ -2,6 +2,12 @@ package com.wildforge.content;
 
 import com.wildforge.lang.LanguageManager;
 import com.wildforge.item.ItemType;
+import com.wildforge.render.BlockTextures;
+import com.wildforge.world.BlockType;
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.InputStream;
 
 /** Run with ./gradlew.bat contentCheck. Uses no additional test dependencies. */
 public final class ContentSmokeTest {
@@ -75,6 +81,25 @@ public final class ContentSmokeTest {
                 "JSON stone must map back to the existing world enum");
         check(bridge.legacyItem(ResourceId.parse("wildforge:stone_block")) == ItemType.STONE_BLOCK,
                 "JSON stone item must map back to the existing inventory enum");
+        // Content is not yet fully registry-driven: every enum texture layer
+        // must exist and have the expected size before OpenGL tries to load it.
+        for (BlockType type : BlockType.values()) {
+            for (int layer : new int[] {type.getTopTextureLayer(),
+                    type.getSideTextureLayer(), type.getBottomTextureLayer()}) {
+                check(layer >= 0 && layer < BlockTextures.layerCount(),
+                        "Missing texture layer for block " + type);
+            }
+        }
+        for (int layer = 0; layer < BlockTextures.layerCount(); layer++) {
+            String path = BlockTextures.resourcePathForLayer(layer);
+            try (InputStream stream = BlockTextures.class.getResourceAsStream(path)) {
+                check(stream != null, "Missing texture: " + path);
+                BufferedImage image = ImageIO.read(stream);
+                check(image != null && image.getWidth() == BlockTextures.TEXTURE_SIZE
+                        && image.getHeight() == BlockTextures.TEXTURE_SIZE,
+                        "Texture must be 32x32: " + path);
+            }
+        }
         TagValidationSmokeTest.run();
         BlockRegistry duplicateCheck = new BlockRegistry();
         duplicateCheck.register(content.blocks().get("wildforge:stone"));
@@ -85,7 +110,8 @@ public final class ContentSmokeTest {
             duplicateRejected = true;
         }
         check(duplicateRejected, "Duplicate block registration must fail");
-        System.out.println("Wildforge content check passed: 18 blocks, 17 items; "
+        System.out.println("Wildforge content check passed: "
+                + content.blocks().size() + " blocks, " + content.items().size() + " items; "
                 + language.size() + " translations, " + tags.blockTagCount()
                 + " block tags, " + tags.itemTagCount() + " item tags; legacy IDs preserved.");
     }

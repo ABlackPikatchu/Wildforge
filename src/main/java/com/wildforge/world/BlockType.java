@@ -27,7 +27,8 @@ public enum BlockType {
     GABBRO(14, 15, 1, true, true, 14, 14, 14),
     GRAVEL(15, 16, 1, true, true, 15, 15, 15),
     SAND(16, 17, 1, true, true, 16, 16, 16),
-    SANDSTONE(17, 18, 1, true, true, 17, 17, 17);
+    SANDSTONE(17, 18, 1, true, true, 17, 17, 17),
+    COBBLESTONE(18, 19, 1, true, true, 18, 18, 18);
 
     // Texture-array layer IDs. Keep these aligned with BlockTextures.
     public static final int GRASS_TOP_TEXTURE = 0;
@@ -49,6 +50,7 @@ public enum BlockType {
     public static final int GRAVEL_TEXTURE = 15;
     public static final int SAND_TEXTURE = 16;
     public static final int SANDSTONE_TEXTURE = 17;
+    public static final int COBBLESTONE_TEXTURE = 18;
 
     final byte id;
 

@@ -189,8 +189,17 @@ public int getItemCount(ItemType itemType) {
     return inventory.getItemCount(itemType);
 }
 
+/** A held cursor stack is not serialized in version 1 player saves. */
+public boolean hasCursorStack() {
+    ItemStack stack = inventory.getCursorStack();
+    return stack != null && !stack.isEmpty();
+}
+
 /** Saves the player's position, view direction, hotbar, and inventory. */
 public void saveTo(Path path) throws IOException {
+    if (hasCursorStack()) {
+        throw new IOException("Held inventory items must be returned before saving");
+    }
     if (path == null) {
         throw new IllegalArgumentException("Save path cannot be null");
     }

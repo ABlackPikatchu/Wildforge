@@ -43,8 +43,21 @@ public final class BlockTextures implements AutoCloseable {
         "/textures/gabbro.png",      // 14
         "/textures/gravel.png",      // 15
         "/textures/sand.png",        // 16
-        "/textures/sandstone.png"    // 17
+        "/textures/sandstone.png",   // 17
+        "/textures/cobblestone.png" // 18
     };
+
+    /** Metadata accessors let verification run without creating an OpenGL context. */
+    public static int layerCount() {
+        return TEXTURE_PATHS.length;
+    }
+
+    public static String resourcePathForLayer(int layer) {
+        if (layer < 0 || layer >= TEXTURE_PATHS.length) {
+            throw new IllegalArgumentException("Unknown texture layer: " + layer);
+        }
+        return TEXTURE_PATHS[layer];
+    }
 
     private final int textureId;
 

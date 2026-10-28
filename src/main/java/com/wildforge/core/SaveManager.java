@@ -16,9 +16,19 @@ import java.util.regex.Pattern;
 
 /** Owns save-slot paths and persistence operations for Wildforge. */
 public final class SaveManager {
-    private static final Path SAVE_DIRECTORY = Path.of("saves");
-    private static final Path LEGACY_SAVE_PATH =
-            SAVE_DIRECTORY.resolve("wildforge.world");
+    private final Path saveDirectory;
+    private final Path legacySavePath;
+
+    public SaveManager() {
+        this(Path.of("saves"));
+    }
+
+    /** Injectable directory for isolated tests and future portable installations. */
+    public SaveManager(Path saveDirectory) {
+        if (saveDirectory == null) throw new IllegalArgumentException("Save directory cannot be null");
+        this.saveDirectory = saveDirectory;
+        this.legacySavePath = saveDirectory.resolve("wildforge.world");
+    }
     private static final Pattern WORLD_FILE = Pattern.compile("world_(\\d+)\\.wfs");
     private static final Pattern PLAYER_FILE = Pattern.compile("player_(\\d+)\\.wfp");
 
@@ -45,9 +55,12 @@ public final class SaveManager {
         Path worldPath = worldPath(slot);
         if (Files.isRegularFile(worldPath)) {
             terrain.loadFrom(worldPath);
-        } else if (slot == 0 && Files.isRegularFile(LEGACY_SAVE_PATH)) {
+        } else if (slot == 0 && Files.isRegularFile(legacySavePath)) {
             // Keep compatibility with the original single-world save.
-            terrain.loadFrom(LEGACY_SAVE_PATH);
+            terrain.loadFrom(legacySavePath);
+        } else if (Files.isRegularFile(playerPath(slot))) {
+            // A partial save is not the same thing as a newly created world.
+            throw new IOException("Incomplete world save: world data is missing for slot " + (slot + 1));
         } else {
             terrain.resetWorld();
         }
@@ -64,6 +77,10 @@ public final class SaveManager {
         Path path = playerPath(slot);
         if (Files.isRegularFile(path)) {
             player.loadFrom(path, terrain);
+        } else if (Files.isRegularFile(worldPath(slot))) {
+            // Old single-world saves (wildforge.world) legitimately have no player file.
+            // Numbered world saves are always expected to have their matching player file.
+            throw new IOException("Incomplete world save: player data is missing for slot " + (slot + 1));
         }
     }
 
@@ -75,7 +92,12 @@ public final class SaveManager {
                     "Terrain and player must not be null");
         }
 
-        Files.createDirectories(SAVE_DIRECTORY);
+        // Inventory cursor stacks aren't part of the current v1 player-save format.
+        // Refuse to save rather than silently discarding items when no slot is free.
+        if (player.hasCursorStack()) {
+            throw new IOException("Return held inventory items before saving");
+        }
+        Files.createDirectories(saveDirectory);
         terrain.saveTo(worldPath(slot));
         player.saveTo(playerPath(slot));
     }
@@ -83,10 +105,10 @@ public final class SaveManager {
     /** Sorted list of every discovered save slot, preserving legacy slot 0 compatibility. */
     public List<SaveSlotSummary> listSlots() {
         Set<Integer> slots = new LinkedHashSet<>();
-        boolean legacyWorldExists = Files.isRegularFile(LEGACY_SAVE_PATH);
+        boolean legacyWorldExists = Files.isRegularFile(legacySavePath);
 
-        if (Files.isDirectory(SAVE_DIRECTORY)) {
-            try (var paths = Files.list(SAVE_DIRECTORY)) {
+        if (Files.isDirectory(saveDirectory)) {
+            try (var paths = Files.list(saveDirectory)) {
                 for (Path path : paths.toList()) {
                     String name = path.getFileName().toString();
                     Matcher world = WORLD_FILE.matcher(name);
@@ -127,6 +149,9 @@ public final class SaveManager {
         for (SaveSlotSummary summary : listSlots()) {
             highest = Math.max(highest, summary.slot());
         }
+        if (highest >= Integer.MAX_VALUE - 2) {
+            throw new IllegalStateException("No supported save-slot numbers remain");
+        }
         return highest + 1;
     }
 
@@ -136,7 +161,7 @@ public final class SaveManager {
         }
         return Files.isRegularFile(worldPath(slot))
                 || Files.isRegularFile(playerPath(slot))
-                || (slot == 0 && Files.isRegularFile(LEGACY_SAVE_PATH));
+                || (slot == 0 && Files.isRegularFile(legacySavePath));
     }
 
 
@@ -150,7 +175,7 @@ public final class SaveManager {
         Files.deleteIfExists(worldPath(slot));
         Files.deleteIfExists(playerPath(slot));
         if (slot == 0) {
-            Files.deleteIfExists(LEGACY_SAVE_PATH);
+            Files.deleteIfExists(legacySavePath);
         }
     }
 
@@ -161,11 +186,11 @@ public final class SaveManager {
     }
 
     private Path worldPath(int slot) {
-        return SAVE_DIRECTORY.resolve("world_" + (slot + 1) + ".wfs");
+        return saveDirectory.resolve("world_" + ((long) slot + 1) + ".wfs");
     }
 
     private Path playerPath(int slot) {
-        return SAVE_DIRECTORY.resolve("player_" + (slot + 1) + ".wfp");
+        return saveDirectory.resolve("player_" + ((long) slot + 1) + ".wfp");
     }
 
     private void requireValidSlot(int slot) throws IOException {

@@ -29,7 +29,8 @@ public enum ItemType {
     GABBRO_BLOCK(15, "Gabbro", 64, BlockType.GABBRO),
     GRAVEL_BLOCK(16, "Gravel", 64, BlockType.GRAVEL),
     SAND_BLOCK(17, "Sand", 64, BlockType.SAND),
-    SANDSTONE_BLOCK(18, "Sandstone", 64, BlockType.SANDSTONE);
+    SANDSTONE_BLOCK(18, "Sandstone", 64, BlockType.SANDSTONE),
+    COBBLESTONE_BLOCK(19, "Cobblestone", 64, BlockType.COBBLESTONE);
 
     private final int id;
     private final String displayName;

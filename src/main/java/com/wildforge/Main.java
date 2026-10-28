@@ -4,6 +4,8 @@ import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinDef.HWND;
 import com.wildforge.content.ContentLoader;
+import com.wildforge.core.DisplayModeController;
+import com.wildforge.core.FrameTiming;
 import com.wildforge.core.GameSettings;
 import com.wildforge.core.InputController;
 import com.wildforge.core.KeyBindings;
@@ -14,22 +16,19 @@ import com.wildforge.render.HudRenderer;
 import com.wildforge.render.Renderer;
 import com.wildforge.world.TerrainMesh;
 import com.wildforge.world.WorldItemManager;
+import com.wildforge.ui.SaveSelectionModel;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWNativeWin32;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
 
 import java.io.IOException;
-import java.util.List;
-import org.lwjgl.PointerBuffer;
-import java.util.concurrent.locks.LockSupport;
 
 import static org.lwjgl.glfw.GLFW.*;
 
 public final class Main implements InputController.Callbacks {
     private static final long MIN_SAVING_SCREEN_NANOS = 400_000_000L;
     private static final float MAX_FRAME_DELTA_SECONDS = 0.1f;
-    private static final int SAVES_PER_PAGE = 3;
 
     private long window;
     private Renderer renderer;
@@ -46,16 +45,10 @@ public final class Main implements InputController.Callbacks {
     private boolean uiScaleSliderDragging;
     // Physical track is held constant while the entire UI changes size.
     private float[] uiScaleDragTrack;
-    private int measuredFps;
-    private int framesThisSecond;
-    private long fpsWindowStartedNanos = System.nanoTime();
+    private final FrameTiming frameTiming = new FrameTiming();
+    private final DisplayModeController displayController = new DisplayModeController();
+    private final SaveSelectionModel saveSelection = new SaveSelectionModel(saveManager);
     private KeyBindings.Action bindingToCapture;
-    /** Last ordinary window position and size, used when leaving borderless/fullscreen. */
-    private int windowedX;
-    private int windowedY;
-    private int windowedWidth;
-    private int windowedHeight;
-    private GameSettings.DisplayMode appliedDisplayMode = GameSettings.DisplayMode.WINDOWED;
     private int pendingDeleteSlot = -1;
     private String pendingDeleteLabel = "";
 
@@ -79,8 +72,6 @@ public final class Main implements InputController.Callbacks {
     private long savingScreenStartedAtNanos;
     private boolean worldLoaded;
     private int activeSaveSlot = -1;
-    private List<SaveManager.SaveSlotSummary> saveSlots = List.of();
-    private int savePage = 0;
     private String statusMessage = "";
 
     public static void main(String[] args) {
@@ -146,19 +137,13 @@ public final class Main implements InputController.Callbacks {
                     Math.max(0, (videoMode.width() - initialWidth) / 2),
                     Math.max(0, (videoMode.height() - initialHeight) / 2));
         }
-        windowedWidth = initialWidth;
-        windowedHeight = initialHeight;
-        int[] initialX = new int[1];
-        int[] initialY = new int[1];
-        glfwGetWindowPos(window, initialX, initialY);
-        windowedX = initialX[0];
-        windowedY = initialY[0];
+        displayController.rememberWindowed(window, initialWidth, initialHeight);
 
         glfwMakeContextCurrent(window);
         glfwSwapInterval(settings.vsync() ? 1 : 0);
         GL.createCapabilities();
         if (settings.displayMode() != GameSettings.DisplayMode.WINDOWED) {
-            applyWindowMode();
+            displayController.apply(window, settings);
         }
 
         terrain = new TerrainMesh();
@@ -390,7 +375,7 @@ public final class Main implements InputController.Callbacks {
         if (screenMode == HudRenderer.ScreenMode.MAIN_MENU) {
             if (button == HudRenderer.MenuButton.PLAY) {
                 refreshSaveSlots();
-                savePage = 0;
+                saveSelection.goToFirstPage();
                 screenMode = HudRenderer.ScreenMode.SAVE_SELECT;
                 statusMessage = "";
             } else if (button == HudRenderer.MenuButton.OPTIONS) {
@@ -411,14 +396,10 @@ public final class Main implements InputController.Callbacks {
                 case DELETE_THREE -> confirmDeleteVisibleSave(2);
                 case NEW_GAME -> beginLoadingSave(saveManager.nextAvailableSlot());
                 case PREVIOUS_PAGE -> {
-                    if (hasPreviousSavePage()) {
-                        savePage--;
-                    }
+                    saveSelection.previousPage();
                 }
                 case NEXT_PAGE -> {
-                    if (hasNextSavePage()) {
-                        savePage++;
-                    }
+                    saveSelection.nextPage();
                 }
                 case BACK -> {
                     screenMode = HudRenderer.ScreenMode.MAIN_MENU;
@@ -452,15 +433,15 @@ public final class Main implements InputController.Callbacks {
                 case CONTROLS_TAB -> optionsPage = 1;
                 case DISPLAY_MODE -> {
                     settings.nextDisplayMode();
-                    applyWindowMode();
+                    displayController.apply(window, settings);
                     persistSettings();
                 }
                 case RESOLUTION -> {
                     if (settings.allowsResolutionChange()) {
-                        GLFWVidMode mode = glfwGetVideoMode(monitorForWindow());
+                        GLFWVidMode mode = glfwGetVideoMode(displayController.monitorForWindow(window));
                         if (mode != null) {
                             settings.nextResolution(mode.width(), mode.height());
-                            applyWindowMode();
+                            displayController.apply(window, settings);
                             persistSettings();
                         }
                     }
@@ -591,109 +572,6 @@ public final class Main implements InputController.Callbacks {
         }
     }
 
-    /** Select the monitor nearest the window center, not always the primary monitor. */
-    private long monitorForWindow() {
-        long fullscreenMonitor = glfwGetWindowMonitor(window);
-        if (fullscreenMonitor != 0L) return fullscreenMonitor;
-        PointerBuffer monitors = glfwGetMonitors();
-        long fallback = glfwGetPrimaryMonitor();
-        if (monitors == null || monitors.remaining() == 0) return fallback;
-
-        int[] windowX = {0};
-        int[] windowY = {0};
-        int[] sizeW = {0};
-        int[] sizeH = {0};
-        glfwGetWindowPos(window, windowX, windowY);
-        glfwGetWindowSize(window, sizeW, sizeH);
-        long centerX = (long) windowX[0] + sizeW[0] / 2;
-        long centerY = (long) windowY[0] + sizeH[0] / 2;
-        long closest = fallback;
-        double distance = Double.POSITIVE_INFINITY;
-
-        for (int i = monitors.position(); i < monitors.limit(); i++) {
-            long candidate = monitors.get(i);
-            GLFWVidMode videoMode = glfwGetVideoMode(candidate);
-            if (videoMode == null) continue;
-            int[] x = {0};
-            int[] y = {0};
-            glfwGetMonitorPos(candidate, x, y);
-            long dx = Math.max(x[0] - centerX, Math.max(0L, centerX - ((long)x[0] + videoMode.width())));
-            long dy = Math.max(y[0] - centerY, Math.max(0L, centerY - ((long)y[0] + videoMode.height())));
-            double candidateDistance = (double)dx * dx + (double)dy * dy;
-            if (candidateDistance < distance) {
-                distance = candidateDistance;
-                closest = candidate;
-            }
-        }
-        return closest;
-    }
-
-    /** Display modes share one GLFW window/context; settings never alter saved worlds. */
-    private void applyWindowMode() {
-        long monitor = monitorForWindow();
-        GLFWVidMode mode = monitor == 0 ? null : glfwGetVideoMode(monitor);
-        if (mode == null) return;
-
-        GameSettings.DisplayMode target = settings.displayMode();
-        if (appliedDisplayMode == GameSettings.DisplayMode.WINDOWED
-                && target != GameSettings.DisplayMode.WINDOWED) {
-            int[] x = {0};
-            int[] y = {0};
-            int[] w = {0};
-            int[] h = {0};
-            glfwGetWindowPos(window, x, y);
-            glfwGetWindowSize(window, w, h);
-            windowedX = x[0];
-            windowedY = y[0];
-            windowedWidth = w[0];
-            windowedHeight = h[0];
-        }
-
-        if (target == GameSettings.DisplayMode.FULLSCREEN) {
-            glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
-            glfwSetWindowMonitor(window, monitor, 0, 0,
-                    mode.width(), mode.height(), mode.refreshRate());
-        } else if (target == GameSettings.DisplayMode.BORDERLESS) {
-            // This is borderless FULLSCREEN: a monitor-sized desktop window,
-            // not an undecorated window using the user's windowed resolution.
-            // Unlike exclusive fullscreen, it does not own the monitor's video mode,
-            // so alt-tabbing and moving the cursor to another monitor is seamless.
-            int[] x = {0};
-            int[] y = {0};
-            glfwGetMonitorPos(monitor, x, y);
-            // Apply the style before resizing, so Windows does not include
-            // caption/border dimensions when calculating the client area.
-            glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
-            glfwSetWindowAttrib(window, GLFW_RESIZABLE, GLFW_FALSE);
-            glfwSetWindowMonitor(window, 0L, x[0], y[0],
-                    mode.width(), mode.height(), GLFW_DONT_CARE);
-            // Some window managers adjust the position when styles change.
-            glfwSetWindowPos(window, x[0], y[0]);
-        } else {
-            glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
-            glfwSetWindowAttrib(window, GLFW_RESIZABLE, GLFW_TRUE);
-            boolean restoring = appliedDisplayMode != GameSettings.DisplayMode.WINDOWED;
-            int requestedWidth = restoring ? windowedWidth : settings.resolutionWidth();
-            int requestedHeight = restoring ? windowedHeight : settings.resolutionHeight();
-            int w = Math.max(640, Math.min(requestedWidth, mode.width()));
-            int h = Math.max(360, Math.min(requestedHeight, mode.height()));
-            int[] mx = {0};
-            int[] my = {0};
-            glfwGetMonitorPos(monitor, mx, my);
-            // Center a new windowed resolution on the active monitor. When returning
-            // from a fullscreen display, restore the old window's location.
-            int x = restoring ? windowedX : mx[0] + (mode.width() - w) / 2;
-            int y = restoring ? windowedY : my[0] + (mode.height() - h) / 2;
-            glfwSetWindowMonitor(window, 0L, x, y, w, h, GLFW_DONT_CARE);
-            windowedX = x;
-            windowedY = y;
-            windowedWidth = w;
-            windowedHeight = h;
-        }
-        appliedDisplayMode = target;
-        glfwSwapInterval(settings.vsync() ? 1 : 0);
-    }
-
     private void persistSettings() {
         try {
             settings.save();
@@ -705,7 +583,7 @@ public final class Main implements InputController.Callbacks {
     }
 
     private void confirmDeleteVisibleSave(int index) {
-        SaveManager.SaveSlotSummary summary = visibleSaveAt(index);
+        SaveManager.SaveSlotSummary summary = saveSelection.visibleAt(index);
         if (summary == null || !summary.exists()) return;
         pendingDeleteSlot = summary.slot();
         pendingDeleteLabel = summary.displayName();
@@ -739,7 +617,7 @@ public final class Main implements InputController.Callbacks {
     }
 
     private void beginLoadingVisibleSave(int localIndex) {
-        SaveManager.SaveSlotSummary summary = visibleSaveAt(localIndex);
+        SaveManager.SaveSlotSummary summary = saveSelection.visibleAt(localIndex);
         if (summary != null) {
             beginLoadingSave(summary.slot());
         }
@@ -756,46 +634,7 @@ public final class Main implements InputController.Callbacks {
     }
 
     private void refreshSaveSlots() {
-        saveSlots = saveManager.listSlots();
-        int maxPage = Math.max(0, (saveSlots.size() - 1) / SAVES_PER_PAGE);
-        if (savePage > maxPage) {
-            savePage = maxPage;
-        }
-    }
-
-    private SaveManager.SaveSlotSummary visibleSaveAt(int localIndex) {
-        int absoluteIndex = savePage * SAVES_PER_PAGE + localIndex;
-        if (localIndex < 0 || localIndex >= SAVES_PER_PAGE
-                || absoluteIndex < 0 || absoluteIndex >= saveSlots.size()) {
-            return null;
-        }
-        return saveSlots.get(absoluteIndex);
-    }
-
-    private String[] visibleSaveLabels() {
-        String[] labels = new String[SAVES_PER_PAGE];
-        for (int i = 0; i < SAVES_PER_PAGE; i++) {
-            SaveManager.SaveSlotSummary summary = visibleSaveAt(i);
-            labels[i] = summary == null ? "EMPTY" : summary.displayName();
-        }
-        return labels;
-    }
-
-    private boolean[] visibleSaveExists() {
-        boolean[] exists = new boolean[SAVES_PER_PAGE];
-        for (int i = 0; i < SAVES_PER_PAGE; i++) {
-            SaveManager.SaveSlotSummary summary = visibleSaveAt(i);
-            exists[i] = summary != null && summary.exists();
-        }
-        return exists;
-    }
-
-    private boolean hasPreviousSavePage() {
-        return savePage > 0;
-    }
-
-    private boolean hasNextSavePage() {
-        return (savePage + 1) * SAVES_PER_PAGE < saveSlots.size();
+        saveSelection.refresh();
     }
 
     private HudRenderer.MenuButton getMenuButtonAt(long handle) {
@@ -892,7 +731,8 @@ public final class Main implements InputController.Callbacks {
             }
         } catch (IOException e) {
             System.err.println("Could not save world: " + e.getMessage());
-            statusMessage = "SAVE FAILED";
+            statusMessage = player != null && player.hasCursorStack()
+                    ? "PUT HELD ITEMS INTO A SLOT BEFORE SAVING" : "SAVE FAILED";
             screenMode = HudRenderer.ScreenMode.PAUSED;
             quitAfterSave = false;
             returnToMainMenuAfterSave = false;
@@ -1036,19 +876,20 @@ public final class Main implements InputController.Callbacks {
                     hudMouseY,
                     screenMode,
                     statusMessage,
-                    visibleSaveLabels(),
-                    visibleSaveExists(),
-                    savePage,
-                    hasPreviousSavePage(),
-                    hasNextSavePage(),
+                    saveSelection.visibleLabels(),
+                    saveSelection.visibleExists(),
+                    saveSelection.page(),
+                    saveSelection.hasPreviousPage(),
+                    saveSelection.hasNextPage(),
                     settings,
                     pendingDeleteLabel,
                     optionsPage
             );
 
             glfwSwapBuffers(window);
-            trackFps(System.nanoTime());
-            limitFrameRate(frameStartNanos);
+            int latestFps = frameTiming.recordFrame(System.nanoTime());
+            if (latestFps >= 0) renderer.setMeasuredFps(latestFps);
+            FrameTiming.limitFrameRate(frameStartNanos, settings.fpsLimit());
 
             if (loadPending) {
                 loadWorld();
@@ -1056,34 +897,6 @@ public final class Main implements InputController.Callbacks {
             if (savePending
                     && System.nanoTime() - savingScreenStartedAtNanos >= MIN_SAVING_SCREEN_NANOS) {
                 saveWorld();
-            }
-        }
-    }
-    private void trackFps(long now) {
-        framesThisSecond++;
-        long elapsed = now - fpsWindowStartedNanos;
-        if (elapsed >= 1_000_000_000L) {
-            measuredFps = Math.round(framesThisSecond * 1_000_000_000f / elapsed);
-            renderer.setMeasuredFps(measuredFps);
-            framesThisSecond = 0;
-            fpsWindowStartedNanos = now;
-        }
-    }
-
-    /** An optional frame cap independent of VSync. Applies across menus and gameplay. */
-    private void limitFrameRate(long frameStartNanos) {
-        int cap = settings.fpsLimit();
-        if (cap <= 0) return;
-        long targetNanos = frameStartNanos + 1_000_000_000L / cap;
-        while (true) {
-            long remaining = targetNanos - System.nanoTime();
-            if (remaining <= 0L) return;
-            if (remaining > 1_500_000L) {
-                LockSupport.parkNanos(remaining - 600_000L);
-            } else if (remaining > 250_000L) {
-                LockSupport.parkNanos(remaining / 2L);
-            } else {
-                Thread.onSpinWait();
             }
         }
     }

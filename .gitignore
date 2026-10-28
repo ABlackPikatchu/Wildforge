@@ -11,3 +11,7 @@ replay_pid*.log
 .idea/
 *.iml
 .vscode/launch.json
+
+# User-specific local preferences
+config/wildforge_settings.json
+config/*.tmp
