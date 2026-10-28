@@ -19,10 +19,9 @@
   },
   "vsync": false,
   "crosshair": true,
-  "fullscreen": true,
+  "display_mode": "borderless",
   "show_fps": false,
   "fov": 70,
-  "mouse_sensitivity": 0.12,
   "fps_limit": 0,
   "resolution_width": 3840,
   "resolution_height": 2160

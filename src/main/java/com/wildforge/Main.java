@@ -21,6 +21,7 @@ import org.lwjgl.opengl.GL;
 
 import java.io.IOException;
 import java.util.List;
+import org.lwjgl.PointerBuffer;
 import java.util.concurrent.locks.LockSupport;
 
 import static org.lwjgl.glfw.GLFW.*;
@@ -49,6 +50,12 @@ public final class Main implements InputController.Callbacks {
     private int framesThisSecond;
     private long fpsWindowStartedNanos = System.nanoTime();
     private KeyBindings.Action bindingToCapture;
+    /** Last ordinary window position and size, used when leaving borderless/fullscreen. */
+    private int windowedX;
+    private int windowedY;
+    private int windowedWidth;
+    private int windowedHeight;
+    private GameSettings.DisplayMode appliedDisplayMode = GameSettings.DisplayMode.WINDOWED;
     private int pendingDeleteSlot = -1;
     private String pendingDeleteLabel = "";
 
@@ -139,17 +146,23 @@ public final class Main implements InputController.Callbacks {
                     Math.max(0, (videoMode.width() - initialWidth) / 2),
                     Math.max(0, (videoMode.height() - initialHeight) / 2));
         }
+        windowedWidth = initialWidth;
+        windowedHeight = initialHeight;
+        int[] initialX = new int[1];
+        int[] initialY = new int[1];
+        glfwGetWindowPos(window, initialX, initialY);
+        windowedX = initialX[0];
+        windowedY = initialY[0];
 
         glfwMakeContextCurrent(window);
         glfwSwapInterval(settings.vsync() ? 1 : 0);
         GL.createCapabilities();
-        if (settings.fullscreen()) {
+        if (settings.displayMode() != GameSettings.DisplayMode.WINDOWED) {
             applyWindowMode();
         }
 
         terrain = new TerrainMesh();
         player = new Player(terrain, worldItems, gameContent);
-        player.setMouseSensitivity(settings.mouseSensitivity());
         player.setKeyBindings(settings.keyBindings());
         renderer = new Renderer(terrain);
         renderer.setFov(settings.fov());
@@ -231,7 +244,9 @@ public final class Main implements InputController.Callbacks {
     @Override
     public void onWindowFocusChanged(long handle, boolean focused) {
         if (focused) {
-            if (screenMode == HudRenderer.ScreenMode.PLAYING) {
+            // Inventory is a cursor-driven screen even when ScreenMode is PLAYING.
+            // Returning from another monitor must not grab the pointer again.
+            if (screenMode == HudRenderer.ScreenMode.PLAYING && !player.isInventoryOpen()) {
                 player.captureMouse(handle);
             } else {
                 player.releaseMouse(handle);
@@ -435,17 +450,19 @@ public final class Main implements InputController.Callbacks {
                     statusMessage = "";
                 }
                 case CONTROLS_TAB -> optionsPage = 1;
-                case FULLSCREEN -> {
-                    settings.toggleFullscreen();
+                case DISPLAY_MODE -> {
+                    settings.nextDisplayMode();
                     applyWindowMode();
                     persistSettings();
                 }
                 case RESOLUTION -> {
-                    GLFWVidMode mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-                    if (mode != null) {
-                        settings.nextResolution(mode.width(), mode.height());
-                        if (!settings.fullscreen()) applyWindowMode();
-                        persistSettings();
+                    if (settings.allowsResolutionChange()) {
+                        GLFWVidMode mode = glfwGetVideoMode(monitorForWindow());
+                        if (mode != null) {
+                            settings.nextResolution(mode.width(), mode.height());
+                            applyWindowMode();
+                            persistSettings();
+                        }
                     }
                 }
                 case VSYNC -> {
@@ -455,11 +472,6 @@ public final class Main implements InputController.Callbacks {
                 }
                 case FPS_LIMIT -> {
                     settings.nextFpsLimit();
-                    persistSettings();
-                }
-                case SENSITIVITY -> {
-                    settings.nextSensitivity();
-                    player.setMouseSensitivity(settings.mouseSensitivity());
                     persistSettings();
                 }
                 case CROSSHAIR -> {
@@ -579,22 +591,106 @@ public final class Main implements InputController.Callbacks {
         }
     }
 
-    /** Exclusive monitor fullscreen uses the monitor's current mode. */
+    /** Select the monitor nearest the window center, not always the primary monitor. */
+    private long monitorForWindow() {
+        long fullscreenMonitor = glfwGetWindowMonitor(window);
+        if (fullscreenMonitor != 0L) return fullscreenMonitor;
+        PointerBuffer monitors = glfwGetMonitors();
+        long fallback = glfwGetPrimaryMonitor();
+        if (monitors == null || monitors.remaining() == 0) return fallback;
+
+        int[] windowX = {0};
+        int[] windowY = {0};
+        int[] sizeW = {0};
+        int[] sizeH = {0};
+        glfwGetWindowPos(window, windowX, windowY);
+        glfwGetWindowSize(window, sizeW, sizeH);
+        long centerX = (long) windowX[0] + sizeW[0] / 2;
+        long centerY = (long) windowY[0] + sizeH[0] / 2;
+        long closest = fallback;
+        double distance = Double.POSITIVE_INFINITY;
+
+        for (int i = monitors.position(); i < monitors.limit(); i++) {
+            long candidate = monitors.get(i);
+            GLFWVidMode videoMode = glfwGetVideoMode(candidate);
+            if (videoMode == null) continue;
+            int[] x = {0};
+            int[] y = {0};
+            glfwGetMonitorPos(candidate, x, y);
+            long dx = Math.max(x[0] - centerX, Math.max(0L, centerX - ((long)x[0] + videoMode.width())));
+            long dy = Math.max(y[0] - centerY, Math.max(0L, centerY - ((long)y[0] + videoMode.height())));
+            double candidateDistance = (double)dx * dx + (double)dy * dy;
+            if (candidateDistance < distance) {
+                distance = candidateDistance;
+                closest = candidate;
+            }
+        }
+        return closest;
+    }
+
+    /** Display modes share one GLFW window/context; settings never alter saved worlds. */
     private void applyWindowMode() {
-        long monitor = glfwGetPrimaryMonitor();
+        long monitor = monitorForWindow();
         GLFWVidMode mode = monitor == 0 ? null : glfwGetVideoMode(monitor);
         if (mode == null) return;
-        if (settings.fullscreen()) {
+
+        GameSettings.DisplayMode target = settings.displayMode();
+        if (appliedDisplayMode == GameSettings.DisplayMode.WINDOWED
+                && target != GameSettings.DisplayMode.WINDOWED) {
+            int[] x = {0};
+            int[] y = {0};
+            int[] w = {0};
+            int[] h = {0};
+            glfwGetWindowPos(window, x, y);
+            glfwGetWindowSize(window, w, h);
+            windowedX = x[0];
+            windowedY = y[0];
+            windowedWidth = w[0];
+            windowedHeight = h[0];
+        }
+
+        if (target == GameSettings.DisplayMode.FULLSCREEN) {
+            glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
             glfwSetWindowMonitor(window, monitor, 0, 0,
                     mode.width(), mode.height(), mode.refreshRate());
+        } else if (target == GameSettings.DisplayMode.BORDERLESS) {
+            // This is borderless FULLSCREEN: a monitor-sized desktop window,
+            // not an undecorated window using the user's windowed resolution.
+            // Unlike exclusive fullscreen, it does not own the monitor's video mode,
+            // so alt-tabbing and moving the cursor to another monitor is seamless.
+            int[] x = {0};
+            int[] y = {0};
+            glfwGetMonitorPos(monitor, x, y);
+            // Apply the style before resizing, so Windows does not include
+            // caption/border dimensions when calculating the client area.
+            glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+            glfwSetWindowAttrib(window, GLFW_RESIZABLE, GLFW_FALSE);
+            glfwSetWindowMonitor(window, 0L, x[0], y[0],
+                    mode.width(), mode.height(), GLFW_DONT_CARE);
+            // Some window managers adjust the position when styles change.
+            glfwSetWindowPos(window, x[0], y[0]);
         } else {
-            int width = Math.min(settings.resolutionWidth(), mode.width());
-            int height = Math.min(settings.resolutionHeight(), mode.height());
-            glfwSetWindowMonitor(window, 0L,
-                    Math.max(0, (mode.width() - width) / 2),
-                    Math.max(0, (mode.height() - height) / 2),
-                    width, height, GLFW_DONT_CARE);
+            glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
+            glfwSetWindowAttrib(window, GLFW_RESIZABLE, GLFW_TRUE);
+            boolean restoring = appliedDisplayMode != GameSettings.DisplayMode.WINDOWED;
+            int requestedWidth = restoring ? windowedWidth : settings.resolutionWidth();
+            int requestedHeight = restoring ? windowedHeight : settings.resolutionHeight();
+            int w = Math.max(640, Math.min(requestedWidth, mode.width()));
+            int h = Math.max(360, Math.min(requestedHeight, mode.height()));
+            int[] mx = {0};
+            int[] my = {0};
+            glfwGetMonitorPos(monitor, mx, my);
+            // Center a new windowed resolution on the active monitor. When returning
+            // from a fullscreen display, restore the old window's location.
+            int x = restoring ? windowedX : mx[0] + (mode.width() - w) / 2;
+            int y = restoring ? windowedY : my[0] + (mode.height() - h) / 2;
+            glfwSetWindowMonitor(window, 0L, x, y, w, h, GLFW_DONT_CARE);
+            windowedX = x;
+            windowedY = y;
+            windowedWidth = w;
+            windowedHeight = h;
         }
+        appliedDisplayMode = target;
         glfwSwapInterval(settings.vsync() ? 1 : 0);
     }
 
@@ -756,8 +852,7 @@ public final class Main implements InputController.Callbacks {
             saveManager.loadTerrain(activeSaveSlot, terrain);
             worldItems.clear();
             player = new Player(terrain, worldItems, gameContent);
-            player.setMouseSensitivity(settings.mouseSensitivity());
-        player.setKeyBindings(settings.keyBindings());
+            player.setKeyBindings(settings.keyBindings());
             saveManager.loadPlayer(activeSaveSlot, player, terrain);
             worldLoaded = true;
             statusMessage = "";

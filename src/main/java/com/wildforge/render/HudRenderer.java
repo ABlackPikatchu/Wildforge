@@ -93,13 +93,12 @@ public final class HudRenderer {
         CANCEL_DELETE,
         VIDEO_TAB,
         CONTROLS_TAB,
-        FULLSCREEN,
+        DISPLAY_MODE,
         RESOLUTION,
         VSYNC,
         FPS_LIMIT,
         FOV,
         SHOW_FPS,
-        SENSITIVITY,
         CROSSHAIR,
         UI_SCALE,
         KEYBINDS_TAB,
@@ -694,7 +693,9 @@ public final class HudRenderer {
                                 + button.ordinal() - MenuButton.BIND_1.ordinal()) == null)))
                     || ((saveEntry || deleteEntry) && !existingSave)
                     || (button == MenuButton.PREVIOUS_PAGE && !hasPreviousSavePage)
-                    || (button == MenuButton.NEXT_PAGE && !hasNextSavePage);
+                    || (button == MenuButton.NEXT_PAGE && !hasNextSavePage)
+                    || (screenMode == ScreenMode.OPTIONS && settings != null
+                        && button == MenuButton.RESOLUTION && !settings.allowsResolutionChange());
             boolean hovered = !disabled && buttonAtVirtual(mouseX, mouseY,
                     width, height, screenMode, optionsPage) == button;
             boolean emphasized = button == MenuButton.PLAY || button == MenuButton.NEW_GAME
@@ -809,13 +810,14 @@ public final class HudRenderer {
         if (settings == null) return buttonLabel(button);
         return switch (button) {
             case VSYNC -> "VSYNC " + (settings.vsync() ? "ON" : "OFF");
-            case FULLSCREEN -> "FULLSCREEN " + (settings.fullscreen() ? "ON" : "OFF");
-            case RESOLUTION -> "RESOLUTION " + settings.resolutionLabel();
+            case DISPLAY_MODE -> "DISPLAY MODE  " + settings.displayMode().label();
+            case RESOLUTION -> settings.allowsResolutionChange()
+                    ? "RESOLUTION " + settings.resolutionLabel()
+                    : "RESOLUTION  AUTO";
             case FPS_LIMIT -> "MAX FPS " + settings.fpsLimitLabel();
             case SHOW_FPS -> "SHOW FPS " + (settings.showFps() ? "ON" : "OFF");
             case VIDEO_TAB -> "VIDEO";
             case CONTROLS_TAB -> "CONTROLS";
-            case SENSITIVITY -> "MOUSE SPEED " + settings.sensitivityPercent() + " PCT";
             case CROSSHAIR -> "CROSSHAIR " + (settings.crosshair() ? "ON" : "OFF");
             case UI_SCALE -> "UI SCALE " + settings.uiScalePercent() + " PCT";
             case KEYBINDS_TAB -> "KEY BINDINGS";
@@ -943,14 +945,12 @@ public final class HudRenderer {
     private int buttonCount(ScreenMode screenMode, int optionsPage) {
         return switch (screenMode) {
             case SAVE_SELECT -> 10;
-            case OPTIONS -> optionsPage == 0 ? 10 : 6;
+            case OPTIONS -> optionsPage == 0 ? 10 : 5;
             case KEYBINDS -> 10;
             case DELETE_CONFIRM -> 2;
             default -> 3;
         };
     }
-
-
 
     private float[] buttonBounds(
             int index, int width, int height, ScreenMode screenMode, int optionsPage) {
@@ -1002,7 +1002,7 @@ public final class HudRenderer {
                 return new float[] {panelX + (index == 0 ? 45f : 343f) * s,
                         panelY + 106f * s, 272f * s, 44f * s};
             }
-            if ((optionsPage == 0 && index == 9) || (optionsPage == 1 && index == 5)) {
+            if ((optionsPage == 0 && index == 9) || (optionsPage == 1 && index == 4)) {
                 return new float[] {panelX + 46f * s, panelY + 652f * s,
                         568f * s, 52f * s};
             }
@@ -1074,7 +1074,7 @@ public final class HudRenderer {
                 return switch (index) {
                     case 0 -> MenuButton.VIDEO_TAB;
                     case 1 -> MenuButton.CONTROLS_TAB;
-                    case 2 -> MenuButton.FULLSCREEN;
+                    case 2 -> MenuButton.DISPLAY_MODE;
                     case 3 -> MenuButton.RESOLUTION;
                     case 4 -> MenuButton.VSYNC;
                     case 5 -> MenuButton.FPS_LIMIT;
@@ -1088,10 +1088,9 @@ public final class HudRenderer {
             return switch (index) {
                 case 0 -> MenuButton.VIDEO_TAB;
                 case 1 -> MenuButton.CONTROLS_TAB;
-                case 2 -> MenuButton.SENSITIVITY;
-                case 3 -> MenuButton.CROSSHAIR;
-                case 4 -> MenuButton.KEYBINDS_TAB;
-                case 5 -> MenuButton.BACK;
+                case 2 -> MenuButton.CROSSHAIR;
+                case 3 -> MenuButton.KEYBINDS_TAB;
+                case 4 -> MenuButton.BACK;
                 default -> MenuButton.NONE;
             };
         }
@@ -1143,13 +1142,12 @@ public final class HudRenderer {
             case CANCEL_DELETE -> "CANCEL";
             case VIDEO_TAB -> "VIDEO";
             case CONTROLS_TAB -> "CONTROLS";
-            case FULLSCREEN -> "FULLSCREEN";
+            case DISPLAY_MODE -> "DISPLAY MODE";
             case RESOLUTION -> "RESOLUTION";
             case VSYNC -> "VSYNC";
             case FPS_LIMIT -> "MAX FPS";
             case SHOW_FPS -> "SHOW FPS";
             case FOV -> "FIELD OF VIEW";
-            case SENSITIVITY -> "MOUSE SENSITIVITY";
             case CROSSHAIR -> "CROSSHAIR";
             case UI_SCALE -> "UI SCALE";
             case KEYBINDS_TAB -> "KEY BINDINGS";

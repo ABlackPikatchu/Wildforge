@@ -22,7 +22,6 @@ public final class GameSettings {
     public static final int MIN_FOV = 60;
     public static final int MAX_FOV = 110;
     private static final int[] FPS_LIMITS = {0, 30, 45, 60, 75, 90, 120, 144, 165, 240, 360};
-    private static final float[] SENSITIVITY_VALUES = {0.06f, 0.09f, 0.12f, 0.16f, 0.20f, 0.25f};
     private static final int[][] RESOLUTIONS = {
             {854, 480}, {1024, 576}, {1280, 720}, {1366, 768},
             {1600, 900}, {1920, 1080}, {2560, 1440}, {3840, 2160}
@@ -35,13 +34,23 @@ public final class GameSettings {
     private int uiScalePercent = 125;
     private boolean vsync = true;
     private boolean crosshair = true;
-    private boolean fullscreen = false;
+    /** Windowed retains its selectable size; borderless and fullscreen use monitor size. */
+    public enum DisplayMode {
+        WINDOWED("WINDOWED"),
+        BORDERLESS("BORDERLESS FULLSCREEN"),
+        FULLSCREEN("FULLSCREEN");
+
+        private final String label;
+        DisplayMode(String label) { this.label = label; }
+        public String label() { return label; }
+    }
+
+    private DisplayMode displayMode = DisplayMode.WINDOWED;
     private boolean showFps = false;
     private int fov = 70;
     private int fpsLimit = 0; // 0 = unlimited (VSync may still limit FPS)
     private int resolutionWidth = 1600;
     private int resolutionHeight = 900;
-    private float mouseSensitivity = 0.12f;
 
     public static GameSettings load() {
         GameSettings settings = new GameSettings();
@@ -67,12 +76,19 @@ public final class GameSettings {
             }
             if (json.has("vsync")) settings.vsync = json.get("vsync").getAsBoolean();
             if (json.has("crosshair")) settings.crosshair = json.get("crosshair").getAsBoolean();
-            if (json.has("fullscreen")) settings.fullscreen = json.get("fullscreen").getAsBoolean();
+            if (json.has("display_mode")) {
+                try {
+                    settings.displayMode = DisplayMode.valueOf(
+                            json.get("display_mode").getAsString().toUpperCase(java.util.Locale.ROOT));
+                } catch (IllegalArgumentException ex) {
+                    settings.displayMode = DisplayMode.WINDOWED;
+                }
+            } else if (json.has("fullscreen") && json.get("fullscreen").getAsBoolean()) {
+                // Migrate configurations from versions which stored only fullscreen=on/off.
+                settings.displayMode = DisplayMode.FULLSCREEN;
+            }
             if (json.has("show_fps")) settings.showFps = json.get("show_fps").getAsBoolean();
             if (json.has("fov")) settings.setFov(json.get("fov").getAsInt());
-            if (json.has("mouse_sensitivity")) {
-                settings.mouseSensitivity = closestSensitivity(json.get("mouse_sensitivity").getAsFloat());
-            }
             if (json.has("fps_limit")) settings.fpsLimit = normalizeFpsLimit(json.get("fps_limit").getAsInt());
             if (json.has("resolution_width") && json.has("resolution_height")) {
                 int w = json.get("resolution_width").getAsInt();
@@ -99,10 +115,9 @@ public final class GameSettings {
         json.add("keybindings", bindingJson);
         json.addProperty("vsync", vsync);
         json.addProperty("crosshair", crosshair);
-        json.addProperty("fullscreen", fullscreen);
+        json.addProperty("display_mode", displayMode.name().toLowerCase(java.util.Locale.ROOT));
         json.addProperty("show_fps", showFps);
         json.addProperty("fov", fov);
-        json.addProperty("mouse_sensitivity", mouseSensitivity);
         json.addProperty("fps_limit", fpsLimit);
         json.addProperty("resolution_width", resolutionWidth);
         json.addProperty("resolution_height", resolutionHeight);
@@ -138,20 +153,24 @@ public final class GameSettings {
     }
     public boolean vsync() { return vsync; }
     public boolean crosshair() { return crosshair; }
-    public boolean fullscreen() { return fullscreen; }
+    public DisplayMode displayMode() { return displayMode; }
+    public boolean fullscreen() { return displayMode == DisplayMode.FULLSCREEN; }
+    public boolean borderless() { return displayMode == DisplayMode.BORDERLESS; }
+    public boolean allowsResolutionChange() { return displayMode == DisplayMode.WINDOWED; }
+    public void nextDisplayMode() {
+        DisplayMode[] modes = DisplayMode.values();
+        displayMode = modes[(displayMode.ordinal() + 1) % modes.length];
+    }
     public boolean showFps() { return showFps; }
     public int fov() { return fov; }
     public int fpsLimit() { return fpsLimit; }
     public int resolutionWidth() { return resolutionWidth; }
     public int resolutionHeight() { return resolutionHeight; }
-    public float mouseSensitivity() { return mouseSensitivity; }
-    public int sensitivityPercent() { return Math.round(mouseSensitivity / 0.12f * 100f); }
     public String fpsLimitLabel() { return fpsLimit == 0 ? "UNLIMITED" : fpsLimit + " FPS"; }
     public String resolutionLabel() { return resolutionWidth + " X " + resolutionHeight; }
 
     public void toggleVsync() { vsync = !vsync; }
     public void toggleCrosshair() { crosshair = !crosshair; }
-    public void toggleFullscreen() { fullscreen = !fullscreen; }
     public void toggleShowFps() { showFps = !showFps; }
 
     /** A continuously adjustable 1-degree FOV slider, not a preset cycle. */
@@ -164,13 +183,9 @@ public final class GameSettings {
         fpsLimit = FPS_LIMITS[(current + 1) % FPS_LIMITS.length];
     }
 
-    public void nextSensitivity() {
-        mouseSensitivity = SENSITIVITY_VALUES[(indexOf(SENSITIVITY_VALUES, mouseSensitivity) + 1)
-                % SENSITIVITY_VALUES.length];
-    }
-
     /** Cycle only window sizes that fit the primary display. */
     public void nextResolution(int monitorWidth, int monitorHeight) {
+        if (!allowsResolutionChange()) return;
         List<int[]> available = new ArrayList<>();
         for (int[] pair : RESOLUTIONS) {
             if (pair[0] <= monitorWidth && pair[1] <= monitorHeight) {
@@ -201,17 +216,4 @@ public final class GameSettings {
         return 0;
     }
 
-    private static int indexOf(float[] values, float current) {
-        for (int i = 0; i < values.length; i++) if (Math.abs(values[i] - current) < 0.001f) return i;
-        return 2;
-    }
-
-    private static float closestSensitivity(float candidate) {
-        if (!Float.isFinite(candidate)) return 0.12f;
-        float best = SENSITIVITY_VALUES[0];
-        for (float value : SENSITIVITY_VALUES) {
-            if (Math.abs(value - candidate) < Math.abs(best - candidate)) best = value;
-        }
-        return best;
-    }
 }
