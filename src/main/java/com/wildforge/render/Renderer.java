@@ -108,8 +108,14 @@ public final class Renderer {
         hud.setMeasuredFps(fps);
     }
     public void setDebugOverlay(boolean enabled){hud.setDebugOverlay(enabled);}
+    public void setDebugFrameStats(int avgFps, float avgMs, float p95Ms, float worstMs) {
+        hud.setDebugFrameStats(avgFps,avgMs,p95Ms,worstMs);
+    }
     public void setDebugStreaming(int loaded,int pending,int distance){
         hud.setDebugStreaming(loaded,pending,distance);
+    }
+    public void setDebugWorkload(int meshes,int lodJobs,int lodReady,long blockBytes){
+        hud.setDebugWorkload(meshes,lodJobs,lodReady,blockBytes,gpuChunks.size(),lastTerrainUploads,lastTerrainUploadMicros);
     }
 
     public float[] uiScaleSliderTrack(int width, int height, int optionsPage) {
@@ -140,6 +146,8 @@ public final class Renderer {
     private record MeshKey(int x,int section,int z) {}
     private final Map<MeshKey, GpuChunk> gpuChunks = new HashMap<>();
     private int terrainVersion = -1;
+    private int lastTerrainUploads;
+    private long lastTerrainUploadMicros;
     private int lodCameraChunkX=Integer.MIN_VALUE, lodCameraChunkZ=Integer.MIN_VALUE;
     private static final int FULL_DETAIL_RADIUS=8;
     private int fogNearLocation, fogFarLocation, fogColorLocation;
@@ -356,11 +364,12 @@ public final class Renderer {
     private void updateTerrainIfNeeded(Camera camera){
         int cameraChunkX=(int)Math.floor(camera.getPosition().x/TerrainMesh.CHUNK_SIZE);
         int cameraChunkZ=(int)Math.floor(camera.getPosition().z/TerrainMesh.CHUNK_SIZE);
-        if(terrainVersion==terrain.getVersion() && cameraChunkX==lodCameraChunkX && cameraChunkZ==lodCameraChunkZ)return;
+        if(terrainVersion==terrain.getVersion() && cameraChunkX==lodCameraChunkX && cameraChunkZ==lodCameraChunkZ && !terrain.lodBuildPending())return;
         lodCameraChunkX=cameraChunkX;lodCameraChunkZ=cameraChunkZ;
         List<TerrainMesh.ChunkMesh> source=terrain.chunkMeshesForView(cameraChunkX,cameraChunkZ,FULL_DETAIL_RADIUS);
         HashSet<MeshKey> live=new HashSet<>();
         int uploads=0;
+        long uploadStart=System.nanoTime();
         boolean pending=false;
         for(var c:source){
             MeshKey key=new MeshKey(c.x(),c.section(),c.z());live.add(key);
@@ -373,6 +382,8 @@ public final class Renderer {
         }
         var it=gpuChunks.entrySet().iterator();
         while(it.hasNext()){var entry=it.next();if(!live.contains(entry.getKey())){discard(entry.getValue());it.remove();}}
+        lastTerrainUploads=uploads;
+        lastTerrainUploadMicros=(System.nanoTime()-uploadStart)/1000L;
         if(!pending)terrainVersion=terrain.getVersion();
     }
 

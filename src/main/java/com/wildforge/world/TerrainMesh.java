@@ -35,6 +35,15 @@ public final class TerrainMesh {
     private final HashMap<Long, MeshJob> meshJobs = new HashMap<>();
     private final HashMap<Long, Integer> meshEpochs = new HashMap<>();
     private int meshGeneration = 0;
+    // A small independent queue avoids blocking terrain and full-detail mesh workers.
+    private ExecutorService lodWorker = newLodWorker();
+    private final HashMap<Long,LodJob> lodJobs = new HashMap<>();
+    private record LodJob(Future<float[]> future, int revision, int generation) {}
+    private static ExecutorService newLodWorker() {
+        return Executors.newSingleThreadExecutor(r -> {
+            Thread t=new Thread(r,"Wildforge-Distant-LOD"); t.setDaemon(true); return t;
+        });
+    }
     private static ExecutorService newMeshWorker() {
         return Executors.newFixedThreadPool(2, r -> {
             Thread t = new Thread(r, "Wildforge-Section-Mesher");
@@ -61,6 +70,9 @@ public final class TerrainMesh {
         dirtyMeshes.clear();
         meshEpochs.clear();
         meshGeneration++;
+        lodWorker.shutdownNow();
+        lodWorker=newLodWorker();
+        lodJobs.clear();
     }
     private void generateSpawnChunk(int x, int z) {
         int cx = Math.floorDiv(x, CHUNK_SIZE), cz = Math.floorDiv(z, CHUNK_SIZE);
@@ -139,6 +151,8 @@ public final class TerrainMesh {
                 it.remove();changed=true;
                 long removed=key(c.cx,c.cz);
                 dirtyMeshes.remove(removed);
+                LodJob lodJob=lodJobs.remove(removed);
+                if(lodJob!=null)lodJob.future().cancel(true);
                 MeshJob old=meshJobs.remove(removed);
                 if(old!=null)old.future().cancel(true);
                 meshEpochs.remove(removed);
@@ -245,6 +259,8 @@ public final class TerrainMesh {
         if(previous!=null)previous.future().cancel(true);
         dirtyMeshes.add(k);
         Chunk lodChunk=chunks.get(k);
+        LodJob lodJob=lodJobs.remove(k);
+        if(lodJob!=null)lodJob.future().cancel(true);
         if(lodChunk!=null){lodChunk.lodVertices=null;lodChunk.lodRevision++;}
     }
     private MeshSnapshot snapshot(Chunk c) {
@@ -262,6 +278,8 @@ public final class TerrainMesh {
         return built;
     }
     public int pendingMeshCount() {return meshJobs.size()+dirtyMeshes.size();}
+    public int pendingLodCount() {return lodJobs.size();}
+    public int readyLodCount() {int n=0;for(Chunk c:chunks.values())if(c.lodVertices!=null)n++;return n;}
     private void rebuildNeighbor(int x,int z){Chunk c=chunks.get(key(x,z));if(c!=null)rebuild(c);}
     private void rebuildNeighborSection(int x,int z,int section){Chunk c=chunks.get(key(x,z));if(c!=null)rebuildSection(c,section);}
     private Chunk generate(int cx,int cz){
@@ -490,31 +508,67 @@ public final class TerrainMesh {
         return out.toArray();
     }
 
-    /** Choose one representation per column; section=-1 identifies a distant mesh. */
+    /** Choose one representation per column; section=-1 identifies a distant mesh.
+     * Builds far meshes on a worker from private block snapshots. Until a far mesh is
+     * ready the existing detailed sections remain visible (no terrain holes).
+     */
     private boolean lodBuildPending=false;
     public boolean lodBuildPending(){return lodBuildPending;}
     public java.util.List<ChunkMesh> chunkMeshesForView(int cameraChunkX,int cameraChunkZ,int detailRadius){
-        lodBuildPending=false;
-        int newLodBudget=2;
-        java.util.ArrayList<ChunkMesh> result=new java.util.ArrayList<>(chunks.size()*4);
-        for(Chunk c:chunks.values()){
-            int radius=Math.max(Math.abs(c.cx-cameraChunkX),Math.abs(c.cz-cameraChunkZ));
-            if(radius>detailRadius){
-                if(c.lodVertices==null){
-                    if(newLodBudget>0){c.lodVertices=buildDistantMesh(c);newLodBudget--;}
-                    else {lodBuildPending=true;continue;}
-                }
-                if(c.lodVertices.length>0)result.add(new ChunkMesh(c.cx,-1,c.cz,c.lodRevision,c.lodVertices));
-            }else{
-                for(int section=0;section<SECTION_COUNT;section++)
-                    if(c.sectionVertices[section].length>0)
-                        result.add(new ChunkMesh(c.cx,section,c.cz,c.sectionRevision[section],c.sectionVertices[section]));
+        // Futures are consumed on the game thread only. World resets invalidate jobs.
+        Iterator<Map.Entry<Long,LodJob>> iterator=lodJobs.entrySet().iterator();
+        while(iterator.hasNext()){
+            var entry=iterator.next();
+            LodJob job=entry.getValue();
+            if(!job.future().isDone())continue;
+            iterator.remove();
+            Chunk chunk=chunks.get(entry.getKey());
+            if(chunk==null || job.generation()!=meshGeneration || job.revision()!=chunk.lodRevision)continue;
+            try {
+                chunk.lodVertices=job.future().get();
+                version++;
+            } catch(CancellationException ignored) {
+            } catch(ExecutionException e) {
+                throw new IllegalStateException("Background distant LOD generation failed",e.getCause());
+            } catch(InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
-        result.sort(java.util.Comparator.comparingLong(m->{
-            long dx=m.x()-cameraChunkX,dz=m.z()-cameraChunkZ;
+        lodBuildPending=false;
+        java.util.ArrayList<Chunk> ordered=new java.util.ArrayList<>(chunks.values());
+        ordered.sort(java.util.Comparator.comparingLong(c->{
+            long dx=(long)c.cx-cameraChunkX,dz=(long)c.cz-cameraChunkZ;
             return dx*dx+dz*dz;
         }));
+        java.util.ArrayList<ChunkMesh> result=new java.util.ArrayList<>(chunks.size()*4);
+        for(Chunk c:ordered){
+            int radius=Math.max(Math.abs(c.cx-cameraChunkX),Math.abs(c.cz-cameraChunkZ));
+            long k=key(c.cx,c.cz);
+            if(radius>detailRadius){
+                if(c.lodVertices==null){
+                    lodBuildPending=true;
+                    if(!lodJobs.containsKey(k) && lodJobs.size()<2){
+                        // Never read mutable live blocks from a worker thread.
+                        byte[] snapshot=c.copyBlocks();
+                        int revision=c.lodRevision,generation=meshGeneration;
+                        int chunkX=c.cx,chunkZ=c.cz;
+                        Future<float[]> task=lodWorker.submit(()->{
+                            Chunk immutable=new Chunk(chunkX,chunkZ);
+                            immutable.blocks=snapshot;
+                            return buildDistantMesh(immutable);
+                        });
+                        lodJobs.put(k,new LodJob(task,revision,generation));
+                    }
+                }else if(c.lodVertices.length>0){
+                    result.add(new ChunkMesh(c.cx,-1,c.cz,c.lodRevision,c.lodVertices));
+                }
+                // Keep fully detailed geometry until the far mesh is ready.
+                if(c.lodVertices!=null)continue;
+            }
+            for(int section=0;section<SECTION_COUNT;section++)
+                if(c.sectionVertices[section].length>0)
+                    result.add(new ChunkMesh(c.cx,section,c.cz,c.sectionRevision[section],c.sectionVertices[section]));
+        }
         return result;
     }
 

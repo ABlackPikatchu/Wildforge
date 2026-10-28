@@ -44,6 +44,7 @@ public final class Main implements InputController.Callbacks {
     private boolean fovSliderDragging;
     private boolean renderDistanceSliderDragging;
     private boolean debugOverlay;
+    private final com.wildforge.core.FrameStats frameStats = new com.wildforge.core.FrameStats();
     private boolean uiScaleSliderDragging;
     // Physical track is held constant while the entire UI changes size.
     private float[] uiScaleDragTrack;
@@ -1002,11 +1003,14 @@ public final class Main implements InputController.Callbacks {
             );
 
             glfwSwapBuffers(window);
+            frameStats.sample(System.nanoTime());
             int latestFps = frameTiming.recordFrame(System.nanoTime());
             if (latestFps >= 0) renderer.setMeasuredFps(latestFps);
+            if (debugOverlay) renderer.setDebugFrameStats(frameStats.averageFps(), frameStats.averageMs(), frameStats.p95Ms(), frameStats.worstMs());
             if (debugOverlay && terrain != null) {
                 renderer.setDebugStreaming(terrain.loadedChunkCount(),
                         terrain.pendingGenerationCount(), terrain.renderDistance());
+                renderer.setDebugWorkload(terrain.pendingMeshCount(),terrain.pendingLodCount(),terrain.readyLodCount(),terrain.residentBlockPayloadBytes());
             }
             FrameTiming.limitFrameRate(frameStartNanos, settings.fpsLimit());
 

@@ -74,6 +74,10 @@ public final class HudRenderer {
     private int measuredFps;
     private boolean debugOverlay;
     private int debugLoaded, debugPending, debugDistance;
+    private int debugMeshes,debugLodJobs,debugLodReady,debugGpu,debugUploads;
+    private long debugStorageBytes,debugUploadMicros;
+    private int debugAverageFps;
+    private float debugAverageMs, debugP95Ms, debugWorstMs;
     // One global scale for menus, dialogs, inventory, icons, text and the HUD.
     private static float interfaceScale = 1.25f;
 
@@ -105,8 +109,16 @@ public final class HudRenderer {
         measuredFps = Math.max(0, fps);
     }
     public void setDebugOverlay(boolean enabled){debugOverlay=enabled;}
+    private static String formatMs(float value){return String.format(java.util.Locale.ROOT,"%.2f",value);}
+    public void setDebugFrameStats(int fps,float avgMs,float p95Ms,float worstMs){
+        debugAverageFps=fps;debugAverageMs=avgMs;debugP95Ms=p95Ms;debugWorstMs=worstMs;
+    }
     public void setDebugStreaming(int loaded,int pending,int distance){
         debugLoaded=loaded;debugPending=pending;debugDistance=distance;
+    }
+
+    public void setDebugWorkload(int meshes,int lodJobs,int lodReady,long bytes,int gpu,int uploads,long micros){
+        debugMeshes=meshes;debugLodJobs=lodJobs;debugLodReady=lodReady;debugStorageBytes=bytes;debugGpu=gpu;debugUploads=uploads;debugUploadMicros=micros;
     }
 
     public HudRenderer(BlockTextures blockTextures) {
@@ -176,11 +188,15 @@ public final class HudRenderer {
                         0.96f, 0.86f, 0.66f, 1f);
             }
             if (debugOverlay) {
-                rect(data,10f,showFps?53f:10f,275f,88f,0.04f,0.05f,0.06f,0.78f);
+                rect(data,10f,showFps?53f:10f,355f,188f,0.04f,0.05f,0.06f,0.78f);
                 float y0=showFps?63f:20f;
                 menuText(data,"DEBUG F3  FPS " + measuredFps,145f,y0,1.7f,0.9f,0.9f,0.72f,1f);
-                menuText(data,"CHUNKS " + debugLoaded + " / " + ((2*debugDistance+1)*(2*debugDistance+1)),145f,y0+26f,1.5f,0.9f,0.9f,0.72f,1f);
-                menuText(data,"GENERATING " + debugPending + "  VIEW " + debugDistance,145f,y0+51f,1.5f,0.9f,0.9f,0.72f,1f);
+                menuText(data,"AVG " + debugAverageFps + " FPS  FRAME " + formatMs(debugAverageMs) + " MS  P95 " + formatMs(debugP95Ms) + " MS  MAX " + formatMs(debugWorstMs) + " MS",185f,y0+24f,1.05f,0.9f,0.9f,0.72f,1f);
+                menuText(data,"CHUNKS " + debugLoaded + " / " + ((2*debugDistance+1)*(2*debugDistance+1)),145f,y0+49f,1.5f,0.9f,0.9f,0.72f,1f);
+                menuText(data,"GENERATING " + debugPending + "  VIEW " + debugDistance,185f,y0+74f,1.5f,0.9f,0.9f,0.72f,1f);
+                menuText(data,"MESH JOBS " + debugMeshes + "  LOD JOBS " + debugLodJobs + "  READY " + debugLodReady,185f,y0+99f,1.25f,0.9f,0.9f,0.72f,1f);
+                menuText(data,"GPU MESHES " + debugGpu + "  UPLOADS " + debugUploads,185f,y0+124f,1.25f,0.9f,0.9f,0.72f,1f);
+                menuText(data,"UPLOAD CPU " + (debugUploadMicros/1000f) + " MS  BLOCK DATA " + (debugStorageBytes/1048576L) + " MIB",185f,y0+149f,1.15f,0.9f,0.9f,0.72f,1f);
             }
 
             if (player.isInventoryOpen()) {
