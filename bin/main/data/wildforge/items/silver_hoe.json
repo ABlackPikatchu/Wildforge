@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:silver_hoe",
+  "numeric_id": 140,
+  "max_stack_size": 64,
+  "texture": "wildforge:silver_hoe",
+  "model": "wildforge:item/generated"
+}

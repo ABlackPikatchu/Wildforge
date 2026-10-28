@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:chalk",
+  "numeric_id": 32,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:chalk",
+    "side": "wildforge:chalk",
+    "bottom": "wildforge:chalk"
+  },
+  "drops": [
+    {
+      "item": "wildforge:chalk_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:chalk_block"
+}

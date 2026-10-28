@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:cracked_earth_block",
+  "numeric_id": 61,
+  "max_stack_size": 64,
+  "places_block": "wildforge:cracked_earth",
+  "model": "wildforge:item/block"
+}

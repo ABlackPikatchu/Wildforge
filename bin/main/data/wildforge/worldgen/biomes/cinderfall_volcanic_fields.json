@@ -1,0 +1,46 @@
+{
+  "id": "wildforge:cinderfall_volcanic_fields",
+  "name": "Cinderfall Volcanic Fields",
+  "map_color": "655a57",
+  "criteria": {
+    "temperature": [
+      0.0,
+      1.0
+    ],
+    "rainfall": [
+      0.0,
+      1.0
+    ],
+    "height_above_sea": [
+      0,
+      150
+    ],
+    "geology": [
+      "VOLCANIC"
+    ],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 50
+  },
+  "surface": {
+    "top": "volcanic_ash",
+    "filler": "basalt"
+  },
+  "decorations": {
+    "tree_density": 0.0,
+    "plant_density": 0.06,
+    "max_tree_slope": 3,
+    "max_plant_slope": 4,
+    "trees": [],
+    "plants": [
+      {
+        "id": "dry_scrub",
+        "weight": 2
+      },
+      {
+        "id": "dead_bush",
+        "weight": 1
+      }
+    ]
+  }
+}

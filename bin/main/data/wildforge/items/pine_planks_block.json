@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:pine_planks_block",
+  "numeric_id": 97,
+  "max_stack_size": 64,
+  "places_block": "wildforge:pine_planks",
+  "model": "wildforge:item/block"
+}

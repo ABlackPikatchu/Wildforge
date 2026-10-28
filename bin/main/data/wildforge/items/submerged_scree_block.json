@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:submerged_scree_block",
+  "numeric_id": 87,
+  "max_stack_size": 64,
+  "places_block": "wildforge:submerged_scree",
+  "model": "wildforge:item/block"
+}

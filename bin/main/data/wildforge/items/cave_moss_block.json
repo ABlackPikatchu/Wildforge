@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:cave_moss_block",
+  "numeric_id": 57,
+  "max_stack_size": 64,
+  "places_block": "wildforge:cave_moss",
+  "model": "wildforge:item/block"
+}

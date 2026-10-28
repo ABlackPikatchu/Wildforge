@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:oak_log",
+  "numeric_id": 93,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:oak_log_top",
+    "side": "wildforge:oak_log_side",
+    "bottom": "wildforge:oak_log_top"
+  },
+  "drops": [
+    {
+      "item": "wildforge:oak_log_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:oak_log_block"
+}

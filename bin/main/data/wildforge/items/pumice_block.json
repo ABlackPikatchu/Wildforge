@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:pumice_block",
+  "numeric_id": 41,
+  "max_stack_size": 64,
+  "places_block": "wildforge:pumice",
+  "model": "wildforge:item/block"
+}

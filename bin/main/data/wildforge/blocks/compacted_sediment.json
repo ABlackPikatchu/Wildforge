@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:compacted_sediment",
+  "numeric_id": 58,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:compacted_sediment",
+    "side": "wildforge:compacted_sediment",
+    "bottom": "wildforge:compacted_sediment"
+  },
+  "drops": [
+    {
+      "item": "wildforge:compacted_sediment_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:compacted_sediment_block"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:pine_needle_litter_block",
+  "numeric_id": 27,
+  "max_stack_size": 64,
+  "places_block": "wildforge:pine_needle_litter",
+  "model": "wildforge:item/block"
+}

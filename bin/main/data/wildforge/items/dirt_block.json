@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:dirt_block",
+  "numeric_id": 2,
+  "max_stack_size": 64,
+  "places_block": "wildforge:dirt",
+  "model": "wildforge:item/block"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:beach_pebbles",
+  "numeric_id": 53,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:beach_pebbles",
+    "side": "wildforge:beach_pebbles",
+    "bottom": "wildforge:beach_pebbles"
+  },
+  "drops": [
+    {
+      "item": "wildforge:beach_pebbles_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:beach_pebbles_block"
+}

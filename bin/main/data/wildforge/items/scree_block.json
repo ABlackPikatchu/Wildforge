@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:scree_block",
+  "numeric_id": 84,
+  "max_stack_size": 64,
+  "places_block": "wildforge:scree",
+  "model": "wildforge:item/block"
+}

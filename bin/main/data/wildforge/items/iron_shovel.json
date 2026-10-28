@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:iron_shovel",
+  "numeric_id": 132,
+  "max_stack_size": 64,
+  "texture": "wildforge:iron_shovel",
+  "model": "wildforge:item/generated"
+}

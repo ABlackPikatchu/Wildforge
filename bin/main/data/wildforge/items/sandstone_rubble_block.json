@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:sandstone_rubble_block",
+  "numeric_id": 83,
+  "max_stack_size": 64,
+  "places_block": "wildforge:sandstone_rubble",
+  "model": "wildforge:item/block"
+}

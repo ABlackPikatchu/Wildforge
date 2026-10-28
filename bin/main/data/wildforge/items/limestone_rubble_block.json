@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:limestone_rubble_block",
+  "numeric_id": 74,
+  "max_stack_size": 64,
+  "places_block": "wildforge:limestone_rubble",
+  "model": "wildforge:item/block"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:shell_sand",
+  "numeric_id": 43,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:shell_sand",
+    "side": "wildforge:shell_sand",
+    "bottom": "wildforge:shell_sand"
+  },
+  "drops": [
+    {
+      "item": "wildforge:shell_sand_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:shell_sand_block"
+}

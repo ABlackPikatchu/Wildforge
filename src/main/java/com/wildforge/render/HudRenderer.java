@@ -72,6 +72,8 @@ public final class HudRenderer {
     private boolean showCrosshair = true;
     private boolean showFps;
     private int measuredFps;
+    private boolean debugOverlay;
+    private int debugLoaded, debugPending, debugDistance;
     // One global scale for menus, dialogs, inventory, icons, text and the HUD.
     private static float interfaceScale = 1.25f;
 
@@ -101,6 +103,10 @@ public final class HudRenderer {
 
     public void setMeasuredFps(int fps) {
         measuredFps = Math.max(0, fps);
+    }
+    public void setDebugOverlay(boolean enabled){debugOverlay=enabled;}
+    public void setDebugStreaming(int loaded,int pending,int distance){
+        debugLoaded=loaded;debugPending=pending;debugDistance=distance;
     }
 
     public HudRenderer(BlockTextures blockTextures) {
@@ -168,6 +174,13 @@ public final class HudRenderer {
                 rect(data, 10f, 10f, 132f, 37f, 0.04f, 0.05f, 0.06f, 0.68f);
                 menuText(data, "FPS " + measuredFps, 76f, 19f, 2.05f,
                         0.96f, 0.86f, 0.66f, 1f);
+            }
+            if (debugOverlay) {
+                rect(data,10f,showFps?53f:10f,275f,88f,0.04f,0.05f,0.06f,0.78f);
+                float y0=showFps?63f:20f;
+                menuText(data,"DEBUG F3  FPS " + measuredFps,145f,y0,1.7f,0.9f,0.9f,0.72f,1f);
+                menuText(data,"CHUNKS " + debugLoaded + " / " + ((2*debugDistance+1)*(2*debugDistance+1)),145f,y0+26f,1.5f,0.9f,0.9f,0.72f,1f);
+                menuText(data,"GENERATING " + debugPending + "  VIEW " + debugDistance,145f,y0+51f,1.5f,0.9f,0.9f,0.72f,1f);
             }
 
             if (player.isInventoryOpen()) {

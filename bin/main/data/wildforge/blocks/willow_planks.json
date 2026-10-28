@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:willow_planks",
+  "numeric_id": 100,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:willow_planks",
+    "side": "wildforge:willow_planks",
+    "bottom": "wildforge:willow_planks"
+  },
+  "drops": [
+    {
+      "item": "wildforge:willow_planks_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:willow_planks_block"
+}

@@ -1,0 +1,62 @@
+{
+  "id": "wildforge:rootlace_hollows",
+  "name": "Rootlace Hollows",
+  "depth_fraction": [
+    0.0,
+    0.23
+  ],
+  "rarity": "common",
+  "host_rocks": [
+    "soil",
+    "stone",
+    "weathered_limestone"
+  ],
+  "placement": "Shallow below mature forests and old wooded hills; avoid desert and bare alpine summits",
+  "geometry": "Short branching pockets beneath soil and tree trunks, low ceilings with root curtains",
+  "description": "Shallow tunnels threaded with exposed roots, dark rich soil, fallen debris and small mushroom patches, often connected to the forest floor",
+  "reuse_existing_textures": [
+    "forest_loam",
+    "moss_block",
+    "rotten_wood_side",
+    "fern",
+    "forest_mushroom",
+    "stone"
+  ],
+  "proposed_new_textures": [
+    "hanging_roots",
+    "root_mat",
+    "exposed_root_stone"
+  ],
+  "features": [
+    "root clusters",
+    "damp soil shelves",
+    "small organic debris pockets"
+  ],
+  "resources": [
+    "wood fragments",
+    "mushrooms",
+    "small iron traces"
+  ],
+  "hazards": [
+    "occasional unstable dirt pockets"
+  ],
+  "transitions": [
+    "seepstone_grottos",
+    "underflow_channels"
+  ],
+  "new_textures": [
+    "textures/hanging_roots.png",
+    "textures/root_mat.png",
+    "textures/exposed_root_stone.png"
+  ],
+  "suggested_weight_relative": 30,
+  "typical_chamber_radius_blocks": [
+    4,
+    11
+  ],
+  "suggested_moisture_preference": 0.35,
+  "suggested_water_proximity_preference": 0.7,
+  "hard_placement_rule": "forest and mature tree roots",
+  "note": "These are region-selection design weights, not probabilities; normalize only after hard geological/depth eligibility constraints.",
+  "selection_rule": "FOREST_ROOTS"
+}

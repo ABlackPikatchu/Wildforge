@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:gabbro",
+  "numeric_id": 14,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:gabbro",
+    "side": "wildforge:gabbro",
+    "bottom": "wildforge:gabbro"
+  },
+  "drops": [
+    {
+      "item": "wildforge:gabbro_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:gabbro_block"
+}

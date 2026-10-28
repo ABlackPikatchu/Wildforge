@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:raw_gold",
+  "numeric_id": 113,
+  "max_stack_size": 64,
+  "texture": "wildforge:raw_gold",
+  "model": "wildforge:item/generated"
+}

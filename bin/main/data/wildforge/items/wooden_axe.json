@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:wooden_axe",
+  "numeric_id": 119,
+  "max_stack_size": 64,
+  "texture": "wildforge:wooden_axe",
+  "model": "wildforge:item/generated"
+}

@@ -1,0 +1,61 @@
+{
+  "id": "wildforge:needlewood_taiga",
+  "name": "Needlewood Taiga",
+  "map_color": "4e7865",
+  "criteria": {
+    "temperature": [
+      0.0,
+      0.46
+    ],
+    "rainfall": [
+      0.3,
+      1.0
+    ],
+    "height_above_sea": [
+      9,
+      87
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 14
+  },
+  "surface": {
+    "top": "pine_needle_litter",
+    "filler": "dirt"
+  },
+  "decorations": {
+    "tree_density": 0.85,
+    "plant_density": 0.42,
+    "max_tree_slope": 5,
+    "max_plant_slope": 5,
+    "trees": [
+      {
+        "id": "pine",
+        "weight": 9
+      },
+      {
+        "id": "oak",
+        "weight": 1
+      }
+    ],
+    "plants": [
+      {
+        "id": "evergreen_shrub",
+        "weight": 5
+      },
+      {
+        "id": "fern",
+        "weight": 3
+      },
+      {
+        "id": "small_grass",
+        "weight": 2
+      },
+      {
+        "id": "flower_snowdrop",
+        "weight": 1
+      }
+    ]
+  }
+}

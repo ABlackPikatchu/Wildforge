@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:brick_block_block",
+  "numeric_id": 92,
+  "max_stack_size": 64,
+  "places_block": "wildforge:brick_block",
+  "model": "wildforge:item/block"
+}

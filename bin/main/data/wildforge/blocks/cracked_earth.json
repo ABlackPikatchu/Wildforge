@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:cracked_earth",
+  "numeric_id": 60,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:cracked_earth",
+    "side": "wildforge:cracked_earth",
+    "bottom": "wildforge:cracked_earth"
+  },
+  "drops": [
+    {
+      "item": "wildforge:cracked_earth_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:cracked_earth_block"
+}

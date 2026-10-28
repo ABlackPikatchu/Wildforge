@@ -107,6 +107,10 @@ public final class Renderer {
     public void setMeasuredFps(int fps) {
         hud.setMeasuredFps(fps);
     }
+    public void setDebugOverlay(boolean enabled){hud.setDebugOverlay(enabled);}
+    public void setDebugStreaming(int loaded,int pending,int distance){
+        hud.setDebugStreaming(loaded,pending,distance);
+    }
 
     public float[] uiScaleSliderTrack(int width, int height, int optionsPage) {
         return hud.uiScaleSliderTrack(width, height, optionsPage);
@@ -133,10 +137,12 @@ public final class Renderer {
     private int textureSamplerLocation = -1;
 
     private record GpuChunk(int vao, int vbo, int vertices, int revision) {}
-    private final Map<Long, GpuChunk> gpuChunks = new HashMap<>();
+    private record MeshKey(int x,int section,int z) {}
+    private final Map<MeshKey, GpuChunk> gpuChunks = new HashMap<>();
     private int terrainVersion = -1;
+    private int lodCameraChunkX=Integer.MIN_VALUE, lodCameraChunkZ=Integer.MIN_VALUE;
+    private static final int FULL_DETAIL_RADIUS=8;
     private int fogNearLocation, fogFarLocation, fogColorLocation;
-    private static long chunkKey(int x,int z){ return ((long)x << 32) | (z & 0xffffffffL); }
 
     private int outlineProgram;
     private int outlineMvpLocation = -1;
@@ -347,14 +353,17 @@ public final class Renderer {
         glBindVertexArray(0);
     }
 
-    private void updateTerrainIfNeeded(){
-        if(terrainVersion==terrain.getVersion())return;
-        List<TerrainMesh.ChunkMesh> source=terrain.chunkMeshes();
-        HashSet<Long> live=new HashSet<>();
+    private void updateTerrainIfNeeded(Camera camera){
+        int cameraChunkX=(int)Math.floor(camera.getPosition().x/TerrainMesh.CHUNK_SIZE);
+        int cameraChunkZ=(int)Math.floor(camera.getPosition().z/TerrainMesh.CHUNK_SIZE);
+        if(terrainVersion==terrain.getVersion() && cameraChunkX==lodCameraChunkX && cameraChunkZ==lodCameraChunkZ)return;
+        lodCameraChunkX=cameraChunkX;lodCameraChunkZ=cameraChunkZ;
+        List<TerrainMesh.ChunkMesh> source=terrain.chunkMeshesForView(cameraChunkX,cameraChunkZ,FULL_DETAIL_RADIUS);
+        HashSet<MeshKey> live=new HashSet<>();
         int uploads=0;
         boolean pending=false;
         for(var c:source){
-            long key=chunkKey(c.x(),c.z());live.add(key);
+            MeshKey key=new MeshKey(c.x(),c.section(),c.z());live.add(key);
             GpuChunk existing=gpuChunks.get(key);
             if(existing!=null && existing.revision()==c.revision())continue;
             if(uploads>=2){pending=true;continue;}
@@ -626,7 +635,7 @@ public final class Renderer {
             return;
         }
 
-        updateTerrainIfNeeded();
+        updateTerrainIfNeeded(camera);
 
         Matrix4f projection = new Matrix4f().perspective(
                 (float) Math.toRadians(fov),
@@ -654,9 +663,10 @@ public final class Renderer {
         blockTextures.bind(0);
         FrustumIntersection frustum=new FrustumIntersection(mvp);
         for(var entry:gpuChunks.entrySet()){
-            long key=entry.getKey();int cx=(int)(key>>32),cz=(int)(long)key;
+            MeshKey key=entry.getKey();int cx=key.x(),cz=key.z();
             float x=cx*TerrainMesh.CHUNK_SIZE,z=cz*TerrainMesh.CHUNK_SIZE;
-            if(!frustum.testAab(x,0,z,x+TerrainMesh.CHUNK_SIZE,TerrainMesh.WORLD_HEIGHT,z+TerrainMesh.CHUNK_SIZE))continue;
+            float bottom=key.section()<0?0:key.section()*TerrainMesh.SECTION_HEIGHT;
+            if(!frustum.testAab(x,bottom,z,x+TerrainMesh.CHUNK_SIZE,bottom+(key.section()<0?TerrainMesh.WORLD_HEIGHT:TerrainMesh.SECTION_HEIGHT),z+TerrainMesh.CHUNK_SIZE))continue;
             GpuChunk chunk=entry.getValue();
             if(chunk.vertices()==0)continue;
             glBindVertexArray(chunk.vao());glDrawArrays(GL_TRIANGLES,0,chunk.vertices());

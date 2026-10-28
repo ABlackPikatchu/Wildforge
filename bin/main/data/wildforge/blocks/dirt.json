@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:dirt",
+  "numeric_id": 2,
+  "solid": true,
+  "breakable": true,
+  "hardness": 1.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:dirt",
+    "side": "wildforge:dirt",
+    "bottom": "wildforge:dirt"
+  },
+  "drops": [
+    {
+      "item": "wildforge:dirt_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:dirt_block"
+}

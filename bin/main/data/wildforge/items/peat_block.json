@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:peat_block",
+  "numeric_id": 24,
+  "max_stack_size": 64,
+  "places_block": "wildforge:peat",
+  "model": "wildforge:item/block"
+}

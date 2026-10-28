@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:moss_block_block",
+  "numeric_id": 28,
+  "max_stack_size": 64,
+  "places_block": "wildforge:moss_block",
+  "model": "wildforge:item/block"
+}

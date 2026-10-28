@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:shell_sand_block",
+  "numeric_id": 44,
+  "max_stack_size": 64,
+  "places_block": "wildforge:shell_sand",
+  "model": "wildforge:item/block"
+}

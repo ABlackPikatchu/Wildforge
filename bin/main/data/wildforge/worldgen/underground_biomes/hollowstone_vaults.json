@@ -1,0 +1,62 @@
+{
+  "id": "wildforge:hollowstone_vaults",
+  "name": "Hollowstone Vaults",
+  "depth_fraction": [
+    0.13,
+    0.7
+  ],
+  "rarity": "uncommon",
+  "host_rocks": [
+    "limestone",
+    "chalk",
+    "calcite"
+  ],
+  "placement": "Limestone provinces below Hollowstone Karst and Whitecliff Coast, regardless of surface vegetation",
+  "geometry": "Wide vaulted limestone chambers, drop shafts, shelves and vertical erosion chimneys",
+  "description": "Massive naturally dissolved limestone rooms lined with flowstone curtains, stalactites, stalagmites and sometimes underground waterways",
+  "reuse_existing_textures": [
+    "limestone",
+    "weathered_limestone",
+    "calcite",
+    "flowstone",
+    "stalactite",
+    "stalagmite",
+    "cave_clay"
+  ],
+  "proposed_new_textures": [
+    "flowstone_drapery",
+    "limestone_rubble"
+  ],
+  "features": [
+    "sinkhole shafts",
+    "columns formed by joining dripstones",
+    "calcite terraces"
+  ],
+  "resources": [
+    "limestone",
+    "calcite",
+    "small mineral pockets"
+  ],
+  "hazards": [
+    "steep drops and narrow shafts"
+  ],
+  "transitions": [
+    "seepstone_grottos",
+    "underflow_channels",
+    "stillwater_abyss"
+  ],
+  "new_textures": [
+    "textures/flowstone_drapery.png",
+    "textures/limestone_rubble.png"
+  ],
+  "suggested_weight_relative": 17,
+  "typical_chamber_radius_blocks": [
+    15,
+    43
+  ],
+  "suggested_moisture_preference": 0.55,
+  "suggested_water_proximity_preference": 0.65,
+  "hard_placement_rule": "limestone only",
+  "note": "These are region-selection design weights, not probabilities; normalize only after hard geological/depth eligibility constraints.",
+  "selection_rule": "LIMESTONE"
+}

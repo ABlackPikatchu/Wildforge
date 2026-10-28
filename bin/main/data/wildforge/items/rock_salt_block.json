@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:rock_salt_block",
+  "numeric_id": 80,
+  "max_stack_size": 64,
+  "places_block": "wildforge:rock_salt",
+  "model": "wildforge:item/block"
+}

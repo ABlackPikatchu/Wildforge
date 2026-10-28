@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:fertile_loam",
+  "numeric_id": 63,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:fertile_loam",
+    "side": "wildforge:fertile_loam",
+    "bottom": "wildforge:fertile_loam"
+  },
+  "drops": [
+    {
+      "item": "wildforge:fertile_loam_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:fertile_loam_block"
+}

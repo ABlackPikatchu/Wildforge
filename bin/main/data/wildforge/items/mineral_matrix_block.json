@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:mineral_matrix_block",
+  "numeric_id": 76,
+  "max_stack_size": 64,
+  "places_block": "wildforge:mineral_matrix",
+  "model": "wildforge:item/block"
+}

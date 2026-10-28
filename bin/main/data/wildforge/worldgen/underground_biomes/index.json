@@ -1,0 +1,17 @@
+{
+  "schema": "wildforge-underground-profiles-v1",
+  "biomes": [
+    "data/wildforge/worldgen/underground_biomes/rootlace_hollows.json",
+    "data/wildforge/worldgen/underground_biomes/seepstone_grottos.json",
+    "data/wildforge/worldgen/underground_biomes/underflow_channels.json",
+    "data/wildforge/worldgen/underground_biomes/hollowstone_vaults.json",
+    "data/wildforge/worldgen/underground_biomes/coalshade_galleries.json",
+    "data/wildforge/worldgen/underground_biomes/saltveil_chambers.json",
+    "data/wildforge/worldgen/underground_biomes/frostvault_crevasses.json",
+    "data/wildforge/worldgen/underground_biomes/ironfault_chasms.json",
+    "data/wildforge/worldgen/underground_biomes/crystal_seam_chambers.json",
+    "data/wildforge/worldgen/underground_biomes/sporelight_hollows.json",
+    "data/wildforge/worldgen/underground_biomes/cindervein_tubes.json",
+    "data/wildforge/worldgen/underground_biomes/stillwater_abyss.json"
+  ]
+}

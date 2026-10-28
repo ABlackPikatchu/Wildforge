@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:flowstone_block",
+  "numeric_id": 65,
+  "max_stack_size": 64,
+  "places_block": "wildforge:flowstone",
+  "model": "wildforge:item/block"
+}

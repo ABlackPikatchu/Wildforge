@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:crafting_table_block",
+  "numeric_id": 105,
+  "max_stack_size": 64,
+  "places_block": "wildforge:crafting_table",
+  "model": "wildforge:item/block"
+}

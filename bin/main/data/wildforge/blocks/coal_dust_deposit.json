@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:coal_dust_deposit",
+  "numeric_id": 57,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:coal_dust_deposit",
+    "side": "wildforge:coal_dust_deposit",
+    "bottom": "wildforge:coal_dust_deposit"
+  },
+  "drops": [
+    {
+      "item": "wildforge:coal_dust_deposit_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:coal_dust_deposit_block"
+}

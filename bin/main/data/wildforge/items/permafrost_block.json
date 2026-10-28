@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:permafrost_block",
+  "numeric_id": 23,
+  "max_stack_size": 64,
+  "places_block": "wildforge:permafrost",
+  "model": "wildforge:item/block"
+}

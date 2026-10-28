@@ -1,0 +1,61 @@
+{
+  "id": "wildforge:sporelight_hollows",
+  "name": "Sporelight Hollows",
+  "depth_fraction": [
+    0.35,
+    0.78
+  ],
+  "rarity": "rare",
+  "host_rocks": [
+    "stone",
+    "limestone",
+    "moist fractured rock"
+  ],
+  "placement": "Stable, humid chambers with nutrient-bearing seepage and no active lava, preferably below wet forests and marsh basins",
+  "geometry": "Sheltered round caves with low terraces, spongy floors, dripping ceilings and sheltered mushroom groves",
+  "description": "A rare naturalistic fantasy habitat where pale fungi and a few gently luminescent mycelial patches grow in perpetually moist chambers",
+  "reuse_existing_textures": [
+    "cave_moss",
+    "forest_mushroom",
+    "wet_mud",
+    "calcite",
+    "flowstone"
+  ],
+  "proposed_new_textures": [
+    "sporecap_fungus",
+    "luminous_lichen",
+    "mycelial_mat"
+  ],
+  "features": [
+    "hanging fungal clusters",
+    "pale spores",
+    "moist moss shelves"
+  ],
+  "resources": [
+    "fungal reagents",
+    "mushrooms",
+    "clean seepage water"
+  ],
+  "hazards": [
+    "dense spore clouds in selected pockets"
+  ],
+  "transitions": [
+    "seepstone_grottos",
+    "stillwater_abyss"
+  ],
+  "new_textures": [
+    "textures/sporecap_fungus.png",
+    "textures/luminous_lichen.png",
+    "textures/mycelial_mat.png"
+  ],
+  "suggested_weight_relative": 5,
+  "typical_chamber_radius_blocks": [
+    6,
+    15
+  ],
+  "suggested_moisture_preference": 0.8,
+  "suggested_water_proximity_preference": 0.95,
+  "hard_placement_rule": "humid sealed chamber and nutrient seepage",
+  "note": "These are region-selection design weights, not probabilities; normalize only after hard geological/depth eligibility constraints.",
+  "selection_rule": "SPORE_CHAMBER"
+}

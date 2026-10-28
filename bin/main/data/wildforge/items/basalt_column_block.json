@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:basalt_column_block",
+  "numeric_id": 53,
+  "max_stack_size": 64,
+  "places_block": "wildforge:basalt_column",
+  "model": "wildforge:item/block"
+}

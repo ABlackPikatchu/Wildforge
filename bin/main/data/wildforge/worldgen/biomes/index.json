@@ -1,0 +1,16 @@
+{
+  "biomes": [
+    "data/wildforge/worldgen/biomes/greenheart_forest.json",
+    "data/wildforge/worldgen/biomes/needlewood_taiga.json",
+    "data/wildforge/worldgen/biomes/emberleaf_woodland.json",
+    "data/wildforge/worldgen/biomes/sunmeadow_plains.json",
+    "data/wildforge/worldgen/biomes/frostspire_highlands.json",
+    "data/wildforge/worldgen/biomes/frostmoor_tundra.json",
+    "data/wildforge/worldgen/biomes/redscar_badlands.json",
+    "data/wildforge/worldgen/biomes/suncrack_desert.json",
+    "data/wildforge/worldgen/biomes/mistfen_wetlands.json",
+    "data/wildforge/worldgen/biomes/whitecliff_coast.json",
+    "data/wildforge/worldgen/biomes/cinderfall_volcanic_fields.json",
+    "data/wildforge/worldgen/biomes/hollowstone_karst.json"
+  ]
+}

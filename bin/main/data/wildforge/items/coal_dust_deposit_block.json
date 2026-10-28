@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:coal_dust_deposit_block",
+  "numeric_id": 58,
+  "max_stack_size": 64,
+  "places_block": "wildforge:coal_dust_deposit",
+  "model": "wildforge:item/block"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:raw_iron",
+  "numeric_id": 114,
+  "max_stack_size": 64,
+  "texture": "wildforge:raw_iron",
+  "model": "wildforge:item/generated"
+}

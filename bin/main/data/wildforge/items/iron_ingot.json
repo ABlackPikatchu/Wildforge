@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:iron_ingot",
+  "numeric_id": 111,
+  "max_stack_size": 64,
+  "texture": "wildforge:iron_ingot",
+  "model": "wildforge:item/generated"
+}

@@ -1,0 +1,61 @@
+{
+  "id": "wildforge:seepstone_grottos",
+  "name": "Seepstone Grottos",
+  "depth_fraction": [
+    0.08,
+    0.49
+  ],
+  "rarity": "common",
+  "host_rocks": [
+    "stone",
+    "limestone",
+    "andesite"
+  ],
+  "placement": "High groundwater zones, moist hillsides, river valleys and below wetlands",
+  "geometry": "Moderate round chambers, narrow connecting passages, water dripping from ceilings",
+  "description": "Cool damp caverns with dark wet rocks, calcite streaks, drips, moss islands and shallow puddles",
+  "reuse_existing_textures": [
+    "stone",
+    "limestone",
+    "calcite",
+    "flowstone",
+    "cave_moss",
+    "lichen_patch"
+  ],
+  "proposed_new_textures": [
+    "wet_rock",
+    "dripping_lichen"
+  ],
+  "features": [
+    "seepage streaks",
+    "small pools",
+    "hanging moss"
+  ],
+  "resources": [
+    "clay",
+    "iron traces",
+    "fresh water"
+  ],
+  "hazards": [
+    "slick edges and occasional flooded dead ends"
+  ],
+  "transitions": [
+    "rootlace_hollows",
+    "underflow_channels",
+    "hollowstone_vaults"
+  ],
+  "new_textures": [
+    "textures/wet_rock.png",
+    "textures/dripping_lichen.png"
+  ],
+  "suggested_weight_relative": 32,
+  "typical_chamber_radius_blocks": [
+    5,
+    14
+  ],
+  "suggested_moisture_preference": 0.25,
+  "suggested_water_proximity_preference": 0.85,
+  "hard_placement_rule": "wet host geology",
+  "note": "These are region-selection design weights, not probabilities; normalize only after hard geological/depth eligibility constraints.",
+  "selection_rule": "WET_ROCK"
+}

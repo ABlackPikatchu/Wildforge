@@ -1,0 +1,62 @@
+{
+  "id": "wildforge:frostvault_crevasses",
+  "name": "Frostvault Crevasses",
+  "depth_fraction": [
+    0.0,
+    0.28
+  ],
+  "rarity": "uncommon",
+  "host_rocks": [
+    "ice",
+    "slate",
+    "shale",
+    "stone"
+  ],
+  "placement": "Only shallow beneath frozen tundra, snowfields or glaciers; geothermal warmth makes deep frost caves uncommon",
+  "geometry": "Narrow blue crevasses, shallow ice tunnels, snow-covered vents and a few ice domes",
+  "description": "Cold blue caves cut through glacial ice and frozen fractured bedrock, with crisp reflective surfaces and compact snow drifts",
+  "reuse_existing_textures": [
+    "ice",
+    "snow",
+    "packed_snow",
+    "slate",
+    "permafrost"
+  ],
+  "proposed_new_textures": [
+    "icicle",
+    "frosted_rock",
+    "glacial_ice"
+  ],
+  "features": [
+    "icicle clusters",
+    "snow drifts",
+    "glacial drainage slots"
+  ],
+  "resources": [
+    "ice",
+    "water",
+    "rare exposed stone"
+  ],
+  "hazards": [
+    "slippery surfaces and narrow crevasses"
+  ],
+  "transitions": [
+    "seepstone_grottos",
+    "ironfault_chasms"
+  ],
+  "new_textures": [
+    "textures/icicle.png",
+    "textures/frosted_rock.png",
+    "textures/glacial_ice.png"
+  ],
+  "suggested_weight_relative": 12,
+  "typical_chamber_radius_blocks": [
+    3,
+    12
+  ],
+  "suggested_moisture_preference": 0.08,
+  "suggested_water_proximity_preference": 0.5,
+  "hard_placement_rule": "shallow subglacial only",
+  "note": "These are region-selection design weights, not probabilities; normalize only after hard geological/depth eligibility constraints.",
+  "selection_rule": "GLACIAL"
+}

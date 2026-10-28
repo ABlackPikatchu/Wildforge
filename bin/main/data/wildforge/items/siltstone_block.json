@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:siltstone_block",
+  "numeric_id": 85,
+  "max_stack_size": 64,
+  "places_block": "wildforge:siltstone",
+  "model": "wildforge:item/block"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:permafrost",
+  "numeric_id": 22,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:permafrost",
+    "side": "wildforge:permafrost",
+    "bottom": "wildforge:permafrost"
+  },
+  "drops": [
+    {
+      "item": "wildforge:permafrost_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:permafrost_block"
+}

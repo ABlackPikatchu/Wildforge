@@ -1,0 +1,17 @@
+{
+  "min_y": -64,
+  "max_y": 191,
+  "sea_level": 64,
+  "continent_scale": 1400.0,
+  "hills_scale": 260.0,
+  "mountains_scale": 310.0,
+  "detail_scale": 48.0,
+  "climate_scale": 780.0,
+  "river_scale": 500.0,
+  "cave_scale": 43.0,
+  "ocean_threshold": -0.13,
+  "mountain_threshold": 0.12,
+  "cave_threshold": 0.075,
+  "tree_density": 0.85,
+  "plant_density": 0.55
+}

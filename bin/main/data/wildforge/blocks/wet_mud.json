@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:wet_mud",
+  "numeric_id": 34,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:wet_mud",
+    "side": "wildforge:wet_mud",
+    "bottom": "wildforge:wet_mud"
+  },
+  "drops": [
+    {
+      "item": "wildforge:wet_mud_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:wet_mud_block"
+}

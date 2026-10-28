@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:mossy_rock",
+  "numeric_id": 76,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:mossy_rock",
+    "side": "wildforge:mossy_rock",
+    "bottom": "wildforge:mossy_rock"
+  },
+  "drops": [
+    {
+      "item": "wildforge:mossy_rock_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:mossy_rock_block"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:pine_cone",
+  "numeric_id": 116,
+  "max_stack_size": 64,
+  "texture": "wildforge:pine_cone",
+  "model": "wildforge:item/generated"
+}

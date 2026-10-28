@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:red_clay_block",
+  "numeric_id": 79,
+  "max_stack_size": 64,
+  "places_block": "wildforge:red_clay",
+  "model": "wildforge:item/block"
+}

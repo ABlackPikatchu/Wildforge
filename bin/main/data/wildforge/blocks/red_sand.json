@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:red_sand",
+  "numeric_id": 36,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:red_sand",
+    "side": "wildforge:red_sand",
+    "bottom": "wildforge:red_sand"
+  },
+  "drops": [
+    {
+      "item": "wildforge:red_sand_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:red_sand_block"
+}

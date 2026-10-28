@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:granite_block",
+  "numeric_id": 32,
+  "max_stack_size": 64,
+  "places_block": "wildforge:granite",
+  "model": "wildforge:item/block"
+}

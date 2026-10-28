@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:silver_ore_block",
+  "numeric_id": 12,
+  "max_stack_size": 64,
+  "places_block": "wildforge:silver_ore",
+  "model": "wildforge:item/block"
+}

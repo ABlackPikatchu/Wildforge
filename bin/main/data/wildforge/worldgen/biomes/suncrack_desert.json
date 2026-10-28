@@ -1,0 +1,52 @@
+{
+  "id": "wildforge:suncrack_desert",
+  "name": "Suncrack Desert",
+  "map_color": "dfc27d",
+  "criteria": {
+    "temperature": [
+      0.64,
+      1.0
+    ],
+    "rainfall": [
+      0.0,
+      0.43
+    ],
+    "height_above_sea": [
+      -4,
+      60
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 24
+  },
+  "surface": {
+    "top": "sand",
+    "filler": "sandstone"
+  },
+  "decorations": {
+    "tree_density": 0.0,
+    "plant_density": 0.16,
+    "max_tree_slope": 3,
+    "max_plant_slope": 4,
+    "trees": [],
+    "plants": [
+      {
+        "id": "dune_grass",
+        "weight": 4
+      },
+      {
+        "id": "desert_succulent",
+        "weight": 3
+      },
+      {
+        "id": "dry_scrub",
+        "weight": 2
+      },
+      {
+        "id": "dead_bush",
+        "weight": 4
+      }
+    ]
+  }
+}

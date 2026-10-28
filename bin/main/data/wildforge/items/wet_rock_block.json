@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:wet_rock_block",
+  "numeric_id": 89,
+  "max_stack_size": 64,
+  "places_block": "wildforge:wet_rock",
+  "model": "wildforge:item/block"
+}

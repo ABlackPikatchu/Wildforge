@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:autumn_leaf_litter_block",
+  "numeric_id": 52,
+  "max_stack_size": 64,
+  "places_block": "wildforge:autumn_leaf_litter",
+  "model": "wildforge:item/block"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:coal_ore_block",
+  "numeric_id": 9,
+  "max_stack_size": 64,
+  "places_block": "wildforge:coal_ore",
+  "model": "wildforge:item/block"
+}

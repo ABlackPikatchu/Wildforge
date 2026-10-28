@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:diamond_shovel",
+  "numeric_id": 147,
+  "max_stack_size": 64,
+  "texture": "wildforge:diamond_shovel",
+  "model": "wildforge:item/generated"
+}

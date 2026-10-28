@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:frozen_peat",
+  "numeric_id": 68,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:frozen_peat",
+    "side": "wildforge:frozen_peat",
+    "bottom": "wildforge:frozen_peat"
+  },
+  "drops": [
+    {
+      "item": "wildforge:frozen_peat_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:frozen_peat_block"
+}

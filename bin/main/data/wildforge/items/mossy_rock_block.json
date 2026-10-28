@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:mossy_rock_block",
+  "numeric_id": 77,
+  "max_stack_size": 64,
+  "places_block": "wildforge:mossy_rock",
+  "model": "wildforge:item/block"
+}

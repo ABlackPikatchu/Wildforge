@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:rope_lava_stone",
+  "numeric_id": 81,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:rope_lava_stone",
+    "side": "wildforge:rope_lava_stone",
+    "bottom": "wildforge:rope_lava_stone"
+  },
+  "drops": [
+    {
+      "item": "wildforge:rope_lava_stone_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:rope_lava_stone_block"
+}

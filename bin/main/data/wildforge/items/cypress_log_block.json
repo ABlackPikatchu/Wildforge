@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:cypress_log_block",
+  "numeric_id": 102,
+  "max_stack_size": 64,
+  "places_block": "wildforge:cypress_log",
+  "model": "wildforge:item/block"
+}

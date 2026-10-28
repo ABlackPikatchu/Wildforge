@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:snow_crust_block",
+  "numeric_id": 86,
+  "max_stack_size": 64,
+  "places_block": "wildforge:snow_crust",
+  "model": "wildforge:item/block"
+}

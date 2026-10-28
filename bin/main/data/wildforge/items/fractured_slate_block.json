@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:fractured_slate_block",
+  "numeric_id": 67,
+  "max_stack_size": 64,
+  "places_block": "wildforge:fractured_slate",
+  "model": "wildforge:item/block"
+}

@@ -1,0 +1,63 @@
+{
+  "id": "wildforge:cindervein_tubes",
+  "name": "Cindervein Tubes",
+  "depth_fraction": [
+    0.35,
+    0.95
+  ],
+  "rarity": "rare",
+  "host_rocks": [
+    "basalt",
+    "gabbro",
+    "obsidian",
+    "volcanic layers"
+  ],
+  "placement": "Volcanic provinces or ancient buried lava pathways; inactive tubes much more frequent than exposed magma",
+  "geometry": "Long tube-like tunnels, stacked flow terraces and rare branching vent chambers",
+  "description": "Old lava conduits retain dark basalt walls, rippled cooled flows, glassy patches and occasional warm fumarole vents",
+  "reuse_existing_textures": [
+    "basalt",
+    "cracked_basalt",
+    "scoria",
+    "obsidian",
+    "magma_crust",
+    "sulfur_rock"
+  ],
+  "proposed_new_textures": [
+    "rope_lava_stone",
+    "thermal_vent",
+    "basalt_column"
+  ],
+  "features": [
+    "collapsed tube ceilings",
+    "small steam vents",
+    "rippled lava floors"
+  ],
+  "resources": [
+    "basalt",
+    "sulfur near vents",
+    "rare metal mineralization"
+  ],
+  "hazards": [
+    "local heat zones, rare exposed lava"
+  ],
+  "transitions": [
+    "ironfault_chasms",
+    "stillwater_abyss"
+  ],
+  "new_textures": [
+    "textures/rope_lava_stone.png",
+    "textures/thermal_vent.png",
+    "textures/basalt_column.png"
+  ],
+  "suggested_weight_relative": 5,
+  "typical_chamber_radius_blocks": [
+    4,
+    9
+  ],
+  "suggested_moisture_preference": 0.08,
+  "suggested_water_proximity_preference": 0.3,
+  "hard_placement_rule": "volcanic provinces only",
+  "note": "These are region-selection design weights, not probabilities; normalize only after hard geological/depth eligibility constraints.",
+  "selection_rule": "VOLCANIC"
+}

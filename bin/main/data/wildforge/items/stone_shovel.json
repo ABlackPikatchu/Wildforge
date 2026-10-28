@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:stone_shovel",
+  "numeric_id": 127,
+  "max_stack_size": 64,
+  "texture": "wildforge:stone_shovel",
+  "model": "wildforge:item/generated"
+}

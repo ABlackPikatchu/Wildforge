@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:stone_block",
+    "wildforge:andesite_block",
+    "wildforge:basalt_block",
+    "wildforge:diorite_block",
+    "wildforge:gabbro_block",
+    "wildforge:cobblestone_block"
+  ]
+}

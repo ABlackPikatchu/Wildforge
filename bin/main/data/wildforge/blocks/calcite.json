@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:calcite",
+  "numeric_id": 54,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:calcite",
+    "side": "wildforge:calcite",
+    "bottom": "wildforge:calcite"
+  },
+  "drops": [
+    {
+      "item": "wildforge:calcite_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:calcite_block"
+}

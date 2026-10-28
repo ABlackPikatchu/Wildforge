@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:iron_stained_stone",
+  "numeric_id": 71,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:iron_stained_stone",
+    "side": "wildforge:iron_stained_stone",
+    "bottom": "wildforge:iron_stained_stone"
+  },
+  "drops": [
+    {
+      "item": "wildforge:iron_stained_stone_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:iron_stained_stone_block"
+}

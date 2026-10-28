@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:gold_ore_block",
+  "numeric_id": 11,
+  "max_stack_size": 64,
+  "places_block": "wildforge:gold_ore",
+  "model": "wildforge:item/block"
+}

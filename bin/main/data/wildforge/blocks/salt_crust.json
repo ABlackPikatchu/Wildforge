@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:salt_crust",
+  "numeric_id": 42,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:salt_crust",
+    "side": "wildforge:salt_crust",
+    "bottom": "wildforge:salt_crust"
+  },
+  "drops": [
+    {
+      "item": "wildforge:salt_crust_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:salt_crust_block"
+}

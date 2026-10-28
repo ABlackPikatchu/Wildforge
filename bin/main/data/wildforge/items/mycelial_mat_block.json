@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:mycelial_mat_block",
+  "numeric_id": 78,
+  "max_stack_size": 64,
+  "places_block": "wildforge:mycelial_mat",
+  "model": "wildforge:item/block"
+}

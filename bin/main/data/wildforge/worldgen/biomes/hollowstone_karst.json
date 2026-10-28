@@ -1,0 +1,63 @@
+{
+  "id": "wildforge:hollowstone_karst",
+  "name": "Hollowstone Karst",
+  "map_color": "bcbba4",
+  "criteria": {
+    "temperature": [
+      0.2,
+      0.87
+    ],
+    "rainfall": [
+      0.22,
+      0.98
+    ],
+    "height_above_sea": [
+      8,
+      98
+    ],
+    "geology": [
+      "LIMESTONE"
+    ],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 34
+  },
+  "surface": {
+    "top": "weathered_limestone",
+    "filler": "limestone"
+  },
+  "decorations": {
+    "tree_density": 0.17,
+    "plant_density": 0.37,
+    "max_tree_slope": 3,
+    "max_plant_slope": 4,
+    "trees": [
+      {
+        "id": "oak",
+        "weight": 3
+      },
+      {
+        "id": "maple",
+        "weight": 1
+      }
+    ],
+    "plants": [
+      {
+        "id": "fern",
+        "weight": 4
+      },
+      {
+        "id": "lichen_patch",
+        "weight": 3
+      },
+      {
+        "id": "forest_mushroom",
+        "weight": 2
+      },
+      {
+        "id": "small_grass",
+        "weight": 2
+      }
+    ]
+  }
+}

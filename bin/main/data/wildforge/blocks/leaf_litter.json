@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:leaf_litter",
+  "numeric_id": 25,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:leaf_litter",
+    "side": "wildforge:leaf_litter",
+    "bottom": "wildforge:leaf_litter"
+  },
+  "drops": [
+    {
+      "item": "wildforge:leaf_litter_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:leaf_litter_block"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:iron_sword",
+  "numeric_id": 133,
+  "max_stack_size": 64,
+  "texture": "wildforge:iron_sword",
+  "model": "wildforge:item/generated"
+}

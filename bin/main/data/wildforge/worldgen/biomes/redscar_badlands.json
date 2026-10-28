@@ -1,0 +1,51 @@
+{
+  "id": "wildforge:redscar_badlands",
+  "name": "Redscar Badlands",
+  "map_color": "b75f43",
+  "criteria": {
+    "temperature": [
+      0.53,
+      1.0
+    ],
+    "rainfall": [
+      0.0,
+      0.48
+    ],
+    "height_above_sea": [
+      8,
+      92
+    ],
+    "geology": [
+      "SANDSTONE",
+      "SHALE"
+    ],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 31
+  },
+  "surface": {
+    "top": "red_sand",
+    "filler": "red_clay"
+  },
+  "decorations": {
+    "tree_density": 0.0,
+    "plant_density": 0.18,
+    "max_tree_slope": 3,
+    "max_plant_slope": 4,
+    "trees": [],
+    "plants": [
+      {
+        "id": "dry_scrub",
+        "weight": 5
+      },
+      {
+        "id": "dead_bush",
+        "weight": 5
+      },
+      {
+        "id": "desert_succulent",
+        "weight": 1
+      }
+    ]
+  }
+}

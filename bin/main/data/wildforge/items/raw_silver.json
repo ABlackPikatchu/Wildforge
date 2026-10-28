@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:raw_silver",
+  "numeric_id": 115,
+  "max_stack_size": 64,
+  "texture": "wildforge:raw_silver",
+  "model": "wildforge:item/generated"
+}

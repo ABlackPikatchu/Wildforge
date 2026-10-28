@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:rope_lava_stone_block",
+  "numeric_id": 82,
+  "max_stack_size": 64,
+  "places_block": "wildforge:rope_lava_stone",
+  "model": "wildforge:item/block"
+}

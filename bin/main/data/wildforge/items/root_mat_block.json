@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:root_mat_block",
+  "numeric_id": 81,
+  "max_stack_size": 64,
+  "places_block": "wildforge:root_mat",
+  "model": "wildforge:item/block"
+}

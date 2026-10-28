@@ -1,0 +1,1558 @@
+{
+  "textures": [
+    {
+      "id": "wildforge:alpine_moss",
+      "source": "textures/alpine_moss.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:andesite",
+      "source": "textures/andesite.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:autumn_leaf_litter",
+      "source": "textures/autumn_leaf_litter.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:basalt",
+      "source": "textures/basalt.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:basalt_column",
+      "source": "textures/basalt_column.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:beach_pebbles",
+      "source": "textures/beach_pebbles.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:bedrock",
+      "source": "textures/bedrock.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:brick",
+      "source": "textures/brick.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:brick_block",
+      "source": "textures/brick_block.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:cactus_side",
+      "source": "textures/cactus_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:cactus_top",
+      "source": "textures/cactus_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:calcite",
+      "source": "textures/calcite.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:cattails",
+      "source": "textures/cattails.png",
+      "width": 32,
+      "height": 64,
+      "model_hint": "double_height_cross"
+    },
+    {
+      "id": "wildforge:cave_clay",
+      "source": "textures/cave_clay.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:cave_moss",
+      "source": "textures/cave_moss.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:chalk",
+      "source": "textures/chalk.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:clay",
+      "source": "textures/clay.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:clay_ball",
+      "source": "textures/clay_ball.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:clover",
+      "source": "textures/clover.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:coal",
+      "source": "textures/coal.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:coal_dust_deposit",
+      "source": "textures/coal_dust_deposit.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:coal_ore",
+      "source": "textures/coal_ore.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:cobblestone",
+      "source": "textures/cobblestone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:compacted_sediment",
+      "source": "textures/compacted_sediment.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:cracked_basalt",
+      "source": "textures/cracked_basalt.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:cracked_earth",
+      "source": "textures/cracked_earth.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:crafting_table_side",
+      "source": "textures/crafting_table_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:crafting_table_top",
+      "source": "textures/crafting_table_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:cypress_leaves",
+      "source": "textures/cypress_leaves.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cutout_cube"
+    },
+    {
+      "id": "wildforge:cypress_log_side",
+      "source": "textures/cypress_log_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:cypress_log_top",
+      "source": "textures/cypress_log_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:cypress_planks",
+      "source": "textures/cypress_planks.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:dead_bush",
+      "source": "textures/dead_bush.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:desert_succulent",
+      "source": "textures/desert_succulent.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:diamond",
+      "source": "textures/diamond.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:diamond_axe",
+      "source": "textures/diamond_axe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:diamond_hoe",
+      "source": "textures/diamond_hoe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:diamond_ore",
+      "source": "textures/diamond_ore.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:diamond_pickaxe",
+      "source": "textures/diamond_pickaxe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:diamond_shovel",
+      "source": "textures/diamond_shovel.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:diamond_sword",
+      "source": "textures/diamond_sword.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:diorite",
+      "source": "textures/diorite.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:dirt",
+      "source": "textures/dirt.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:dripping_lichen",
+      "source": "textures/dripping_lichen.png",
+      "width": 32,
+      "height": 64,
+      "model_hint": "ceiling_cutout_tall"
+    },
+    {
+      "id": "wildforge:dry_grass_side",
+      "source": "textures/dry_grass_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:dry_grass_top",
+      "source": "textures/dry_grass_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:dry_scrub",
+      "source": "textures/dry_scrub.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:dune_grass",
+      "source": "textures/dune_grass.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:evergreen_shrub",
+      "source": "textures/evergreen_shrub.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:exposed_root_stone",
+      "source": "textures/exposed_root_stone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:fault_breccia",
+      "source": "textures/fault_breccia.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:fern",
+      "source": "textures/fern.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:fertile_loam",
+      "source": "textures/fertile_loam.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:flower_bluebell",
+      "source": "textures/flower_bluebell.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:flower_cornflower",
+      "source": "textures/flower_cornflower.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:flower_daisy",
+      "source": "textures/flower_daisy.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:flower_foxglove",
+      "source": "textures/flower_foxglove.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:flower_goldenrod",
+      "source": "textures/flower_goldenrod.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:flower_lavender",
+      "source": "textures/flower_lavender.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:flower_orchid",
+      "source": "textures/flower_orchid.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:flower_poppy",
+      "source": "textures/flower_poppy.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:flower_snowdrop",
+      "source": "textures/flower_snowdrop.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:flower_sunflower",
+      "source": "textures/flower_sunflower.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:flowstone",
+      "source": "textures/flowstone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:flowstone_drapery",
+      "source": "textures/flowstone_drapery.png",
+      "width": 32,
+      "height": 64,
+      "model_hint": "ceiling_cutout_tall"
+    },
+    {
+      "id": "wildforge:fluorite_cluster",
+      "source": "textures/fluorite_cluster.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "floor_cutout"
+    },
+    {
+      "id": "wildforge:forest_loam",
+      "source": "textures/forest_loam.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:forest_mushroom",
+      "source": "textures/forest_mushroom.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:fossil_shale",
+      "source": "textures/fossil_shale.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:fractured_slate",
+      "source": "textures/fractured_slate.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:frosted_rock",
+      "source": "textures/frosted_rock.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:frost_shrub",
+      "source": "textures/frost_shrub.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:frozen_peat",
+      "source": "textures/frozen_peat.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:furnace_front_off",
+      "source": "textures/furnace_front_off.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:furnace_front_on",
+      "source": "textures/furnace_front_on.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:furnace_side",
+      "source": "textures/furnace_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:furnace_top",
+      "source": "textures/furnace_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:gabbro",
+      "source": "textures/gabbro.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:glacial_ice",
+      "source": "textures/glacial_ice.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:glass",
+      "source": "textures/glass.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "translucent_cube"
+    },
+    {
+      "id": "wildforge:gold_axe",
+      "source": "textures/gold_axe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:gold_hoe",
+      "source": "textures/gold_hoe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:gold_ingot",
+      "source": "textures/gold_ingot.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:gold_ore",
+      "source": "textures/gold_ore.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:gold_pickaxe",
+      "source": "textures/gold_pickaxe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:gold_shovel",
+      "source": "textures/gold_shovel.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:gold_sword",
+      "source": "textures/gold_sword.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:granite",
+      "source": "textures/granite.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:grass_side",
+      "source": "textures/grass_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:grass_top",
+      "source": "textures/grass_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:gravel",
+      "source": "textures/gravel.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:gypsum",
+      "source": "textures/gypsum.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:hanging_roots",
+      "source": "textures/hanging_roots.png",
+      "width": 32,
+      "height": 64,
+      "model_hint": "ceiling_cutout_tall"
+    },
+    {
+      "id": "wildforge:ice",
+      "source": "textures/ice.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "translucent_cube"
+    },
+    {
+      "id": "wildforge:icicle",
+      "source": "textures/icicle.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "ceiling_cutout"
+    },
+    {
+      "id": "wildforge:iron_axe",
+      "source": "textures/iron_axe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:iron_hoe",
+      "source": "textures/iron_hoe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:iron_ingot",
+      "source": "textures/iron_ingot.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:iron_ore",
+      "source": "textures/iron_ore.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:iron_pickaxe",
+      "source": "textures/iron_pickaxe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:iron_shovel",
+      "source": "textures/iron_shovel.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:iron_stained_stone",
+      "source": "textures/iron_stained_stone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:iron_sword",
+      "source": "textures/iron_sword.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:lava",
+      "source": "textures/lava.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "fluid"
+    },
+    {
+      "id": "wildforge:leaf_litter",
+      "source": "textures/leaf_litter.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:lichen_patch",
+      "source": "textures/lichen_patch.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "ground_overlay"
+    },
+    {
+      "id": "wildforge:lichen_stone",
+      "source": "textures/lichen_stone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:lily_pad",
+      "source": "textures/lily_pad.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "water_surface"
+    },
+    {
+      "id": "wildforge:limestone",
+      "source": "textures/limestone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:limestone_rubble",
+      "source": "textures/limestone_rubble.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:luminous_lichen",
+      "source": "textures/luminous_lichen.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "wall_cutout"
+    },
+    {
+      "id": "wildforge:magma_crust",
+      "source": "textures/magma_crust.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:maple_leaves",
+      "source": "textures/maple_leaves.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cutout_cube"
+    },
+    {
+      "id": "wildforge:maple_leaves_gold",
+      "source": "textures/maple_leaves_gold.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:maple_leaves_red",
+      "source": "textures/maple_leaves_red.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:maple_log_side",
+      "source": "textures/maple_log_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:maple_log_top",
+      "source": "textures/maple_log_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:maple_planks",
+      "source": "textures/maple_planks.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:marsh_reeds",
+      "source": "textures/marsh_reeds.png",
+      "width": 32,
+      "height": 64,
+      "model_hint": "double_height_cross"
+    },
+    {
+      "id": "wildforge:meadow_thistle",
+      "source": "textures/meadow_thistle.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:mineral_matrix",
+      "source": "textures/mineral_matrix.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:mossy_rock",
+      "source": "textures/mossy_rock.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:moss_block",
+      "source": "textures/moss_block.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:mud",
+      "source": "textures/mud.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:mycelial_mat",
+      "source": "textures/mycelial_mat.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:oak_leaves",
+      "source": "textures/oak_leaves.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cutout_cube"
+    },
+    {
+      "id": "wildforge:oak_log_side",
+      "source": "textures/oak_log_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:oak_log_top",
+      "source": "textures/oak_log_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:oak_planks",
+      "source": "textures/oak_planks.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:obsidian",
+      "source": "textures/obsidian.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:packed_snow",
+      "source": "textures/packed_snow.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:pale_algae",
+      "source": "textures/pale_algae.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "underwater_cutout"
+    },
+    {
+      "id": "wildforge:peat",
+      "source": "textures/peat.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:permafrost",
+      "source": "textures/permafrost.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:pine_cone",
+      "source": "textures/pine_cone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:pine_leaves",
+      "source": "textures/pine_leaves.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cutout_cube"
+    },
+    {
+      "id": "wildforge:pine_log_side",
+      "source": "textures/pine_log_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:pine_log_top",
+      "source": "textures/pine_log_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:pine_needle_litter",
+      "source": "textures/pine_needle_litter.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:pine_planks",
+      "source": "textures/pine_planks.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:pumice",
+      "source": "textures/pumice.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:quartz_cluster",
+      "source": "textures/quartz_cluster.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "floor_cutout"
+    },
+    {
+      "id": "wildforge:quartz_vein",
+      "source": "textures/quartz_vein.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:raw_gold",
+      "source": "textures/raw_gold.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:raw_iron",
+      "source": "textures/raw_iron.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:raw_silver",
+      "source": "textures/raw_silver.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:red_clay",
+      "source": "textures/red_clay.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:red_sand",
+      "source": "textures/red_sand.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:red_sandstone",
+      "source": "textures/red_sandstone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:red_sandstone_layered",
+      "source": "textures/red_sandstone_layered.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:rich_humus",
+      "source": "textures/rich_humus.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:riverbed_sediment",
+      "source": "textures/riverbed_sediment.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:rock_salt",
+      "source": "textures/rock_salt.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:root_mat",
+      "source": "textures/root_mat.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:rope_lava_stone",
+      "source": "textures/rope_lava_stone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:rotten_wood_side",
+      "source": "textures/rotten_wood_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:rotten_wood_top",
+      "source": "textures/rotten_wood_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:salt_crust",
+      "source": "textures/salt_crust.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:sand",
+      "source": "textures/sand.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:sandstone",
+      "source": "textures/sandstone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:sandstone_rubble",
+      "source": "textures/sandstone_rubble.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:scoria",
+      "source": "textures/scoria.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:scree",
+      "source": "textures/scree.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:seaweed",
+      "source": "textures/seaweed.png",
+      "width": 32,
+      "height": 64,
+      "model_hint": "double_height_cross"
+    },
+    {
+      "id": "wildforge:sea_shell",
+      "source": "textures/sea_shell.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:selenite_cluster",
+      "source": "textures/selenite_cluster.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "floor_cutout"
+    },
+    {
+      "id": "wildforge:shale",
+      "source": "textures/shale.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:shelf_fungus",
+      "source": "textures/shelf_fungus.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "wall_attachment"
+    },
+    {
+      "id": "wildforge:shell_sand",
+      "source": "textures/shell_sand.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:silt",
+      "source": "textures/silt.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:siltstone",
+      "source": "textures/siltstone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:silver_axe",
+      "source": "textures/silver_axe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:silver_hoe",
+      "source": "textures/silver_hoe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:silver_ingot",
+      "source": "textures/silver_ingot.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:silver_ore",
+      "source": "textures/silver_ore.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:silver_pickaxe",
+      "source": "textures/silver_pickaxe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:silver_shovel",
+      "source": "textures/silver_shovel.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:silver_sword",
+      "source": "textures/silver_sword.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:slate",
+      "source": "textures/slate.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:small_grass",
+      "source": "textures/small_grass.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:snow",
+      "source": "textures/snow.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:snow_crust",
+      "source": "textures/snow_crust.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:snow_grass",
+      "source": "textures/snow_grass.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:sporecap_fungus",
+      "source": "textures/sporecap_fungus.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "floor_cutout"
+    },
+    {
+      "id": "wildforge:stalactite",
+      "source": "textures/stalactite.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "directional_formation"
+    },
+    {
+      "id": "wildforge:stalagmite",
+      "source": "textures/stalagmite.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "directional_formation"
+    },
+    {
+      "id": "wildforge:stick",
+      "source": "textures/stick.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:stone",
+      "source": "textures/stone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:stone_axe",
+      "source": "textures/stone_axe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:stone_hoe",
+      "source": "textures/stone_hoe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:stone_pickaxe",
+      "source": "textures/stone_pickaxe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:stone_shovel",
+      "source": "textures/stone_shovel.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:stone_sword",
+      "source": "textures/stone_sword.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:submerged_scree",
+      "source": "textures/submerged_scree.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:sulfur_rock",
+      "source": "textures/sulfur_rock.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:tall_flower_delphinium",
+      "source": "textures/tall_flower_delphinium.png",
+      "width": 32,
+      "height": 64,
+      "model_hint": "double_height_cross"
+    },
+    {
+      "id": "wildforge:tall_flower_gladiolus",
+      "source": "textures/tall_flower_gladiolus.png",
+      "width": 32,
+      "height": 64,
+      "model_hint": "double_height_cross"
+    },
+    {
+      "id": "wildforge:tall_flower_hollyhock",
+      "source": "textures/tall_flower_hollyhock.png",
+      "width": 32,
+      "height": 64,
+      "model_hint": "double_height_cross"
+    },
+    {
+      "id": "wildforge:tall_flower_lilac",
+      "source": "textures/tall_flower_lilac.png",
+      "width": 32,
+      "height": 64,
+      "model_hint": "double_height_cross"
+    },
+    {
+      "id": "wildforge:tall_flower_lupine",
+      "source": "textures/tall_flower_lupine.png",
+      "width": 32,
+      "height": 64,
+      "model_hint": "double_height_cross"
+    },
+    {
+      "id": "wildforge:tall_grass",
+      "source": "textures/tall_grass.png",
+      "width": 32,
+      "height": 64,
+      "model_hint": "double_height_cross"
+    },
+    {
+      "id": "wildforge:thermal_vent",
+      "source": "textures/thermal_vent.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:tundra_grass",
+      "source": "textures/tundra_grass.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:tundra_lichen",
+      "source": "textures/tundra_lichen.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:volcanic_ash",
+      "source": "textures/volcanic_ash.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:water",
+      "source": "textures/water.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "fluid"
+    },
+    {
+      "id": "wildforge:waterworn_stone",
+      "source": "textures/waterworn_stone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:weathered_limestone",
+      "source": "textures/weathered_limestone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:wet_mud",
+      "source": "textures/wet_mud.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:wet_rock",
+      "source": "textures/wet_rock.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:wet_sand",
+      "source": "textures/wet_sand.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:wet_slate",
+      "source": "textures/wet_slate.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:wild_wheat",
+      "source": "textures/wild_wheat.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cross"
+    },
+    {
+      "id": "wildforge:willow_leaves",
+      "source": "textures/willow_leaves.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cutout_cube"
+    },
+    {
+      "id": "wildforge:willow_log_side",
+      "source": "textures/willow_log_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:willow_log_top",
+      "source": "textures/willow_log_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:willow_planks",
+      "source": "textures/willow_planks.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:wooden_axe",
+      "source": "textures/wooden_axe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:wooden_hoe",
+      "source": "textures/wooden_hoe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:wooden_pickaxe",
+      "source": "textures/wooden_pickaxe.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:wooden_shovel",
+      "source": "textures/wooden_shovel.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    },
+    {
+      "id": "wildforge:wooden_sword",
+      "source": "textures/wooden_sword.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "flat_item"
+    }
+  ]
+}

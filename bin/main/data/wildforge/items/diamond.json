@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:diamond",
+  "numeric_id": 109,
+  "max_stack_size": 64,
+  "texture": "wildforge:diamond",
+  "model": "wildforge:item/generated"
+}

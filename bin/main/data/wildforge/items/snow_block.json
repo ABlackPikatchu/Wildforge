@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:snow_block",
+  "numeric_id": 21,
+  "max_stack_size": 64,
+  "places_block": "wildforge:snow",
+  "model": "wildforge:item/block"
+}

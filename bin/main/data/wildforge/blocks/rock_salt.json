@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:rock_salt",
+  "numeric_id": 79,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:rock_salt",
+    "side": "wildforge:rock_salt",
+    "bottom": "wildforge:rock_salt"
+  },
+  "drops": [
+    {
+      "item": "wildforge:rock_salt_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:rock_salt_block"
+}

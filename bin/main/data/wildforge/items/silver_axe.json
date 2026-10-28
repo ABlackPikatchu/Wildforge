@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:silver_axe",
+  "numeric_id": 139,
+  "max_stack_size": 64,
+  "texture": "wildforge:silver_axe",
+  "model": "wildforge:item/generated"
+}

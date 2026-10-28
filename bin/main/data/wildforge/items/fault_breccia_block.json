@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:fault_breccia_block",
+  "numeric_id": 63,
+  "max_stack_size": 64,
+  "places_block": "wildforge:fault_breccia",
+  "model": "wildforge:item/block"
+}

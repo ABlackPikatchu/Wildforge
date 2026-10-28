@@ -1,0 +1,14 @@
+{
+  "id": "wildforge:bedrock",
+  "numeric_id": 6,
+  "solid": true,
+  "breakable": false,
+  "hardness": 999.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:bedrock",
+    "side": "wildforge:bedrock",
+    "bottom": "wildforge:bedrock"
+  },
+  "drops": []
+}

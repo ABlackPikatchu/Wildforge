@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:cobblestone_block",
+  "numeric_id": 19,
+  "max_stack_size": 64,
+  "places_block": "wildforge:cobblestone",
+  "model": "wildforge:item/block"
+}

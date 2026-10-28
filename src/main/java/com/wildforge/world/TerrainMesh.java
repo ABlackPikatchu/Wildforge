@@ -11,7 +11,7 @@ import java.util.concurrent.*;
 
 /** Bounded, player-centered chunk cache with persistent sparse edits and v1 imports. */
 public final class TerrainMesh {
-    public static final int CHUNK_SIZE=16, WORLD_HEIGHT=256;
+    public static final int CHUNK_SIZE=16, WORLD_HEIGHT=256, SECTION_HEIGHT=16, SECTION_COUNT=WORLD_HEIGHT/SECTION_HEIGHT;
     // Legacy constants are retained only for old save import and source compatibility.
     public static final int WORLD_CHUNKS=4, WORLD_SIZE=64;
     public static final int FLOATS_PER_VERTEX=7;
@@ -29,6 +29,21 @@ public final class TerrainMesh {
     // Worker builds raw chunk data only. OpenGL-facing meshes remain on the main thread.
     private ExecutorService generationWorker = newGenerationWorker();
     private final HashMap<Long, Future<Chunk>> pending = new HashMap<>();
+    // Mesh jobs never read live chunk maps or mutate meshes; only the game thread installs results.
+    private ExecutorService meshWorker = newMeshWorker();
+    private final LinkedHashSet<Long> dirtyMeshes = new LinkedHashSet<>();
+    private final HashMap<Long, MeshJob> meshJobs = new HashMap<>();
+    private final HashMap<Long, Integer> meshEpochs = new HashMap<>();
+    private int meshGeneration = 0;
+    private static ExecutorService newMeshWorker() {
+        return Executors.newFixedThreadPool(2, r -> {
+            Thread t = new Thread(r, "Wildforge-Section-Mesher");
+            t.setDaemon(true);
+            return t;
+        });
+    }
+    private record MeshJob(Future<float[][]> future, int epoch, int generation) {}
+    private record MeshSnapshot(int cx, int cz, byte[] blocks, byte[] west, byte[] east, byte[] north, byte[] south, WorldGenerator generator) {}
     private static ExecutorService newGenerationWorker() {
         return Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "Wildforge-Chunk-Generation");
@@ -40,6 +55,12 @@ public final class TerrainMesh {
         generationWorker.shutdownNow();
         pending.clear();
         generationWorker = newGenerationWorker();
+        meshWorker.shutdownNow();
+        meshWorker = newMeshWorker();
+        meshJobs.clear();
+        dirtyMeshes.clear();
+        meshEpochs.clear();
+        meshGeneration++;
     }
     private void generateSpawnChunk(int x, int z) {
         int cx = Math.floorDiv(x, CHUNK_SIZE), cz = Math.floorDiv(z, CHUNK_SIZE);
@@ -47,11 +68,12 @@ public final class TerrainMesh {
         applySavedEdits(c);
         chunks.put(key(cx, cz), c);
         rebuild(c);
+        c.compact();
         version++;
     }
     private void applySavedEdits(Chunk c) {
         HashMap<Integer, Byte> changes = edits.get(key(c.cx, c.cz));
-        if (changes != null) for (var entry : changes.entrySet()) c.blocks[entry.getKey()] = entry.getValue();
+        if (changes != null) for (var entry : changes.entrySet()) c.set(entry.getKey(), entry.getValue());
     }
     public static final class RayHit {
         public final int x,y,z,placeX,placeY,placeZ;
@@ -62,10 +84,17 @@ public final class TerrainMesh {
     }
     private static final class Chunk {
         final int cx,cz;
-        final byte[] blocks=new byte[CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT];
-        float[] vertices=new float[0];
-        int meshRevision=0;
-        Chunk(int cx,int cz){this.cx=cx;this.cz=cz;}
+        byte[] blocks=new byte[CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT];
+        PaletteColumn compact;
+        byte get(int i) { return compact == null ? blocks[i] : compact.get(i); }
+        void set(int i,byte b) { if(compact == null) blocks[i]=b; else compact.set(i,b); }
+        byte[] copyBlocks() { return compact == null ? blocks.clone() : compact.copyRaw(); }
+        void compact() { if(compact == null) {compact = new PaletteColumn(blocks); blocks=null;} }
+        float[] lodVertices;
+        int lodRevision=0;
+        final float[][] sectionVertices=new float[SECTION_COUNT][];
+        final int[] sectionRevision=new int[SECTION_COUNT];
+        Chunk(int cx,int cz){this.cx=cx;this.cz=cz;for(int i=0;i<SECTION_COUNT;i++)sectionVertices[i]=new float[0];}
     }
     private static final class FloatArrayBuilder {
         private float[] values=new float[1024]; private int size;
@@ -86,6 +115,15 @@ public final class TerrainMesh {
     public int renderDistance(){return renderDistance;}
     public int simulationDistance(){return simulationDistance;}
     public int loadedChunkCount(){return chunks.size();}
+    /** Approximate encoded block payload, excluding object overhead and CPU meshes. */
+    public long residentBlockPayloadBytes(){long bytes=0;for(Chunk c:chunks.values())bytes+=c.compact==null?65536:c.compact.storedBytes();return bytes;}
+    /** Count of outstanding terrain generation jobs; queried on the game thread. */
+    public int pendingGenerationCount(){return pending.size();}
+    /** True only when a terrain column is actually resident in memory. */
+    public boolean isColumnLoaded(int worldX,int worldZ){
+        return chunks.containsKey(key(Math.floorDiv(worldX,CHUNK_SIZE),Math.floorDiv(worldZ,CHUNK_SIZE)));
+    }
+
     public long seed(){return seed;}
     public void resetWorld(){cancelGeneration();edits.clear();seed=DEFAULT_SEED;initializeGenerator();chunks.clear();streamed=false;generateSpawnChunk(16,27);version++;}
     /** Nonblocking player-centered streaming: one worker produces raw columns, main thread owns meshes. */
@@ -99,6 +137,11 @@ public final class TerrainMesh {
             Chunk c=it.next().getValue();
             if(Math.abs(c.cx-cx)>renderDistance || Math.abs(c.cz-cz)>renderDistance){
                 it.remove();changed=true;
+                long removed=key(c.cx,c.cz);
+                dirtyMeshes.remove(removed);
+                MeshJob old=meshJobs.remove(removed);
+                if(old!=null)old.future().cancel(true);
+                meshEpochs.remove(removed);
             }
         }
         // Discard out-of-range requests. Cancellation is best-effort; late results are ignored.
@@ -121,10 +164,11 @@ public final class TerrainMesh {
                 Chunk c=future.get();
                 if(chunks.containsKey(entry.getKey()))continue;
                 applySavedEdits(c);
+                c.compact();
                 chunks.put(entry.getKey(),c);
-                rebuild(c);
-                rebuildNeighbor(c.cx-1,c.cz);rebuildNeighbor(c.cx+1,c.cz);
-                rebuildNeighbor(c.cx,c.cz-1);rebuildNeighbor(c.cx,c.cz+1);
+                markMeshDirty(c.cx,c.cz);
+                markMeshDirty(c.cx-1,c.cz);markMeshDirty(c.cx+1,c.cz);
+                markMeshDirty(c.cx,c.cz-1);markMeshDirty(c.cx,c.cz+1);
                 changed=true;
             } catch(CancellationException ignored) {
             } catch(ExecutionException ex) {
@@ -148,9 +192,78 @@ public final class TerrainMesh {
                 }
             }
         }
+        // Install no more than one completed column (16 sections) per frame.
+        int installed = 0;
+        var meshIter = meshJobs.entrySet().iterator();
+        while (meshIter.hasNext() && installed < 1) {
+            var entry = meshIter.next();
+            MeshJob job = entry.getValue();
+            if (!job.future().isDone()) continue;
+            meshIter.remove();
+            try {
+                float[][] built = job.future().get();
+                Chunk target = chunks.get(entry.getKey());
+                if (target == null || job.generation() != meshGeneration
+                    || job.epoch() != meshEpochs.getOrDefault(entry.getKey(), 0)) continue;
+                for (int section=0; section<SECTION_COUNT; section++) {
+                    target.sectionVertices[section] = built[section];
+                    target.sectionRevision[section]++;
+                }
+                changed = true;
+                installed++;
+            } catch (CancellationException ignored) {
+            } catch (ExecutionException e) {
+                throw new IllegalStateException("Asynchronous section meshing failed", e.getCause());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        // Snapshots are captured on the game thread. Queue is bounded to prevent memory spikes.
+        while (meshJobs.size() < 2 && !dirtyMeshes.isEmpty()) {
+            long bestKey = 0;
+            long bestDistance = Long.MAX_VALUE;
+            for (long candidate : dirtyMeshes) {
+                int mx=(int)(candidate>>32),mz=(int)candidate;
+                long d=(long)(mx-cx)*(mx-cx)+(long)(mz-cz)*(mz-cz);
+                if (d < bestDistance) {bestDistance=d;bestKey=candidate;}
+            }
+            dirtyMeshes.remove(bestKey);
+            Chunk target = chunks.get(bestKey);
+            if (target == null || meshJobs.containsKey(bestKey)) continue;
+            MeshSnapshot snapshot = snapshot(target);
+            int epoch=meshEpochs.getOrDefault(bestKey,0);
+            int generation=meshGeneration;
+            meshJobs.put(bestKey,new MeshJob(meshWorker.submit(() -> buildColumnMesh(snapshot)),epoch,generation));
+        }
         if(changed)version++;
     }
+    private void markMeshDirty(int x,int z) {
+        long k=key(x,z);
+        if (!chunks.containsKey(k)) return;
+        meshEpochs.put(k,meshEpochs.getOrDefault(k,0)+1);
+        MeshJob previous=meshJobs.remove(k);
+        if(previous!=null)previous.future().cancel(true);
+        dirtyMeshes.add(k);
+        Chunk lodChunk=chunks.get(k);
+        if(lodChunk!=null){lodChunk.lodVertices=null;lodChunk.lodRevision++;}
+    }
+    private MeshSnapshot snapshot(Chunk c) {
+        Chunk w=chunks.get(key(c.cx-1,c.cz)), e=chunks.get(key(c.cx+1,c.cz));
+        Chunk n=chunks.get(key(c.cx,c.cz-1)), so=chunks.get(key(c.cx,c.cz+1));
+        return new MeshSnapshot(c.cx,c.cz,c.copyBlocks(),w==null?null:w.copyBlocks(),
+            e==null?null:e.copyBlocks(),n==null?null:n.copyBlocks(),so==null?null:so.copyBlocks(),generator);
+    }
+    private float[][] buildColumnMesh(MeshSnapshot snap) {
+        float[][] built=new float[SECTION_COUNT][];
+        for(int i=0;i<SECTION_COUNT;i++) {
+            if(Thread.currentThread().isInterrupted())throw new CancellationException();
+            built[i]=buildSectionMesh(snap,i);
+        }
+        return built;
+    }
+    public int pendingMeshCount() {return meshJobs.size()+dirtyMeshes.size();}
     private void rebuildNeighbor(int x,int z){Chunk c=chunks.get(key(x,z));if(c!=null)rebuild(c);}
+    private void rebuildNeighborSection(int x,int z,int section){Chunk c=chunks.get(key(x,z));if(c!=null)rebuildSection(c,section);}
     private Chunk generate(int cx,int cz){
         Chunk c=new Chunk(cx,cz);
         for(int lx=0;lx<CHUNK_SIZE;lx++)for(int lz=0;lz<CHUNK_SIZE;lz++){
@@ -204,7 +317,7 @@ public final class TerrainMesh {
     private void putFeature(Chunk c,int x,int y,int z,BlockType type,int minX,int minZ) {
         if(x<minX||x>=minX+CHUNK_SIZE||z<minZ||z>=minZ+CHUNK_SIZE||y<1||y>=WORLD_HEIGHT-1)return;
         int idx=index(x-minX,y,z-minZ);
-        if(c.blocks[idx]==BlockType.AIR.id)c.blocks[idx]=type.id;
+        if(c.get(idx)==BlockType.AIR.id)c.set(idx,type.id);
     }
     private void placeTree(Chunk c,WorldGenerator.Tree t,int minX,int minZ) {
         int x=t.x(),z=t.z();
@@ -294,21 +407,22 @@ public final class TerrainMesh {
         if(y<0||y>=WORLD_HEIGHT)return BlockType.AIR;
         Chunk c=chunks.get(key(Math.floorDiv(x,CHUNK_SIZE),Math.floorDiv(z,CHUNK_SIZE)));
         if(c==null)return BlockType.AIR;
-        return BlockType.fromId(c.blocks[index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE))]);
+        return BlockType.fromId(c.get(index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE))));
     }
     public boolean setBlock(int x,int y,int z,BlockType type){
         if(type==null||y<0||y>=WORLD_HEIGHT)return false;
         int cx=Math.floorDiv(x,CHUNK_SIZE),cz=Math.floorDiv(z,CHUNK_SIZE);
         Chunk c=chunks.get(key(cx,cz));if(c==null)return false;
         int i=index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE));
-        if(c.blocks[i]==type.id)return false;
-        c.blocks[i]=type.id;
+        if(c.get(i)==type.id)return false;
+        c.set(i,type.id);
         edits.computeIfAbsent(key(cx,cz),k->new HashMap<>()).put(i,type.id);
-        rebuild(c);
-        if(Math.floorMod(x,CHUNK_SIZE)==0)rebuildNeighbor(cx-1,cz);
-        if(Math.floorMod(x,CHUNK_SIZE)==CHUNK_SIZE-1)rebuildNeighbor(cx+1,cz);
-        if(Math.floorMod(z,CHUNK_SIZE)==0)rebuildNeighbor(cx,cz-1);
-        if(Math.floorMod(z,CHUNK_SIZE)==CHUNK_SIZE-1)rebuildNeighbor(cx,cz+1);
+        int section=y/SECTION_HEIGHT;
+        markMeshDirty(cx,cz);
+        if(Math.floorMod(x,CHUNK_SIZE)==0)markMeshDirty(cx-1,cz);
+        if(Math.floorMod(x,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx+1,cz);
+        if(Math.floorMod(z,CHUNK_SIZE)==0)markMeshDirty(cx,cz-1);
+        if(Math.floorMod(z,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx,cz+1);
         version++;return true;
     }
     public float getHeightAt(float x,float z){
@@ -318,10 +432,96 @@ public final class TerrainMesh {
         return Math.max(1,Math.min(WORLD_HEIGHT-2,generator.surface(bx,bz).surfaceY()+1));
     }
     /** Read-only mesh descriptions; mesh arrays are replaced, never mutated. */
-    public record ChunkMesh(int x, int z, int revision, float[] vertices) {}
+    public record ChunkMesh(int x, int section, int z, int revision, float[] vertices) {}
+    /**
+     * Surface-only distant LOD. Each 2x2 patch produces one top tile plus exposed
+     * outer faces. Full-resolution blocks remain stored for edits and collision.
+     * This intentionally omits underground cave walls and decorative foliage.
+     */
+    private float[] buildDistantMesh(Chunk c) {
+        final int step=2, tiles=CHUNK_SIZE/step;
+        final int[][] top=new int[tiles][tiles], layer=new int[tiles][tiles];
+        for(int tx=0;tx<tiles;tx++)for(int tz=0;tz<tiles;tz++){
+            int[] heights=new int[step*step];
+            int count=0;
+            int chosenX=tx*step,chosenZ=tz*step;
+            for(int dx=0;dx<step;dx++)for(int dz=0;dz<step;dz++){
+                int lx=tx*step+dx,lz=tz*step+dz;
+                int base=index(lx,0,lz),h=-1;
+                for(int y=WORLD_HEIGHT-1;y>=0;y--){
+                    byte id=c.get(base+y);
+                    if(id!=BlockType.AIR.id){h=y;break;}
+                }
+                heights[count++]=h;
+                if(dx==0&&dz==0){chosenX=lx;chosenZ=lz;}
+            }
+            Arrays.sort(heights);
+            int h=heights[heights.length/2];
+            top[tx][tz]=h;
+            byte block=h<0?BlockType.AIR.id:c.get(index(chosenX,Math.min(h,WORLD_HEIGHT-1),chosenZ));
+            // Use the actual highest block on the sampled column for visible material.
+            if(h>=0){
+                for(int y=WORLD_HEIGHT-1;y>=0;y--){
+                    byte candidate=c.get(index(chosenX,y,chosenZ));
+                    if(candidate!=BlockType.AIR.id){block=candidate;break;}
+                }
+            }
+            layer[tx][tz]=BlockType.fromId(block).getTopTextureLayer();
+        }
+        FloatArrayBuilder out=new FloatArrayBuilder();
+        int ox=c.cx*CHUNK_SIZE,oz=c.cz*CHUNK_SIZE;
+        for(int tx=0;tx<tiles;tx++)for(int tz=0;tz<tiles;tz++){
+            int h=top[tx][tz]; if(h<0)continue;
+            int x=ox+tx*step,z=oz+tz*step;
+            float y=h+1f;
+            int tex=layer[tx][tz];
+            face(out,x,y,z+step,x+step,y,z+step,x+step,y,z,x,y,z,tex,1f);
+            // Expose short side bands where neighboring LOD tiles drop in height.
+            int south=tz+1<tiles?top[tx][tz+1]:h-1;
+            int north=tz>0?top[tx][tz-1]:h-1;
+            int east=tx+1<tiles?top[tx+1][tz]:h-1;
+            int west=tx>0?top[tx-1][tz]:h-1;
+            int sideTex=tex;
+            if(h>south)face(out,x,south+1,z+step,x+step,south+1,z+step,x+step,y,z+step,x,y,z+step,sideTex,.85f);
+            if(h>north)face(out,x+step,north+1,z,x,north+1,z,x,y,z,x+step,y,z,sideTex,.75f);
+            if(h>east)face(out,x+step,east+1,z+step,x+step,east+1,z,x+step,y,z,x+step,y,z+step,sideTex,.80f);
+            if(h>west)face(out,x,west+1,z,x,west+1,z+step,x,y,z+step,x,y,z,sideTex,.80f);
+        }
+        return out.toArray();
+    }
+
+    /** Choose one representation per column; section=-1 identifies a distant mesh. */
+    private boolean lodBuildPending=false;
+    public boolean lodBuildPending(){return lodBuildPending;}
+    public java.util.List<ChunkMesh> chunkMeshesForView(int cameraChunkX,int cameraChunkZ,int detailRadius){
+        lodBuildPending=false;
+        int newLodBudget=2;
+        java.util.ArrayList<ChunkMesh> result=new java.util.ArrayList<>(chunks.size()*4);
+        for(Chunk c:chunks.values()){
+            int radius=Math.max(Math.abs(c.cx-cameraChunkX),Math.abs(c.cz-cameraChunkZ));
+            if(radius>detailRadius){
+                if(c.lodVertices==null){
+                    if(newLodBudget>0){c.lodVertices=buildDistantMesh(c);newLodBudget--;}
+                    else {lodBuildPending=true;continue;}
+                }
+                if(c.lodVertices.length>0)result.add(new ChunkMesh(c.cx,-1,c.cz,c.lodRevision,c.lodVertices));
+            }else{
+                for(int section=0;section<SECTION_COUNT;section++)
+                    if(c.sectionVertices[section].length>0)
+                        result.add(new ChunkMesh(c.cx,section,c.cz,c.sectionRevision[section],c.sectionVertices[section]));
+            }
+        }
+        result.sort(java.util.Comparator.comparingLong(m->{
+            long dx=m.x()-cameraChunkX,dz=m.z()-cameraChunkZ;
+            return dx*dx+dz*dz;
+        }));
+        return result;
+    }
+
     public java.util.List<ChunkMesh> chunkMeshes(){
-        java.util.ArrayList<ChunkMesh> result=new java.util.ArrayList<>(chunks.size());
-        for(Chunk c:chunks.values()) result.add(new ChunkMesh(c.cx,c.cz,c.meshRevision,c.vertices));
+        java.util.ArrayList<ChunkMesh> result=new java.util.ArrayList<>(chunks.size()*SECTION_COUNT);
+        for(Chunk c:chunks.values()) for(int section=0;section<SECTION_COUNT;section++)
+            if(c.sectionVertices[section].length>0)result.add(new ChunkMesh(c.cx,section,c.cz,c.sectionRevision[section],c.sectionVertices[section]));
         return result;
     }
     public void newWorld(long newSeed){
@@ -330,12 +530,12 @@ public final class TerrainMesh {
     }
     public int getVersion(){return version;}
     public float[] getVertices(){
-        int n=0;for(Chunk c:chunks.values())n+=c.vertices.length;
+        int n=0;for(Chunk c:chunks.values())for(float[] section:c.sectionVertices)n+=section.length;
         float[] all=new float[n];int offset=0;
-        for(Chunk c:chunks.values()){System.arraycopy(c.vertices,0,all,offset,c.vertices.length);offset+=c.vertices.length;}
+        for(Chunk c:chunks.values())for(float[] section:c.sectionVertices){System.arraycopy(section,0,all,offset,section.length);offset+=section.length;}
         return all;
     }
-    public int getVertexCount(){int n=0;for(Chunk c:chunks.values())n+=c.vertices.length/FLOATS_PER_VERTEX;return n;}
+    public int getVertexCount(){int n=0;for(Chunk c:chunks.values())for(float[] section:c.sectionVertices)n+=section.length/FLOATS_PER_VERTEX;return n;}
     /** v2 stores seed and all edits, independent of which chunks are loaded. */
     public void saveTo(Path path)throws IOException{
         Path p=path.toAbsolutePath();Files.createDirectories(p.getParent());Path temp=p.resolveSibling(p.getFileName()+".tmp");
@@ -384,42 +584,85 @@ public final class TerrainMesh {
         cancelGeneration();seed=newSeed;initializeGenerator();edits.clear();edits.putAll(incoming);
         chunks.clear();streamed=false;generateSpawnChunk(16,27);version++;
     }
-    private void rebuild(Chunk c){
+    /** Build only exposed faces. Chunk neighbors are resolved once per rebuild. */
+    private void rebuild(Chunk c){for(int section=0;section<SECTION_COUNT;section++)rebuildSection(c,section);}
+    private void rebuildSection(Chunk c,int section){
+        c.sectionVertices[section]=buildSectionMesh(snapshot(c),section);
+        c.sectionRevision[section]++;
+    }
+    private float[] buildSectionMesh(MeshSnapshot snap,int section){
         FloatArrayBuilder data=new FloatArrayBuilder();
-        for(int lx=0;lx<CHUNK_SIZE;lx++)for(int lz=0;lz<CHUNK_SIZE;lz++)for(int y=0;y<WORLD_HEIGHT;y++){
-            BlockType block=BlockType.fromId(c.blocks[index(lx,y,lz)]);
-            if(block==BlockType.AIR)continue;
-            int x=c.cx*CHUNK_SIZE+lx,z=c.cz*CHUNK_SIZE+lz;
-            if(getBlockAt(x,y,z+1)==BlockType.AIR)face(data,x,y,z+1,x+1,y,z+1,x+1,y+1,z+1,x,y+1,z+1,block.getSideTextureLayer(),.85f);
-            if(getBlockAt(x,y,z-1)==BlockType.AIR)face(data,x+1,y,z,x,y,z,x,y+1,z,x+1,y+1,z,block.getSideTextureLayer(),.75f);
-            if(getBlockAt(x+1,y,z)==BlockType.AIR)face(data,x+1,y,z+1,x+1,y,z,x+1,y+1,z,x+1,y+1,z+1,block.getSideTextureLayer(),.8f);
-            if(getBlockAt(x-1,y,z)==BlockType.AIR)face(data,x,y,z,x,y,z+1,x,y+1,z+1,x,y+1,z,block.getSideTextureLayer(),.8f);
-            if(getBlockAt(x,y+1,z)==BlockType.AIR)face(data,x,y+1,z+1,x+1,y+1,z+1,x+1,y+1,z,x,y+1,z,block.getTopTextureLayer(),1f);
-            if(getBlockAt(x,y-1,z)==BlockType.AIR)face(data,x,y,z,x+1,y,z,x+1,y,z+1,x,y,z+1,block.getBottomTextureLayer(),.55f);
+        final byte[] blocks=snap.blocks();
+        final byte[] westBlocks=snap.west();
+        final byte[] eastBlocks=snap.east();
+        final byte[] northBlocks=snap.north();
+        final byte[] southBlocks=snap.south();
+        final byte air=BlockType.AIR.id;
+        for(int lx=0;lx<CHUNK_SIZE;lx++)for(int lz=0;lz<CHUNK_SIZE;lz++){
+            int column=index(lx,0,lz);
+            int worldX=snap.cx()*CHUNK_SIZE+lx,worldZ=snap.cz()*CHUNK_SIZE+lz;
+            int northColumn=lz==0?index(lx,0,CHUNK_SIZE-1):index(lx,0,lz-1);
+            int southColumn=lz==CHUNK_SIZE-1?index(lx,0,0):index(lx,0,lz+1);
+            int westColumn=lx==0?index(CHUNK_SIZE-1,0,lz):index(lx-1,0,lz);
+            int eastColumn=lx==CHUNK_SIZE-1?index(0,0,lz):index(lx+1,0,lz);
+            byte[] northSource=lz==0?northBlocks:blocks;
+            byte[] southSource=lz==CHUNK_SIZE-1?southBlocks:blocks;
+            byte[] westSource=lx==0?westBlocks:blocks;
+            byte[] eastSource=lx==CHUNK_SIZE-1?eastBlocks:blocks;
+            for(int y=section*SECTION_HEIGHT;y<(section+1)*SECTION_HEIGHT;y++){
+                byte id=blocks[column+y];
+                if(id==air)continue;
+                boolean showNorth=northSource==null||northSource[northColumn+y]==air;
+                boolean showSouth=southSource==null||southSource[southColumn+y]==air;
+                boolean showWest=westSource==null||westSource[westColumn+y]==air;
+                boolean showEast=eastSource==null||eastSource[eastColumn+y]==air;
+                boolean showTop=y==WORLD_HEIGHT-1||blocks[column+y+1]==air;
+                boolean showBottom=y==0||blocks[column+y-1]==air;
+                if(!(showNorth||showSouth||showWest||showEast||showTop||showBottom))continue;
+                BlockType block=BlockType.fromId(id);
+                int x=worldX,z=worldZ;
+                if(showSouth)face(data,x,y,z+1,x+1,y,z+1,x+1,y+1,z+1,x,y+1,z+1,block.getSideTextureLayer(),.85f);
+                if(showNorth)face(data,x+1,y,z,x,y,z,x,y+1,z,x+1,y+1,z,block.getSideTextureLayer(),.75f);
+                if(showEast)face(data,x+1,y,z+1,x+1,y,z,x+1,y+1,z,x+1,y+1,z+1,block.getSideTextureLayer(),.8f);
+                if(showWest)face(data,x,y,z,x,y,z+1,x,y+1,z+1,x,y+1,z,block.getSideTextureLayer(),.8f);
+                if(showTop)face(data,x,y+1,z+1,x+1,y+1,z+1,x+1,y+1,z,x,y+1,z,block.getTopTextureLayer(),1f);
+                if(showBottom)face(data,x,y,z,x+1,y,z,x+1,y,z+1,x,y,z+1,block.getBottomTextureLayer(),.55f);
+            }
         }
-        appendFoliage(c, data);
-        c.vertices=data.toArray();
-        c.meshRevision++;
+        appendFoliage(snap,data,section);
+        return data.toArray();
+    }
+    private static BlockType snapshotBlockAt(MeshSnapshot snap,int x,int y,int z) {
+        if(y<0||y>=WORLD_HEIGHT)return BlockType.AIR;
+        int cx=Math.floorDiv(x,CHUNK_SIZE),cz=Math.floorDiv(z,CHUNK_SIZE);
+        byte[] source;
+        if(cx==snap.cx()&&cz==snap.cz())source=snap.blocks();
+        else if(cx==snap.cx()-1&&cz==snap.cz())source=snap.west();
+        else if(cx==snap.cx()+1&&cz==snap.cz())source=snap.east();
+        else if(cx==snap.cx()&&cz==snap.cz()-1)source=snap.north();
+        else if(cx==snap.cx()&&cz==snap.cz()+1)source=snap.south();
+        else return BlockType.AIR;
+        return source==null?BlockType.AIR:BlockType.fromId(source[index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE))]);
     }
     /** Visual-only alpha-cutout foliage: no block IDs, no collision, no save migration. */
-    private void appendFoliage(Chunk c, FloatArrayBuilder data) {
-        int minX=c.cx*CHUNK_SIZE, minZ=c.cz*CHUNK_SIZE;
+    private void appendFoliage(MeshSnapshot snap, FloatArrayBuilder data, int section) {
+        int minX=snap.cx()*CHUNK_SIZE, minZ=snap.cz()*CHUNK_SIZE;
         int maxX=minX+CHUNK_SIZE-1, maxZ=minZ+CHUNK_SIZE-1;
         // Scan neighboring anchor cells so crowns naturally cross chunk boundaries.
         int tc=WorldGenerator.TREE_CELL_SIZE;
         for(int tx=Math.floorDiv(minX-3,tc);tx<=Math.floorDiv(maxX+3,tc);tx++)
             for(int tz=Math.floorDiv(minZ-3,tc);tz<=Math.floorDiv(maxZ+3,tc);tz++) {
-                WorldGenerator.Tree t=generator.treeForCell(tx,tz);
+                WorldGenerator.Tree t=snap.generator().treeForCell(tx,tz);
                 if(t==null)continue;
-                int tip=generator.surface(t.x(),t.z()).surfaceY()+1+t.trunkHeight();
+                int tip=snap.generator().surface(t.x(),t.z()).surfaceY()+1+t.trunkHeight();
                 int layer=leafLayer(t.type());
                 for(int dy=-2;dy<=1;dy++) {
                     int radius=t.type()==WorldGenerator.TreeType.PINE ? (dy==1?0:dy==0?1:2) : (dy==1?1:2);
                     for(int dx=-radius;dx<=radius;dx++)for(int dz=-radius;dz<=radius;dz++) {
                         if(dx*dx+dz*dz>radius*radius+1 || (dx==0 && dz==0 && dy<=0))continue;
                         int x=t.x()+dx,z=t.z()+dz,y=tip+dy;
-                        if(x<minX||x>maxX||z<minZ||z>maxZ||y<1||y>=WORLD_HEIGHT)continue;
-                        if(getBlockAt(x,y,z)!=BlockType.AIR)continue;
+                        if(x<minX||x>maxX||z<minZ||z>maxZ||y<1||y>=WORLD_HEIGHT||y/SECTION_HEIGHT!=section)continue;
+                        if(snapshotBlockAt(snap,x,y,z)!=BlockType.AIR)continue;
                         leafCube(data,x,y,z,layer);
                     }
                 }
@@ -427,14 +670,14 @@ public final class TerrainMesh {
         int pc=WorldGenerator.PLANT_CELL_SIZE;
         for(int px=Math.floorDiv(minX,pc);px<=Math.floorDiv(maxX,pc);px++)
             for(int pz=Math.floorDiv(minZ,pc);pz<=Math.floorDiv(maxZ,pc);pz++) {
-                WorldGenerator.Plant p=generator.plantForCell(px,pz);
+                WorldGenerator.Plant p=snap.generator().plantForCell(px,pz);
                 if(p==null||p.x()<minX||p.x()>maxX||p.z()<minZ||p.z()>maxZ)continue;
                 int layer=plantLayer(p.species());
                 if(layer<0)continue;
-                int y=generator.surface(p.x(),p.z()).surfaceY()+1;
-                if(y<1||y>=WORLD_HEIGHT-2 || getBlockAt(p.x(),y,p.z())!=BlockType.AIR)continue;
+                int y=snap.generator().surface(p.x(),p.z()).surfaceY()+1;
+                if(y<1||y>=WORLD_HEIGHT-2 || y/SECTION_HEIGHT!=section || snapshotBlockAt(snap,p.x(),y,p.z())!=BlockType.AIR)continue;
                 // Never render floating plants when players have removed the ground.
-                if(getBlockAt(p.x(),y-1,p.z())==BlockType.AIR)continue;
+                if(snapshotBlockAt(snap,p.x(),y-1,p.z())==BlockType.AIR)continue;
                 crossPlant(data,p.x(),y,p.z(),layer,p.tall()?1.0f:0.78f);
             }
     }

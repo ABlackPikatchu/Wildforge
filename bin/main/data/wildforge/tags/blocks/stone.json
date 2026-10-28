@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:stone",
+    "wildforge:andesite",
+    "wildforge:basalt",
+    "wildforge:diorite",
+    "wildforge:gabbro",
+    "wildforge:cobblestone"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:magma_crust",
+  "numeric_id": 74,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:magma_crust",
+    "side": "wildforge:magma_crust",
+    "bottom": "wildforge:magma_crust"
+  },
+  "drops": [
+    {
+      "item": "wildforge:magma_crust_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:magma_crust_block"
+}

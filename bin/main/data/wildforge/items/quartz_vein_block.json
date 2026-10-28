@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:quartz_vein_block",
+  "numeric_id": 50,
+  "max_stack_size": 64,
+  "places_block": "wildforge:quartz_vein",
+  "model": "wildforge:item/block"
+}

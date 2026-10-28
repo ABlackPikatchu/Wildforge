@@ -1,0 +1,65 @@
+{
+  "id": "wildforge:emberleaf_woodland",
+  "name": "Emberleaf Woodland",
+  "map_color": "b58a43",
+  "criteria": {
+    "temperature": [
+      0.32,
+      0.78
+    ],
+    "rainfall": [
+      0.28,
+      0.77
+    ],
+    "height_above_sea": [
+      7,
+      66
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 11
+  },
+  "surface": {
+    "top": "autumn_leaf_litter",
+    "filler": "forest_loam"
+  },
+  "decorations": {
+    "tree_density": 0.68,
+    "plant_density": 0.65,
+    "max_tree_slope": 5,
+    "max_plant_slope": 5,
+    "trees": [
+      {
+        "id": "maple",
+        "weight": 9
+      },
+      {
+        "id": "oak",
+        "weight": 1
+      }
+    ],
+    "plants": [
+      {
+        "id": "small_grass",
+        "weight": 5
+      },
+      {
+        "id": "flower_goldenrod",
+        "weight": 3
+      },
+      {
+        "id": "fern",
+        "weight": 3
+      },
+      {
+        "id": "meadow_thistle",
+        "weight": 1
+      },
+      {
+        "id": "flower_foxglove",
+        "weight": 1
+      }
+    ]
+  }
+}

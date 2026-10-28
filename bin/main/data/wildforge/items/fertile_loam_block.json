@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:fertile_loam_block",
+  "numeric_id": 64,
+  "max_stack_size": 64,
+  "places_block": "wildforge:fertile_loam",
+  "model": "wildforge:item/block"
+}

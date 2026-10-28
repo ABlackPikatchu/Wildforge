@@ -43,6 +43,7 @@ public final class Main implements InputController.Callbacks {
     private int optionsPage;
     private boolean fovSliderDragging;
     private boolean renderDistanceSliderDragging;
+    private boolean debugOverlay;
     private boolean uiScaleSliderDragging;
     // Physical track is held constant while the entire UI changes size.
     private float[] uiScaleDragTrack;
@@ -216,6 +217,12 @@ public final class Main implements InputController.Callbacks {
 
     @Override
     public void onKey(long handle, int key, int scancode, int action, int mods) {
+        if (key == GLFW_KEY_F3 && action == GLFW_PRESS
+                && screenMode == HudRenderer.ScreenMode.PLAYING) {
+            debugOverlay = !debugOverlay;
+            renderer.setDebugOverlay(debugOverlay);
+            return;
+        }
         if(screenMode == HudRenderer.ScreenMode.WORLD_CREATE){
             if(action == GLFW_PRESS || action == GLFW_REPEAT){
                 if(key==GLFW_KEY_BACKSPACE){StringBuilder entry=editingWorldName?worldNameEntry:seedEntry;if(entry.length()>0){entry.deleteCharAt(entry.length()-1);updateSeedText();}}
@@ -527,7 +534,7 @@ public final class Main implements InputController.Callbacks {
                     persistSettings();
                 }
                 case RENDER_DISTANCE -> {
-                    int next = settings.renderDistance() >= 16 ? 2 : settings.renderDistance() + 1;
+                    int next = settings.renderDistance() >= 24 ? 2 : settings.renderDistance() + 1;
                     settings.setRenderDistance(next);
                     terrain.setDistances(settings.renderDistance(), settings.simulationDistance());
                     persistSettings();
@@ -997,6 +1004,10 @@ public final class Main implements InputController.Callbacks {
             glfwSwapBuffers(window);
             int latestFps = frameTiming.recordFrame(System.nanoTime());
             if (latestFps >= 0) renderer.setMeasuredFps(latestFps);
+            if (debugOverlay && terrain != null) {
+                renderer.setDebugStreaming(terrain.loadedChunkCount(),
+                        terrain.pendingGenerationCount(), terrain.renderDistance());
+            }
             FrameTiming.limitFrameRate(frameStartNanos, settings.fpsLimit());
 
             if(launchSplashFrames>0){

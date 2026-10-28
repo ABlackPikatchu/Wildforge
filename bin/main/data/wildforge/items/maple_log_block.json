@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:maple_log_block",
+  "numeric_id": 98,
+  "max_stack_size": 64,
+  "places_block": "wildforge:maple_log",
+  "model": "wildforge:item/block"
+}

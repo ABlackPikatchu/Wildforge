@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:cypress_planks_block",
+  "numeric_id": 103,
+  "max_stack_size": 64,
+  "places_block": "wildforge:cypress_planks",
+  "model": "wildforge:item/block"
+}

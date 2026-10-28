@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:gravel_block",
+  "numeric_id": 16,
+  "max_stack_size": 64,
+  "places_block": "wildforge:gravel",
+  "model": "wildforge:item/block"
+}

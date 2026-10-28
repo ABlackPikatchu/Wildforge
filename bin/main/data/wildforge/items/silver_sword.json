@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:silver_sword",
+  "numeric_id": 143,
+  "max_stack_size": 64,
+  "texture": "wildforge:silver_sword",
+  "model": "wildforge:item/generated"
+}

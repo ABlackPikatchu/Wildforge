@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:wooden_shovel",
+  "numeric_id": 122,
+  "max_stack_size": 64,
+  "texture": "wildforge:wooden_shovel",
+  "model": "wildforge:item/generated"
+}

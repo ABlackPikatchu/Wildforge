@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:chalk_block",
+  "numeric_id": 33,
+  "max_stack_size": 64,
+  "places_block": "wildforge:chalk",
+  "model": "wildforge:item/block"
+}

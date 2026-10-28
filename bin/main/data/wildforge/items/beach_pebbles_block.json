@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:beach_pebbles_block",
+  "numeric_id": 54,
+  "max_stack_size": 64,
+  "places_block": "wildforge:beach_pebbles",
+  "model": "wildforge:item/block"
+}

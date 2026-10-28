@@ -1,0 +1,60 @@
+{
+  "id": "wildforge:saltveil_chambers",
+  "name": "Saltveil Chambers",
+  "depth_fraction": [
+    0.13,
+    0.53
+  ],
+  "rarity": "rare",
+  "host_rocks": [
+    "gypsum",
+    "sandstone",
+    "evaporite deposits"
+  ],
+  "placement": "Arid sedimentary basins, deserts and former dried lakebeds only; not below ordinary granite mountains",
+  "geometry": "Dry rounded chambers with short side pockets, white crystalline crusts and compact passage networks",
+  "description": "Pale salt-and-gypsum caverns where evaporite beds have dissolved or recrystallized into fragile translucent shapes",
+  "reuse_existing_textures": [
+    "gypsum",
+    "sandstone",
+    "chalk",
+    "sandstone_rubble"
+  ],
+  "proposed_new_textures": [
+    "rock_salt",
+    "salt_crust",
+    "selenite_cluster"
+  ],
+  "features": [
+    "salt crusts",
+    "fragile mineral columns",
+    "dry basin deposits"
+  ],
+  "resources": [
+    "salt",
+    "gypsum",
+    "selenite"
+  ],
+  "hazards": [
+    "brittle ceiling sections and scarce water"
+  ],
+  "transitions": [
+    "coalshade_galleries",
+    "underflow_channels"
+  ],
+  "new_textures": [
+    "textures/rock_salt.png",
+    "textures/salt_crust.png",
+    "textures/selenite_cluster.png"
+  ],
+  "suggested_weight_relative": 5,
+  "typical_chamber_radius_blocks": [
+    5,
+    12
+  ],
+  "suggested_moisture_preference": 0.14,
+  "suggested_water_proximity_preference": 0.14,
+  "hard_placement_rule": "evaporites in dry basins only",
+  "note": "These are region-selection design weights, not probabilities; normalize only after hard geological/depth eligibility constraints.",
+  "selection_rule": "EVAPORITE"
+}

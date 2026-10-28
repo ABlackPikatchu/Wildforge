@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:gold_axe",
+  "numeric_id": 134,
+  "max_stack_size": 64,
+  "texture": "wildforge:gold_axe",
+  "model": "wildforge:item/generated"
+}

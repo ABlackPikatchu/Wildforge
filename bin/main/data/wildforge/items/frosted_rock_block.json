@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:frosted_rock_block",
+  "numeric_id": 68,
+  "max_stack_size": 64,
+  "places_block": "wildforge:frosted_rock",
+  "model": "wildforge:item/block"
+}

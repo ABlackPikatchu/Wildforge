@@ -1,0 +1,73 @@
+{
+  "id": "wildforge:sunmeadow_plains",
+  "name": "Sunmeadow Plains",
+  "map_color": "a9bc65",
+  "criteria": {
+    "temperature": [
+      0.0,
+      1.0
+    ],
+    "rainfall": [
+      0.0,
+      1.0
+    ],
+    "height_above_sea": [
+      -160,
+      190
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 1
+  },
+  "surface": {
+    "top": "grass_top",
+    "filler": "dirt"
+  },
+  "decorations": {
+    "tree_density": 0.09,
+    "plant_density": 0.74,
+    "max_tree_slope": 3,
+    "max_plant_slope": 4,
+    "trees": [
+      {
+        "id": "oak",
+        "weight": 2
+      },
+      {
+        "id": "maple",
+        "weight": 1
+      }
+    ],
+    "plants": [
+      {
+        "id": "small_grass",
+        "weight": 9
+      },
+      {
+        "id": "tall_grass",
+        "weight": 5
+      },
+      {
+        "id": "clover",
+        "weight": 3
+      },
+      {
+        "id": "flower_daisy",
+        "weight": 3
+      },
+      {
+        "id": "flower_cornflower",
+        "weight": 2
+      },
+      {
+        "id": "flower_lavender",
+        "weight": 2
+      },
+      {
+        "id": "wild_wheat",
+        "weight": 2
+      }
+    ]
+  }
+}

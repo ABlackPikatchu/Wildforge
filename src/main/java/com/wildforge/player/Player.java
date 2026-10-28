@@ -886,6 +886,9 @@ private boolean canOccupy(
 
     for (int bx = minX; bx <= maxX; bx++) {
         for (int bz = minZ; bz <= maxZ; bz++) {
+            // Unloaded columns are not empty terrain. Prevent walking/falling
+            // through the streaming frontier until collision data is ready.
+            if (!terrain.isColumnLoaded(bx, bz)) return false;
             for (int by = minY; by <= maxY; by++) {
                 if (terrain.getBlockAt(bx, by, bz).isSolid()) {
                     return false;

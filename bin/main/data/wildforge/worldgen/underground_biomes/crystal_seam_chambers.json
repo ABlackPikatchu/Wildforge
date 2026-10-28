@@ -1,0 +1,60 @@
+{
+  "id": "wildforge:crystal_seam_chambers",
+  "name": "Crystal Seam Chambers",
+  "depth_fraction": [
+    0.45,
+    0.96
+  ],
+  "rarity": "rare",
+  "host_rocks": [
+    "granite",
+    "gabbro",
+    "metamorphic host stone"
+  ],
+  "placement": "Small mineralized pockets near deep intrusive rock and old fault systems; not every deep cave",
+  "geometry": "Small geode-like pockets and irregular branching vein caverns, never huge uniform crystal halls",
+  "description": "Vein-cut pockets reveal pale quartz, translucent fluorite and other naturally colored crystalline minerals set in rugged host rock",
+  "reuse_existing_textures": [
+    "calcite",
+    "granite",
+    "gabbro",
+    "diorite"
+  ],
+  "proposed_new_textures": [
+    "quartz_cluster",
+    "fluorite_cluster",
+    "mineral_matrix"
+  ],
+  "features": [
+    "crystal veins",
+    "small cavity clusters",
+    "mineral-lined fissures"
+  ],
+  "resources": [
+    "quartz",
+    "fluorite",
+    "rare diamond-bearing country rock nearby, not guaranteed"
+  ],
+  "hazards": [
+    "sharp drops and fragile crystal ledges"
+  ],
+  "transitions": [
+    "ironfault_chasms",
+    "stillwater_abyss"
+  ],
+  "new_textures": [
+    "textures/quartz_cluster.png",
+    "textures/fluorite_cluster.png",
+    "textures/mineral_matrix.png"
+  ],
+  "suggested_weight_relative": 4,
+  "typical_chamber_radius_blocks": [
+    3,
+    9
+  ],
+  "suggested_moisture_preference": 0.45,
+  "suggested_water_proximity_preference": 0.4,
+  "hard_placement_rule": "small vein-adjacent pockets",
+  "note": "These are region-selection design weights, not probabilities; normalize only after hard geological/depth eligibility constraints.",
+  "selection_rule": "MINERAL_VEIN"
+}

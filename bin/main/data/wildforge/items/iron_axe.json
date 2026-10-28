@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:iron_axe",
+  "numeric_id": 129,
+  "max_stack_size": 64,
+  "texture": "wildforge:iron_axe",
+  "model": "wildforge:item/generated"
+}

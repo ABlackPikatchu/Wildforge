@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:pine_planks",
+  "numeric_id": 96,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:pine_planks",
+    "side": "wildforge:pine_planks",
+    "bottom": "wildforge:pine_planks"
+  },
+  "drops": [
+    {
+      "item": "wildforge:pine_planks_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:pine_planks_block"
+}

@@ -1,0 +1,62 @@
+{
+  "id": "wildforge:coalshade_galleries",
+  "name": "Coalshade Galleries",
+  "depth_fraction": [
+    0.11,
+    0.58
+  ],
+  "rarity": "uncommon",
+  "host_rocks": [
+    "shale",
+    "sandstone",
+    "coal-bearing sedimentary strata"
+  ],
+  "placement": "Ancient sedimentary basins and beneath badland or plains rock formations",
+  "geometry": "Broad but low-ceilinged horizontal rooms, banded walls and layered passageways",
+  "description": "Dark stratified caverns with thin coal seams, shale layers and occasional fossil-bearing sediments rather than oversized coal rooms",
+  "reuse_existing_textures": [
+    "shale",
+    "sandstone",
+    "coal_ore",
+    "compacted_sediment",
+    "iron_stained_stone"
+  ],
+  "proposed_new_textures": [
+    "fossil_shale",
+    "siltstone",
+    "coal_dust_deposit"
+  ],
+  "features": [
+    "stratified ceilings",
+    "small fossil lenses",
+    "coal seams"
+  ],
+  "resources": [
+    "coal",
+    "iron in associated deposits",
+    "fossils"
+  ],
+  "hazards": [
+    "loose shale roof sections"
+  ],
+  "transitions": [
+    "rootlace_hollows",
+    "underflow_channels",
+    "ironfault_chasms"
+  ],
+  "new_textures": [
+    "textures/fossil_shale.png",
+    "textures/siltstone.png",
+    "textures/coal_dust_deposit.png"
+  ],
+  "suggested_weight_relative": 18,
+  "typical_chamber_radius_blocks": [
+    6,
+    19
+  ],
+  "suggested_moisture_preference": 0.3,
+  "suggested_water_proximity_preference": 0.35,
+  "hard_placement_rule": "coal-bearing shale and sandstone only",
+  "note": "These are region-selection design weights, not probabilities; normalize only after hard geological/depth eligibility constraints.",
+  "selection_rule": "COAL_STRATA"
+}

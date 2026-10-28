@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:frozen_peat_block",
+  "numeric_id": 69,
+  "max_stack_size": 64,
+  "places_block": "wildforge:frozen_peat",
+  "model": "wildforge:item/block"
+}

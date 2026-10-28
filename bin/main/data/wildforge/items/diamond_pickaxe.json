@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:diamond_pickaxe",
+  "numeric_id": 146,
+  "max_stack_size": 64,
+  "texture": "wildforge:diamond_pickaxe",
+  "model": "wildforge:item/generated"
+}

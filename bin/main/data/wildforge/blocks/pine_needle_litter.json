@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:pine_needle_litter",
+  "numeric_id": 26,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:pine_needle_litter",
+    "side": "wildforge:pine_needle_litter",
+    "bottom": "wildforge:pine_needle_litter"
+  },
+  "drops": [
+    {
+      "item": "wildforge:pine_needle_litter_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:pine_needle_litter_block"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:stick",
+  "numeric_id": 118,
+  "max_stack_size": 64,
+  "texture": "wildforge:stick",
+  "model": "wildforge:item/generated"
+}

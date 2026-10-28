@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:magma_crust_block",
+  "numeric_id": 75,
+  "max_stack_size": 64,
+  "places_block": "wildforge:magma_crust",
+  "model": "wildforge:item/block"
+}

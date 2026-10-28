@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:iron_stained_stone_block",
+  "numeric_id": 72,
+  "max_stack_size": 64,
+  "places_block": "wildforge:iron_stained_stone",
+  "model": "wildforge:item/block"
+}

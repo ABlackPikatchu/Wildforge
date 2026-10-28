@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:sea_shell",
+  "numeric_id": 117,
+  "max_stack_size": 64,
+  "texture": "wildforge:sea_shell",
+  "model": "wildforge:item/generated"
+}

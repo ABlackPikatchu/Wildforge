@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:compacted_sediment_block",
+  "numeric_id": 59,
+  "max_stack_size": 64,
+  "places_block": "wildforge:compacted_sediment",
+  "model": "wildforge:item/block"
+}

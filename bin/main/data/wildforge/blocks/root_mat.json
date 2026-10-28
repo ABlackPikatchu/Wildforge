@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:root_mat",
+  "numeric_id": 80,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:root_mat",
+    "side": "wildforge:root_mat",
+    "bottom": "wildforge:root_mat"
+  },
+  "drops": [
+    {
+      "item": "wildforge:root_mat_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:root_mat_block"
+}

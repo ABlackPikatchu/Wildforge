@@ -1,0 +1,55 @@
+{
+  "id": "wildforge:whitecliff_coast",
+  "name": "Whitecliff Coast",
+  "map_color": "e0dfc7",
+  "criteria": {
+    "temperature": [
+      0.0,
+      1.0
+    ],
+    "rainfall": [
+      0.0,
+      1.0
+    ],
+    "height_above_sea": [
+      -10,
+      23
+    ],
+    "geology": [
+      "LIMESTONE"
+    ],
+    "coastal": true,
+    "floodplain": false,
+    "priority": 45
+  },
+  "surface": {
+    "top": "chalk",
+    "filler": "limestone"
+  },
+  "decorations": {
+    "tree_density": 0.02,
+    "plant_density": 0.24,
+    "max_tree_slope": 4,
+    "max_plant_slope": 5,
+    "trees": [
+      {
+        "id": "oak",
+        "weight": 1
+      }
+    ],
+    "plants": [
+      {
+        "id": "small_grass",
+        "weight": 5
+      },
+      {
+        "id": "flower_daisy",
+        "weight": 2
+      },
+      {
+        "id": "flower_lavender",
+        "weight": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "id": "wildforge:stillwater_abyss",
+  "name": "Stillwater Abyss",
+  "depth_fraction": [
+    0.48,
+    0.98
+  ],
+  "rarity": "rare",
+  "host_rocks": [
+    "limestone",
+    "granite",
+    "gabbro",
+    "deep mixed stone"
+  ],
+  "placement": "Only where deep groundwater basins or large interconnected cave systems make a stable water body plausible",
+  "geometry": "Broad low flooded basins, deep dark subterranean lakes and side beaches; no ubiquitous full-depth subterranean ocean",
+  "description": "Quiet deep lakes reflect sparse mineral glints, with submerged shelves, sandy pockets and collapsed chamber edges",
+  "reuse_existing_textures": [
+    "water",
+    "stone",
+    "limestone",
+    "gravel",
+    "silt",
+    "cave_clay",
+    "calcite"
+  ],
+  "proposed_new_textures": [
+    "submerged_scree",
+    "pale_algae",
+    "wet_slate"
+  ],
+  "features": [
+    "underground lakes",
+    "submerged passages",
+    "shoreline boulder banks"
+  ],
+  "resources": [
+    "fresh water",
+    "small mineral outcrops",
+    "special cave fish later"
+  ],
+  "hazards": [
+    "deep water and poor visibility"
+  ],
+  "transitions": [
+    "underflow_channels",
+    "hollowstone_vaults",
+    "sporelight_hollows",
+    "crystal_seam_chambers"
+  ],
+  "new_textures": [
+    "textures/submerged_scree.png",
+    "textures/pale_algae.png",
+    "textures/wet_slate.png"
+  ],
+  "suggested_weight_relative": 4,
+  "typical_chamber_radius_blocks": [
+    14,
+    36
+  ],
+  "suggested_moisture_preference": 0.12,
+  "suggested_water_proximity_preference": 0.95,
+  "hard_placement_rule": "groundwater-connected low basins only",
+  "note": "These are region-selection design weights, not probabilities; normalize only after hard geological/depth eligibility constraints.",
+  "selection_rule": "DEEP_AQUIFER"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:submerged_scree",
+  "numeric_id": 86,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:submerged_scree",
+    "side": "wildforge:submerged_scree",
+    "bottom": "wildforge:submerged_scree"
+  },
+  "drops": [
+    {
+      "item": "wildforge:submerged_scree_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:submerged_scree_block"
+}

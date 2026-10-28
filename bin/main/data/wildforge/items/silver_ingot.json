@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:silver_ingot",
+  "numeric_id": 112,
+  "max_stack_size": 64,
+  "texture": "wildforge:silver_ingot",
+  "model": "wildforge:item/generated"
+}

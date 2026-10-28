@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:lichen_stone",
+  "numeric_id": 72,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:lichen_stone",
+    "side": "wildforge:lichen_stone",
+    "bottom": "wildforge:lichen_stone"
+  },
+  "drops": [
+    {
+      "item": "wildforge:lichen_stone_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:lichen_stone_block"
+}

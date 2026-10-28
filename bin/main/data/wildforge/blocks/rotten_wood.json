@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:rotten_wood",
+  "numeric_id": 103,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:rotten_wood_top",
+    "side": "wildforge:rotten_wood_side",
+    "bottom": "wildforge:rotten_wood_top"
+  },
+  "drops": [
+    {
+      "item": "wildforge:rotten_wood_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:rotten_wood_block"
+}

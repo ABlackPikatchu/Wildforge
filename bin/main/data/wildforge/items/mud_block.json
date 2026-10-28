@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:mud_block",
+  "numeric_id": 34,
+  "max_stack_size": 64,
+  "places_block": "wildforge:mud",
+  "model": "wildforge:item/block"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:diamond_ore_block",
+  "numeric_id": 13,
+  "max_stack_size": 64,
+  "places_block": "wildforge:diamond_ore",
+  "model": "wildforge:item/block"
+}

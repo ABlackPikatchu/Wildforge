@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:siltstone",
+  "numeric_id": 84,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:siltstone",
+    "side": "wildforge:siltstone",
+    "bottom": "wildforge:siltstone"
+  },
+  "drops": [
+    {
+      "item": "wildforge:siltstone_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:siltstone_block"
+}

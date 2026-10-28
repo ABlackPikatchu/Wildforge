@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:andesite",
+  "numeric_id": 4,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:andesite",
+    "side": "wildforge:andesite",
+    "bottom": "wildforge:andesite"
+  },
+  "drops": [
+    {
+      "item": "wildforge:andesite_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:andesite_block"
+}

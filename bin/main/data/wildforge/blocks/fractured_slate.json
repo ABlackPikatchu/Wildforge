@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:fractured_slate",
+  "numeric_id": 66,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:fractured_slate",
+    "side": "wildforge:fractured_slate",
+    "bottom": "wildforge:fractured_slate"
+  },
+  "drops": [
+    {
+      "item": "wildforge:fractured_slate_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:fractured_slate_block"
+}

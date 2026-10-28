@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:diorite_block",
+  "numeric_id": 14,
+  "max_stack_size": 64,
+  "places_block": "wildforge:diorite",
+  "model": "wildforge:item/block"
+}

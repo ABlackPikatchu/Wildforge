@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:red_sandstone_block",
+  "numeric_id": 38,
+  "max_stack_size": 64,
+  "places_block": "wildforge:red_sandstone",
+  "model": "wildforge:item/block"
+}

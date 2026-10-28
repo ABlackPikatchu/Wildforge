@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:clay",
+  "numeric_id": 7,
+  "solid": true,
+  "breakable": true,
+  "hardness": 1.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:clay",
+    "side": "wildforge:clay",
+    "bottom": "wildforge:clay"
+  },
+  "drops": [
+    {
+      "item": "wildforge:clay_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:clay_block"
+}

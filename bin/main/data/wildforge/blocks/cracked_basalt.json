@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:cracked_basalt",
+  "numeric_id": 59,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:cracked_basalt",
+    "side": "wildforge:cracked_basalt",
+    "bottom": "wildforge:cracked_basalt"
+  },
+  "drops": [
+    {
+      "item": "wildforge:cracked_basalt_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:cracked_basalt_block"
+}

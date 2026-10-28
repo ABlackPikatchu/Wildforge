@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:calcite_block",
+  "numeric_id": 55,
+  "max_stack_size": 64,
+  "places_block": "wildforge:calcite",
+  "model": "wildforge:item/block"
+}

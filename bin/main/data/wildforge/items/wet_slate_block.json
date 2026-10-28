@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:wet_slate_block",
+  "numeric_id": 91,
+  "max_stack_size": 64,
+  "places_block": "wildforge:wet_slate",
+  "model": "wildforge:item/block"
+}

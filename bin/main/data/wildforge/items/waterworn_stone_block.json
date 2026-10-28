@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:waterworn_stone_block",
+  "numeric_id": 46,
+  "max_stack_size": 64,
+  "places_block": "wildforge:waterworn_stone",
+  "model": "wildforge:item/block"
+}

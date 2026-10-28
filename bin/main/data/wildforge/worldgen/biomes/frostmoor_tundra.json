@@ -1,0 +1,52 @@
+{
+  "id": "wildforge:frostmoor_tundra",
+  "name": "Frostmoor Tundra",
+  "map_color": "c0c7b5",
+  "criteria": {
+    "temperature": [
+      0.0,
+      0.3
+    ],
+    "rainfall": [
+      0.0,
+      0.83
+    ],
+    "height_above_sea": [
+      -2,
+      82
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 22
+  },
+  "surface": {
+    "top": "permafrost",
+    "filler": "frozen_peat"
+  },
+  "decorations": {
+    "tree_density": 0.0,
+    "plant_density": 0.22,
+    "max_tree_slope": 3,
+    "max_plant_slope": 4,
+    "trees": [],
+    "plants": [
+      {
+        "id": "frost_shrub",
+        "weight": 4
+      },
+      {
+        "id": "snow_grass",
+        "weight": 6
+      },
+      {
+        "id": "lichen_patch",
+        "weight": 3
+      },
+      {
+        "id": "flower_snowdrop",
+        "weight": 1
+      }
+    ]
+  }
+}

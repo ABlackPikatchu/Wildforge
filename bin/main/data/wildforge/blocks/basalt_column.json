@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:basalt_column",
+  "numeric_id": 52,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:basalt_column",
+    "side": "wildforge:basalt_column",
+    "bottom": "wildforge:basalt_column"
+  },
+  "drops": [
+    {
+      "item": "wildforge:basalt_column_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:basalt_column_block"
+}

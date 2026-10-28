@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:riverbed_sediment_block",
+  "numeric_id": 45,
+  "max_stack_size": 64,
+  "places_block": "wildforge:riverbed_sediment",
+  "model": "wildforge:item/block"
+}

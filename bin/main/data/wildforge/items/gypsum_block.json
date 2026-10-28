@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:gypsum_block",
+  "numeric_id": 71,
+  "max_stack_size": 64,
+  "places_block": "wildforge:gypsum",
+  "model": "wildforge:item/block"
+}

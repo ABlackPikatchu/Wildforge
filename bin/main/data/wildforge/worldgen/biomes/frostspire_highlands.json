@@ -1,0 +1,53 @@
+{
+  "id": "wildforge:frostspire_highlands",
+  "name": "Frostspire Highlands",
+  "map_color": "a5aab2",
+  "criteria": {
+    "temperature": [
+      0.0,
+      0.65
+    ],
+    "rainfall": [
+      0.0,
+      1.0
+    ],
+    "height_above_sea": [
+      50,
+      190
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 35
+  },
+  "surface": {
+    "top": "scree",
+    "filler": "stone"
+  },
+  "decorations": {
+    "tree_density": 0.04,
+    "plant_density": 0.13,
+    "max_tree_slope": 4,
+    "max_plant_slope": 4,
+    "trees": [
+      {
+        "id": "pine",
+        "weight": 1
+      }
+    ],
+    "plants": [
+      {
+        "id": "frost_shrub",
+        "weight": 3
+      },
+      {
+        "id": "snow_grass",
+        "weight": 3
+      },
+      {
+        "id": "flower_snowdrop",
+        "weight": 1
+      }
+    ]
+  }
+}

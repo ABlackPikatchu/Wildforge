@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:salt_crust_block",
+  "numeric_id": 43,
+  "max_stack_size": 64,
+  "places_block": "wildforge:salt_crust",
+  "model": "wildforge:item/block"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:coal",
+  "numeric_id": 4,
+  "max_stack_size": 64,
+  "texture": "wildforge:coal",
+  "model": "wildforge:item/generated"
+}

@@ -1,0 +1,64 @@
+{
+  "id": "wildforge:underflow_channels",
+  "name": "Underflow Channels",
+  "depth_fraction": [
+    0.08,
+    0.63
+  ],
+  "rarity": "common",
+  "host_rocks": [
+    "limestone",
+    "sandstone",
+    "gravel",
+    "mixed sediment"
+  ],
+  "placement": "Near river networks, low valleys, aquifers and floodplains; underground flow follows low hydraulic head",
+  "geometry": "Meandering tunnels with rounded erosion profiles, occasional high-roofed river rooms",
+  "description": "Subterranean rivers carve smooth passages through rock, depositing sandbars, gravel banks and silt in slower water",
+  "reuse_existing_textures": [
+    "gravel",
+    "silt",
+    "cave_clay",
+    "wet_mud",
+    "sand",
+    "water",
+    "limestone"
+  ],
+  "proposed_new_textures": [
+    "waterworn_stone",
+    "riverbed_sediment"
+  ],
+  "features": [
+    "underground streams",
+    "silt bars",
+    "flooded junctions"
+  ],
+  "resources": [
+    "clay",
+    "gravel",
+    "placer gold rarely",
+    "fish in connected waters"
+  ],
+  "hazards": [
+    "water currents and dark flooded stretches"
+  ],
+  "transitions": [
+    "seepstone_grottos",
+    "stillwater_abyss",
+    "hollowstone_vaults"
+  ],
+  "new_textures": [
+    "textures/waterworn_stone.png",
+    "textures/riverbed_sediment.png"
+  ],
+  "suggested_weight_relative": 26,
+  "typical_chamber_radius_blocks": [
+    3,
+    11
+  ],
+  "suggested_moisture_preference": 0.15,
+  "suggested_water_proximity_preference": 0.92,
+  "hard_placement_rule": "hydrologic connection required",
+  "note": "These are region-selection design weights, not probabilities; normalize only after hard geological/depth eligibility constraints.",
+  "selection_rule": "AQUIFER_CHANNEL"
+}

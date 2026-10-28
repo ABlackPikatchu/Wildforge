@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:iron_ore_block",
+  "numeric_id": 10,
+  "max_stack_size": 64,
+  "places_block": "wildforge:iron_ore",
+  "model": "wildforge:item/block"
+}

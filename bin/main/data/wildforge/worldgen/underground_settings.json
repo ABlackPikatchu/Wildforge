@@ -1,0 +1,11 @@
+{
+  "region_scale": 180.0,
+  "groundwater_scale": 260.0,
+  "fault_scale": 440.0,
+  "mineral_scale": 240.0,
+  "volcanic_scale": 420.0,
+  "fault_threshold": 0.11,
+  "mineral_threshold": 0.16,
+  "groundwater_threshold": 0.63,
+  "cold_temperature_threshold": 0.32
+}

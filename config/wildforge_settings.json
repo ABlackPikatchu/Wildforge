@@ -22,7 +22,7 @@
   "display_mode": "borderless",
   "show_fps": false,
   "fov": 70,
-  "render_distance": 17,
+  "render_distance": 24,
   "simulation_distance": 2,
   "fps_limit": 0,
   "resolution_width": 3840,

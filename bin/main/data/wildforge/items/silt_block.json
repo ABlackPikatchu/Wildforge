@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:silt_block",
+  "numeric_id": 36,
+  "max_stack_size": 64,
+  "places_block": "wildforge:silt",
+  "model": "wildforge:item/block"
+}

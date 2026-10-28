@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:sulfur_rock_block",
+  "numeric_id": 49,
+  "max_stack_size": 64,
+  "places_block": "wildforge:sulfur_rock",
+  "model": "wildforge:item/block"
+}

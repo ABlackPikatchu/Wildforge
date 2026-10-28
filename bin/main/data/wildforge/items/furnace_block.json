@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:furnace_block",
+  "numeric_id": 106,
+  "max_stack_size": 64,
+  "places_block": "wildforge:furnace",
+  "model": "wildforge:item/block"
+}

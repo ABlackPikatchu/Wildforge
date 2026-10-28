@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:rich_humus_block",
+  "numeric_id": 25,
+  "max_stack_size": 64,
+  "places_block": "wildforge:rich_humus",
+  "model": "wildforge:item/block"
+}

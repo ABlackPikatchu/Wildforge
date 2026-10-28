@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:brick",
+  "numeric_id": 108,
+  "max_stack_size": 64,
+  "texture": "wildforge:brick",
+  "model": "wildforge:item/generated"
+}

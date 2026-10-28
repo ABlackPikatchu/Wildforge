@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:iron_hoe",
+  "numeric_id": 130,
+  "max_stack_size": 64,
+  "texture": "wildforge:iron_hoe",
+  "model": "wildforge:item/generated"
+}

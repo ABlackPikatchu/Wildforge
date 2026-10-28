@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:glass_block",
+  "numeric_id": 93,
+  "max_stack_size": 64,
+  "places_block": "wildforge:glass",
+  "model": "wildforge:item/block"
+}

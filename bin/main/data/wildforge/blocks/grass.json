@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:grass",
+  "numeric_id": 1,
+  "solid": true,
+  "breakable": true,
+  "hardness": 1.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:grass_top",
+    "side": "wildforge:grass_side",
+    "bottom": "wildforge:dirt"
+  },
+  "drops": [
+    {
+      "item": "wildforge:grass_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:grass_block"
+}

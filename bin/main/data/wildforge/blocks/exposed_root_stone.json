@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:exposed_root_stone",
+  "numeric_id": 61,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:exposed_root_stone",
+    "side": "wildforge:exposed_root_stone",
+    "bottom": "wildforge:exposed_root_stone"
+  },
+  "drops": [
+    {
+      "item": "wildforge:exposed_root_stone_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:exposed_root_stone_block"
+}

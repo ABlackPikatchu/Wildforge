@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "#wildforge:stone_blocks",
+    "wildforge:dirt_block",
+    "wildforge:sandstone_block"
+  ]
+}

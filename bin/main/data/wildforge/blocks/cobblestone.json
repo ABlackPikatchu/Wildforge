@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:cobblestone",
+  "numeric_id": 18,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:cobblestone",
+    "side": "wildforge:cobblestone",
+    "bottom": "wildforge:cobblestone"
+  },
+  "drops": [
+    {
+      "item": "wildforge:cobblestone_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:cobblestone_block"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:brick_block",
+  "numeric_id": 91,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:brick_block",
+    "side": "wildforge:brick_block",
+    "bottom": "wildforge:brick_block"
+  },
+  "drops": [
+    {
+      "item": "wildforge:brick_block_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:brick_block_block"
+}

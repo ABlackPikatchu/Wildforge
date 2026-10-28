@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:gold_hoe",
+  "numeric_id": 135,
+  "max_stack_size": 64,
+  "texture": "wildforge:gold_hoe",
+  "model": "wildforge:item/generated"
+}

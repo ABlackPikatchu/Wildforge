@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:slate",
+  "numeric_id": 30,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:slate",
+    "side": "wildforge:slate",
+    "bottom": "wildforge:slate"
+  },
+  "drops": [
+    {
+      "item": "wildforge:slate_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:slate_block"
+}

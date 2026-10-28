@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:stone",
+  "numeric_id": 3,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:stone",
+    "side": "wildforge:stone",
+    "bottom": "wildforge:stone"
+  },
+  "drops": [
+    {
+      "item": "wildforge:stone_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:stone_block"
+}

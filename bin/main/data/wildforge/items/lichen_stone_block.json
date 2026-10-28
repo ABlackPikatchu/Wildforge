@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:lichen_stone_block",
+  "numeric_id": 73,
+  "max_stack_size": 64,
+  "places_block": "wildforge:lichen_stone",
+  "model": "wildforge:item/block"
+}

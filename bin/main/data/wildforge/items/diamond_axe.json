@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:diamond_axe",
+  "numeric_id": 144,
+  "max_stack_size": 64,
+  "texture": "wildforge:diamond_axe",
+  "model": "wildforge:item/generated"
+}

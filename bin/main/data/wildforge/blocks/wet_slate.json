@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:wet_slate",
+  "numeric_id": 90,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:wet_slate",
+    "side": "wildforge:wet_slate",
+    "bottom": "wildforge:wet_slate"
+  },
+  "drops": [
+    {
+      "item": "wildforge:wet_slate_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:wet_slate_block"
+}

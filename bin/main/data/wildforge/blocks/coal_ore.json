@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:coal_ore",
+  "numeric_id": 8,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:coal_ore",
+    "side": "wildforge:coal_ore",
+    "bottom": "wildforge:coal_ore"
+  },
+  "drops": [
+    {
+      "item": "wildforge:coal_ore_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:coal_ore_block"
+}

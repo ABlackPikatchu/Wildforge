@@ -1,0 +1,8 @@
+{
+  "id": "wildforge:air",
+  "numeric_id": 0,
+  "solid": false,
+  "breakable": false,
+  "hardness": 0.0,
+  "drops": []
+}

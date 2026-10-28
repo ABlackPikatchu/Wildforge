@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:rotten_wood_block",
+  "numeric_id": 104,
+  "max_stack_size": 64,
+  "places_block": "wildforge:rotten_wood",
+  "model": "wildforge:item/block"
+}

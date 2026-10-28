@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:weathered_limestone_block",
+  "numeric_id": 88,
+  "max_stack_size": 64,
+  "places_block": "wildforge:weathered_limestone",
+  "model": "wildforge:item/block"
+}

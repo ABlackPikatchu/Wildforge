@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:obsidian",
+  "numeric_id": 41,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:obsidian",
+    "side": "wildforge:obsidian",
+    "bottom": "wildforge:obsidian"
+  },
+  "drops": [
+    {
+      "item": "wildforge:obsidian_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:obsidian_block"
+}

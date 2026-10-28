@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:glacial_ice_block",
+  "numeric_id": 70,
+  "max_stack_size": 64,
+  "places_block": "wildforge:glacial_ice",
+  "model": "wildforge:item/block"
+}

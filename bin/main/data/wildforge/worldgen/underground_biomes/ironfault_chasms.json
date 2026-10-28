@@ -1,0 +1,66 @@
+{
+  "id": "wildforge:ironfault_chasms",
+  "name": "Ironfault Chasms",
+  "depth_fraction": [
+    0.28,
+    0.9
+  ],
+  "rarity": "uncommon",
+  "host_rocks": [
+    "granite",
+    "gabbro",
+    "slate",
+    "andesite"
+  ],
+  "placement": "Fault zones and uplifted mountain roots; intersect several deeper rock provinces",
+  "geometry": "Tall fractured rifts, sloping fault ledges and diagonal seams with cross-cutting tunnels",
+  "description": "Deep tectonic fractures expose jagged rock and mineral veins, with patchy rust-red staining and rare precious-metal pockets",
+  "reuse_existing_textures": [
+    "granite",
+    "gabbro",
+    "slate",
+    "andesite",
+    "iron_ore",
+    "silver_ore",
+    "gold_ore",
+    "iron_stained_stone"
+  ],
+  "proposed_new_textures": [
+    "fault_breccia",
+    "fractured_slate",
+    "quartz_vein"
+  ],
+  "features": [
+    "fault ledges",
+    "shear surfaces",
+    "broken boulder floors"
+  ],
+  "resources": [
+    "iron fairly common",
+    "silver in selected veins",
+    "gold rarely along faults"
+  ],
+  "hazards": [
+    "vertical drops and narrow traverses"
+  ],
+  "transitions": [
+    "coalshade_galleries",
+    "crystal_seam_chambers",
+    "cindervein_tubes"
+  ],
+  "new_textures": [
+    "textures/fault_breccia.png",
+    "textures/fractured_slate.png",
+    "textures/quartz_vein.png"
+  ],
+  "suggested_weight_relative": 16,
+  "typical_chamber_radius_blocks": [
+    4,
+    12
+  ],
+  "suggested_moisture_preference": 0.16,
+  "suggested_water_proximity_preference": 0.55,
+  "hard_placement_rule": "mapped tectonic fault corridors",
+  "note": "These are region-selection design weights, not probabilities; normalize only after hard geological/depth eligibility constraints.",
+  "selection_rule": "FAULT"
+}

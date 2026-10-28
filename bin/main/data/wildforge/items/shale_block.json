@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:shale_block",
+  "numeric_id": 30,
+  "max_stack_size": 64,
+  "places_block": "wildforge:shale",
+  "model": "wildforge:item/block"
+}

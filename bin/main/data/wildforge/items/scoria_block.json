@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:scoria_block",
+  "numeric_id": 40,
+  "max_stack_size": 64,
+  "places_block": "wildforge:scoria",
+  "model": "wildforge:item/block"
+}

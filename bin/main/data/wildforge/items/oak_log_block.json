@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:oak_log_block",
+  "numeric_id": 94,
+  "max_stack_size": 64,
+  "places_block": "wildforge:oak_log",
+  "model": "wildforge:item/block"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:pumice",
+  "numeric_id": 40,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:pumice",
+    "side": "wildforge:pumice",
+    "bottom": "wildforge:pumice"
+  },
+  "drops": [
+    {
+      "item": "wildforge:pumice_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:pumice_block"
+}

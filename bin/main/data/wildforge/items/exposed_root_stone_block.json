@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:exposed_root_stone_block",
+  "numeric_id": 62,
+  "max_stack_size": 64,
+  "places_block": "wildforge:exposed_root_stone",
+  "model": "wildforge:item/block"
+}

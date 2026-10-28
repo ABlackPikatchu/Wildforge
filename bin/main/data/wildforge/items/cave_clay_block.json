@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:cave_clay_block",
+  "numeric_id": 56,
+  "max_stack_size": 64,
+  "places_block": "wildforge:cave_clay",
+  "model": "wildforge:item/block"
+}

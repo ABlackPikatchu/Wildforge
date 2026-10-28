@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:glacial_ice",
+  "numeric_id": 69,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:glacial_ice",
+    "side": "wildforge:glacial_ice",
+    "bottom": "wildforge:glacial_ice"
+  },
+  "drops": [
+    {
+      "item": "wildforge:glacial_ice_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:glacial_ice_block"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:mineral_matrix",
+  "numeric_id": 75,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:mineral_matrix",
+    "side": "wildforge:mineral_matrix",
+    "bottom": "wildforge:mineral_matrix"
+  },
+  "drops": [
+    {
+      "item": "wildforge:mineral_matrix_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:mineral_matrix_block"
+}

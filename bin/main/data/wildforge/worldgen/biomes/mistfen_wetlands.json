@@ -1,0 +1,61 @@
+{
+  "id": "wildforge:mistfen_wetlands",
+  "name": "Mistfen Wetlands",
+  "map_color": "668f76",
+  "criteria": {
+    "temperature": [
+      0.27,
+      0.9
+    ],
+    "rainfall": [
+      0.64,
+      1.0
+    ],
+    "height_above_sea": [
+      -5,
+      22
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": true,
+    "priority": 30
+  },
+  "surface": {
+    "top": "peat",
+    "filler": "wet_mud"
+  },
+  "decorations": {
+    "tree_density": 0.46,
+    "plant_density": 0.9,
+    "max_tree_slope": 2,
+    "max_plant_slope": 2,
+    "trees": [
+      {
+        "id": "willow",
+        "weight": 6
+      },
+      {
+        "id": "cypress",
+        "weight": 5
+      }
+    ],
+    "plants": [
+      {
+        "id": "cattails",
+        "weight": 7
+      },
+      {
+        "id": "marsh_reeds",
+        "weight": 8
+      },
+      {
+        "id": "flower_orchid",
+        "weight": 2
+      },
+      {
+        "id": "small_grass",
+        "weight": 2
+      }
+    ]
+  }
+}

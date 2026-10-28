@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:cracked_basalt_block",
+  "numeric_id": 60,
+  "max_stack_size": 64,
+  "places_block": "wildforge:cracked_basalt",
+  "model": "wildforge:item/block"
+}

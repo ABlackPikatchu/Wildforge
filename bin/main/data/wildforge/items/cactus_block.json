@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:cactus_block",
+  "numeric_id": 107,
+  "max_stack_size": 64,
+  "places_block": "wildforge:cactus",
+  "model": "wildforge:item/block"
+}

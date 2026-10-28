@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:gypsum",
+  "numeric_id": 70,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:gypsum",
+    "side": "wildforge:gypsum",
+    "bottom": "wildforge:gypsum"
+  },
+  "drops": [
+    {
+      "item": "wildforge:gypsum_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:gypsum_block"
+}
