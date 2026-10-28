@@ -3,6 +3,8 @@ package com.wildforge;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinDef.HWND;
+import com.wildforge.content.ContentLoader;
+import com.wildforge.lang.LanguageManager;
 import com.wildforge.core.InputController;
 import com.wildforge.core.SaveManager;
 import com.wildforge.player.Player;
@@ -28,6 +30,7 @@ public final class Main implements InputController.Callbacks {
 
     private long window;
     private Renderer renderer;
+    private ContentLoader.Content gameContent;
     private InputController inputController;
     private TerrainMesh terrain;
     private Player player;
@@ -66,6 +69,19 @@ public final class Main implements InputController.Callbacks {
     }
 
     private void run() {
+        // Load metadata before creating a window. No gameplay IDs are changed.
+        try {
+            ContentLoader.Content content = ContentLoader.loadBuiltIn();
+            ContentLoader.validateLegacyIds(content);
+            gameContent = content;
+            LanguageManager.install(LanguageManager.loadBuiltIn());
+            System.out.println("Content loaded: " + content.blocks().size()
+                    + " blocks, " + content.items().size() + " items, " + content.tags().blockTagCount()
+                    + " block tags, " + content.tags().itemTagCount() + " item tags");
+        } catch (IOException ex) {
+            throw new IllegalStateException("Unable to load Wildforge content definitions", ex);
+        }
+
         GLFWErrorCallback errorCallback =
                 GLFWErrorCallback.createPrint(System.err);
         errorCallback.set();
@@ -132,7 +148,7 @@ public final class Main implements InputController.Callbacks {
         GL.createCapabilities();
 
         terrain = new TerrainMesh();
-        player = new Player(terrain, worldItems);
+        player = new Player(terrain, worldItems, gameContent);
         renderer = new Renderer(terrain);
         player.releaseMouse(window);
         refreshSaveSlots();
@@ -396,7 +412,7 @@ public final class Main implements InputController.Callbacks {
             saveManager.loadTerrain(activeSaveSlot, terrain);
 
             worldItems.clear();
-            player = new Player(terrain, worldItems);
+            player = new Player(terrain, worldItems, gameContent);
             saveManager.loadPlayer(activeSaveSlot, player, terrain);
 
             worldLoaded = true;

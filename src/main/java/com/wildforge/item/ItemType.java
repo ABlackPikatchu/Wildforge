@@ -1,6 +1,9 @@
 package com.wildforge.item;
 
 import com.wildforge.world.BlockType;
+import com.wildforge.lang.LanguageManager;
+import com.wildforge.content.ResourceId;
+import java.util.Locale;
 
 /**
  * Defines an inventory item. A null placed block means the item is not
@@ -49,7 +52,8 @@ public enum ItemType {
     }
 
     public String getDisplayName() {
-        return displayName;
+        return LanguageManager.itemName(ResourceId.parse("wildforge:"
+                + name().toLowerCase(Locale.ROOT)), displayName);
     }
 
     public int getMaxStackSize() {

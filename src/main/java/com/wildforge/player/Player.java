@@ -1,5 +1,6 @@
 package com.wildforge.player;
 
+import com.wildforge.content.ContentLoader;
 import com.wildforge.item.ItemStack;
 import com.wildforge.inventory.Inventory;
 import com.wildforge.item.ItemType;
@@ -80,6 +81,12 @@ public Player(TerrainMesh terrain) {
 }
 
 public Player(TerrainMesh terrain, WorldItemManager worldItems) {
+    this(terrain, worldItems, null);
+}
+
+/** In-game constructor: provides the validated JSON content to block interactions. */
+public Player(TerrainMesh terrain, WorldItemManager worldItems,
+              ContentLoader.Content content) {
     if (terrain == null) {
         throw new IllegalArgumentException("Terrain cannot be null");
     }
@@ -89,7 +96,7 @@ public Player(TerrainMesh terrain, WorldItemManager worldItems) {
     }
 
     this.worldItems = worldItems;
-    this.blockInteraction = new BlockInteraction(inventory, worldItems);
+    this.blockInteraction = new BlockInteraction(inventory, worldItems, content);
 
     inventory.setStack(HOTBAR_START_INDEX,
             new ItemStack(ItemType.DIRT_BLOCK, 32));

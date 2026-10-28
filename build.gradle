@@ -16,7 +16,18 @@ java {
     }
 }
 
-def lwjglVersion = '3.3.6'
+// The generator compiles independently of the game/runtime (no OpenGL needed).
+sourceSets {
+    datagen {
+        java.srcDir 'src/datagen/java'
+    }
+    main {
+        // Auto-generated content is packaged in the game JAR / run classpath.
+        resources.srcDir layout.buildDirectory.dir('generated/resources/wildforge')
+    }
+}
+
+def lwjglVersion = '3.3.6' 
 
 dependencies {
     implementation platform("org.lwjgl:lwjgl-bom:${lwjglVersion}")
@@ -28,6 +39,7 @@ dependencies {
     implementation 'net.java.dev.jna:jna:5.17.0'
     implementation 'net.java.dev.jna:jna-platform:5.17.0'
     implementation 'com.google.code.gson:gson:2.13.2'
+    datagenImplementation 'com.google.code.gson:gson:2.13.2'
 
     runtimeOnly 'org.lwjgl:lwjgl::natives-windows'
     runtimeOnly 'org.lwjgl:lwjgl-glfw::natives-windows'
@@ -42,4 +54,29 @@ application {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.compilerArgs += ['-Xlint:deprecation', '-Xlint:unchecked']
+}
+
+// Lightweight integration verification without adding a JUnit dependency.
+tasks.register('contentCheck', JavaExec) {
+    group = 'verification'
+    description = 'Validate all built-in JSON content and legacy save IDs'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.content.ContentSmokeTest'
+}
+
+// Edit the concise catalog in src/datagen/java/.../ContentDataGenerator.java.
+// Never hand-edit build/generated resources; they are recreated on demand.
+tasks.register('generateContent', JavaExec) {
+    group = 'wildforge'
+    description = 'Generate block/item JSON and content_index.json from Java data definitions'
+    dependsOn tasks.named('datagenClasses')
+    classpath = sourceSets.datagen.runtimeClasspath
+    mainClass = 'com.wildforge.datagen.ContentDataGenerator'
+    args layout.buildDirectory.dir('generated/resources/wildforge').get().asFile.absolutePath
+    outputs.dir layout.buildDirectory.dir('generated/resources/wildforge')
+}
+
+tasks.named('processResources') {
+    dependsOn tasks.named('generateContent')
 }
