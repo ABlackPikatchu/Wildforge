@@ -4,29 +4,30 @@ import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinDef.HWND;
 import com.wildforge.content.ContentLoader;
-import com.wildforge.lang.LanguageManager;
 import com.wildforge.core.InputController;
 import com.wildforge.core.SaveManager;
+import com.wildforge.lang.LanguageManager;
 import com.wildforge.player.Player;
 import com.wildforge.render.HudRenderer;
 import com.wildforge.render.Renderer;
 import com.wildforge.world.TerrainMesh;
 import com.wildforge.world.WorldItemManager;
 import org.lwjgl.glfw.GLFWErrorCallback;
-import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.glfw.GLFWNativeWin32;
+import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
 
 import java.io.IOException;
+import java.util.List;
 
 import static org.lwjgl.glfw.GLFW.*;
 
 public final class Main implements InputController.Callbacks {
     private static final int WINDOW_WIDTH = 1600;
     private static final int WINDOW_HEIGHT = 900;
-
     private static final long MIN_SAVING_SCREEN_NANOS = 400_000_000L;
     private static final float MAX_FRAME_DELTA_SECONDS = 0.1f;
+    private static final int SAVES_PER_PAGE = 3;
 
     private long window;
     private Renderer renderer;
@@ -37,8 +38,6 @@ public final class Main implements InputController.Callbacks {
     private final WorldItemManager worldItems = new WorldItemManager();
     private final SaveManager saveManager = new SaveManager();
 
-    // GLFW writes dimensions into caller-provided arrays. Reuse them rather
-    // than allocating four short-lived arrays every frame or mouse click.
     private final int[] framebufferWidth = new int[1];
     private final int[] framebufferHeight = new int[1];
     private final int[] windowWidth = new int[1];
@@ -50,8 +49,7 @@ public final class Main implements InputController.Callbacks {
     private boolean inventoryDragActive = false;
     private int inventoryDragSourceSlot = -1;
 
-    private HudRenderer.ScreenMode screenMode =
-            HudRenderer.ScreenMode.MAIN_MENU;
+    private HudRenderer.ScreenMode screenMode = HudRenderer.ScreenMode.MAIN_MENU;
     private boolean escapeWasDown;
     private boolean loadPending;
     private boolean savePending;
@@ -60,8 +58,8 @@ public final class Main implements InputController.Callbacks {
     private long savingScreenStartedAtNanos;
     private boolean worldLoaded;
     private int activeSaveSlot = -1;
-    private final boolean[] saveSlotsExist =
-            new boolean[SaveManager.SLOT_COUNT];
+    private List<SaveManager.SaveSlotSummary> saveSlots = List.of();
+    private int savePage = 0;
     private String statusMessage = "";
 
     public static void main(String[] args) {
@@ -69,7 +67,6 @@ public final class Main implements InputController.Callbacks {
     }
 
     private void run() {
-        // Load metadata before creating a window. No gameplay IDs are changed.
         try {
             ContentLoader.Content content = ContentLoader.loadBuiltIn();
             ContentLoader.validateLegacyIds(content);
@@ -82,8 +79,7 @@ public final class Main implements InputController.Callbacks {
             throw new IllegalStateException("Unable to load Wildforge content definitions", ex);
         }
 
-        GLFWErrorCallback errorCallback =
-                GLFWErrorCallback.createPrint(System.err);
+        GLFWErrorCallback errorCallback = GLFWErrorCallback.createPrint(System.err);
         errorCallback.set();
 
         try {
@@ -93,11 +89,9 @@ public final class Main implements InputController.Callbacks {
             if (renderer != null) {
                 renderer.close();
             }
-
             if (window != 0) {
                 glfwDestroyWindow(window);
             }
-
             glfwTerminate();
             errorCallback.free();
         }
@@ -111,36 +105,20 @@ public final class Main implements InputController.Callbacks {
         glfwDefaultWindowHints();
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(
-                GLFW_OPENGL_PROFILE,
-                GLFW_OPENGL_CORE_PROFILE
-        );
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
-        window = glfwCreateWindow(
-                WINDOW_WIDTH,
-                WINDOW_HEIGHT,
-                "Wildforge",
-                0,
-                0
-        );
-
+        window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Wildforge", 0, 0);
         if (window == 0) {
-            throw new IllegalStateException(
-                    "Failed to create GLFW window"
-            );
+            throw new IllegalStateException("Failed to create GLFW window");
         }
 
-        GLFWVidMode videoMode =
-                glfwGetVideoMode(glfwGetPrimaryMonitor());
-
+        GLFWVidMode videoMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
         if (videoMode != null) {
-            glfwSetWindowPos(
-                    window,
+            glfwSetWindowPos(window,
                     (videoMode.width() - WINDOW_WIDTH) / 2,
-                    (videoMode.height() - WINDOW_HEIGHT) / 2
-            );
+                    (videoMode.height() - WINDOW_HEIGHT) / 2);
         }
 
         glfwMakeContextCurrent(window);
@@ -180,7 +158,6 @@ public final class Main implements InputController.Callbacks {
     public void onCursorPosition(long handle, double x, double y) {
         mouseX = x;
         mouseY = y;
-
         if (glfwGetWindowAttrib(handle, GLFW_FOCUSED) == GLFW_TRUE
                 && screenMode == HudRenderer.ScreenMode.PLAYING) {
             player.onMouseMove(x, y);
@@ -226,19 +203,15 @@ public final class Main implements InputController.Callbacks {
     }
 
     @Override
-    public void onMouseButton(
-            long handle, int button, int action, int mods) {
+    public void onMouseButton(long handle, int button, int action, int mods) {
         if (glfwGetWindowAttrib(handle, GLFW_FOCUSED) != GLFW_TRUE) {
             return;
         }
-
-        if (button != GLFW_MOUSE_BUTTON_LEFT
-                && button != GLFW_MOUSE_BUTTON_RIGHT) {
+        if (button != GLFW_MOUSE_BUTTON_LEFT && button != GLFW_MOUSE_BUTTON_RIGHT) {
             return;
         }
 
-        if (screenMode == HudRenderer.ScreenMode.PLAYING
-                && player.isInventoryOpen()) {
+        if (screenMode == HudRenderer.ScreenMode.PLAYING && player.isInventoryOpen()) {
             handleInventoryMouseButton(handle, button, action);
             return;
         }
@@ -246,8 +219,7 @@ public final class Main implements InputController.Callbacks {
         if (screenMode == HudRenderer.ScreenMode.MAIN_MENU
                 || screenMode == HudRenderer.ScreenMode.SAVE_SELECT
                 || screenMode == HudRenderer.ScreenMode.PAUSED) {
-            if (button == GLFW_MOUSE_BUTTON_LEFT
-                    && action == GLFW_PRESS) {
+            if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
                 handleMenuClick(handle);
             }
             return;
@@ -285,7 +257,6 @@ public final class Main implements InputController.Callbacks {
                 statusMessage = "";
             }
         }
-
         escapeWasDown = escapeDown;
     }
 
@@ -295,26 +266,36 @@ public final class Main implements InputController.Callbacks {
         if (screenMode == HudRenderer.ScreenMode.MAIN_MENU) {
             if (button == HudRenderer.MenuButton.PLAY) {
                 refreshSaveSlots();
+                savePage = 0;
                 screenMode = HudRenderer.ScreenMode.SAVE_SELECT;
                 statusMessage = "";
             } else if (button == HudRenderer.MenuButton.QUIT) {
                 glfwSetWindowShouldClose(handle, true);
             }
-            // Options is a visual placeholder for now.
             return;
         }
 
         if (screenMode == HudRenderer.ScreenMode.SAVE_SELECT) {
             switch (button) {
-                case SAVE_ONE -> beginLoadingSave(0);
-                case SAVE_TWO -> beginLoadingSave(1);
-                case SAVE_THREE -> beginLoadingSave(2);
+                case SAVE_ONE -> beginLoadingVisibleSave(0);
+                case SAVE_TWO -> beginLoadingVisibleSave(1);
+                case SAVE_THREE -> beginLoadingVisibleSave(2);
+                case NEW_GAME -> beginLoadingSave(saveManager.nextAvailableSlot());
+                case PREVIOUS_PAGE -> {
+                    if (hasPreviousSavePage()) {
+                        savePage--;
+                    }
+                }
+                case NEXT_PAGE -> {
+                    if (hasNextSavePage()) {
+                        savePage++;
+                    }
+                }
                 case BACK -> {
                     screenMode = HudRenderer.ScreenMode.MAIN_MENU;
                     statusMessage = "";
                 }
                 default -> {
-                    // No action for the options placeholder or empty space.
                 }
             }
             return;
@@ -326,15 +307,20 @@ public final class Main implements InputController.Callbacks {
             } else if (button == HudRenderer.MenuButton.QUIT) {
                 beginSaveAndReturnToMainMenu();
             }
-            // Options is a visual placeholder for now.
+        }
+    }
+
+    private void beginLoadingVisibleSave(int localIndex) {
+        SaveManager.SaveSlotSummary summary = visibleSaveAt(localIndex);
+        if (summary != null) {
+            beginLoadingSave(summary.slot());
         }
     }
 
     private void beginLoadingSave(int slot) {
-        if (slot < 0 || slot >= SaveManager.SLOT_COUNT) {
+        if (slot < 0) {
             return;
         }
-
         activeSaveSlot = slot;
         screenMode = HudRenderer.ScreenMode.LOADING;
         statusMessage = "";
@@ -342,30 +328,60 @@ public final class Main implements InputController.Callbacks {
     }
 
     private void refreshSaveSlots() {
-        saveManager.refreshSlots(saveSlotsExist);
+        saveSlots = saveManager.listSlots();
+        int maxPage = Math.max(0, (saveSlots.size() - 1) / SAVES_PER_PAGE);
+        if (savePage > maxPage) {
+            savePage = maxPage;
+        }
+    }
+
+    private SaveManager.SaveSlotSummary visibleSaveAt(int localIndex) {
+        int absoluteIndex = savePage * SAVES_PER_PAGE + localIndex;
+        if (localIndex < 0 || localIndex >= SAVES_PER_PAGE
+                || absoluteIndex < 0 || absoluteIndex >= saveSlots.size()) {
+            return null;
+        }
+        return saveSlots.get(absoluteIndex);
+    }
+
+    private String[] visibleSaveLabels() {
+        String[] labels = new String[SAVES_PER_PAGE];
+        for (int i = 0; i < SAVES_PER_PAGE; i++) {
+            SaveManager.SaveSlotSummary summary = visibleSaveAt(i);
+            labels[i] = summary == null ? "EMPTY" : summary.displayName();
+        }
+        return labels;
+    }
+
+    private boolean[] visibleSaveExists() {
+        boolean[] exists = new boolean[SAVES_PER_PAGE];
+        for (int i = 0; i < SAVES_PER_PAGE; i++) {
+            SaveManager.SaveSlotSummary summary = visibleSaveAt(i);
+            exists[i] = summary != null && summary.exists();
+        }
+        return exists;
+    }
+
+    private boolean hasPreviousSavePage() {
+        return savePage > 0;
+    }
+
+    private boolean hasNextSavePage() {
+        return (savePage + 1) * SAVES_PER_PAGE < saveSlots.size();
     }
 
     private HudRenderer.MenuButton getMenuButtonAt(long handle) {
         glfwGetWindowSize(handle, windowWidth, windowHeight);
-        glfwGetFramebufferSize(
-                handle, framebufferWidth, framebufferHeight);
+        glfwGetFramebufferSize(handle, framebufferWidth, framebufferHeight);
 
         if (windowWidth[0] <= 0 || windowHeight[0] <= 0
-                || framebufferWidth[0] <= 0
-                || framebufferHeight[0] <= 0) {
+                || framebufferWidth[0] <= 0 || framebufferHeight[0] <= 0) {
             return HudRenderer.MenuButton.NONE;
         }
 
-        float x = (float) (
-                mouseX * framebufferWidth[0] / windowWidth[0]);
-        float y = (float) (
-                mouseY * framebufferHeight[0] / windowHeight[0]);
-
-        return renderer.menuButtonAt(
-                x, y,
-                framebufferWidth[0], framebufferHeight[0],
-                screenMode
-        );
+        float x = (float) (mouseX * framebufferWidth[0] / windowWidth[0]);
+        float y = (float) (mouseY * framebufferHeight[0] / windowHeight[0]);
+        return renderer.menuButtonAt(x, y, framebufferWidth[0], framebufferHeight[0], screenMode);
     }
 
     private void resumeGame() {
@@ -379,7 +395,6 @@ public final class Main implements InputController.Callbacks {
             glfwSetWindowShouldClose(window, true);
             return;
         }
-
         beginSaving(true, false);
     }
 
@@ -388,13 +403,10 @@ public final class Main implements InputController.Callbacks {
             screenMode = HudRenderer.ScreenMode.MAIN_MENU;
             return;
         }
-
         beginSaving(false, true);
     }
 
-    private void beginSaving(
-            boolean closeAfterSave,
-            boolean returnToMainMenuAfterSave) {
+    private void beginSaving(boolean closeAfterSave, boolean returnToMainMenuAfterSave) {
         cancelInventoryDrag();
         player.releaseMouse(window);
         screenMode = HudRenderer.ScreenMode.SAVING;
@@ -407,14 +419,11 @@ public final class Main implements InputController.Callbacks {
 
     private void loadWorld() {
         loadPending = false;
-
         try {
             saveManager.loadTerrain(activeSaveSlot, terrain);
-
             worldItems.clear();
             player = new Player(terrain, worldItems, gameContent);
             saveManager.loadPlayer(activeSaveSlot, player, terrain);
-
             worldLoaded = true;
             statusMessage = "";
             screenMode = HudRenderer.ScreenMode.PLAYING;
@@ -423,23 +432,19 @@ public final class Main implements InputController.Callbacks {
             System.err.println("Could not load world: " + e.getMessage());
             statusMessage = "LOAD FAILED";
             screenMode = HudRenderer.ScreenMode.SAVE_SELECT;
-
             if (player != null) {
                 player.releaseMouse(window);
             }
-
             refreshSaveSlots();
         }
     }
 
     private void saveWorld() {
         savePending = false;
-
         try {
             if (!saveManager.isValidSlot(activeSaveSlot)) {
                 throw new IOException("No save slot is selected");
             }
-
             saveManager.save(activeSaveSlot, terrain, player);
             worldLoaded = true;
             refreshSaveSlots();
@@ -464,19 +469,15 @@ public final class Main implements InputController.Callbacks {
         }
     }
 
-    private void handleInventoryMouseButton(
-            long handle, int button, int action) {
-
+    private void handleInventoryMouseButton(long handle, int button, int action) {
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
             if (action == GLFW_PRESS) {
                 beginInventoryDrag(handle);
             } else if (action == GLFW_RELEASE) {
                 finishInventoryDrag(handle);
             }
-        } else if (button == GLFW_MOUSE_BUTTON_RIGHT
-                && action == GLFW_PRESS) {
+        } else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
             int slot = getInventorySlotAtMouse(handle);
-
             if (slot >= 0) {
                 player.clickInventorySlot(slot, true);
             }
@@ -487,9 +488,7 @@ public final class Main implements InputController.Callbacks {
         if (inventoryDragActive) {
             return;
         }
-
         int slot = getInventorySlotAtMouse(handle);
-
         if (slot < 0) {
             return;
         }
@@ -498,9 +497,7 @@ public final class Main implements InputController.Callbacks {
             if (player.getInventoryStack(slot) == null) {
                 return;
             }
-
             player.clickInventorySlot(slot, false);
-
             if (player.getCursorStack() != null) {
                 inventoryDragActive = true;
                 inventoryDragSourceSlot = slot;
@@ -515,15 +512,12 @@ public final class Main implements InputController.Callbacks {
         if (!inventoryDragActive) {
             return;
         }
-
         int targetSlot = getInventorySlotAtMouse(handle);
-
         if (targetSlot >= 0) {
             player.clickInventorySlot(targetSlot, false);
         } else if (inventoryDragSourceSlot >= 0) {
             player.clickInventorySlot(inventoryDragSourceSlot, false);
         }
-
         inventoryDragActive = false;
         inventoryDragSourceSlot = -1;
     }
@@ -532,44 +526,31 @@ public final class Main implements InputController.Callbacks {
         if (player != null && player.getCursorStack() != null) {
             player.returnCursorStackToInventory();
         }
-
         inventoryDragActive = false;
         inventoryDragSourceSlot = -1;
     }
 
     private int getInventorySlotAtMouse(long handle) {
         glfwGetWindowSize(handle, windowWidth, windowHeight);
-        glfwGetFramebufferSize(
-                handle, framebufferWidth, framebufferHeight);
-
+        glfwGetFramebufferSize(handle, framebufferWidth, framebufferHeight);
         if (windowWidth[0] <= 0 || windowHeight[0] <= 0
-                || framebufferWidth[0] <= 0
-                || framebufferHeight[0] <= 0) {
+                || framebufferWidth[0] <= 0 || framebufferHeight[0] <= 0) {
             return -1;
         }
 
-        float x = (float) (
-                mouseX * framebufferWidth[0] / windowWidth[0]);
-        float y = (float) (
-                mouseY * framebufferHeight[0] / windowHeight[0]);
-
-        return inventorySlotAt(
-                x, y, framebufferWidth[0], framebufferHeight[0]);
+        float x = (float) (mouseX * framebufferWidth[0] / windowWidth[0]);
+        float y = (float) (mouseY * framebufferHeight[0] / windowHeight[0]);
+        return inventorySlotAt(x, y, framebufferWidth[0], framebufferHeight[0]);
     }
 
-    private int inventorySlotAt(
-            float mouseX, float mouseY, int width, int height) {
-        return HudRenderer.inventorySlotAt(
-                mouseX, mouseY, width, height);
+    private int inventorySlotAt(float mouseX, float mouseY, int width, int height) {
+        return HudRenderer.inventorySlotAt(mouseX, mouseY, width, height);
     }
 
     private void bringWindowToFront() {
         try {
-            long nativeWindow =
-                    GLFWNativeWin32.glfwGetWin32Window(window);
-
+            long nativeWindow = GLFWNativeWin32.glfwGetWin32Window(window);
             HWND hwnd = new HWND(new Pointer(nativeWindow));
-
             User32.INSTANCE.ShowWindow(hwnd, 5);
             User32.INSTANCE.BringWindowToTop(hwnd);
             User32.INSTANCE.SetForegroundWindow(hwnd);
@@ -585,36 +566,31 @@ public final class Main implements InputController.Callbacks {
             double now = glfwGetTime();
             float deltaTime = (float) (now - lastFrameTime);
             lastFrameTime = now;
-            // Avoid a large physics step after a debugger pause, window drag,
-            // or OS scheduling stall. Player also applies its own safety cap.
-            deltaTime = Math.max(0.0f,
-                    Math.min(deltaTime, MAX_FRAME_DELTA_SECONDS));
+            deltaTime = Math.max(0.0f, Math.min(deltaTime, MAX_FRAME_DELTA_SECONDS));
 
             glfwPollEvents();
             handleEscapeKey();
 
             if (screenMode == HudRenderer.ScreenMode.PLAYING) {
                 player.update(window, terrain, deltaTime);
-
                 if (screenMode == HudRenderer.ScreenMode.PLAYING) {
                     worldItems.update(deltaTime, player);
                 }
             }
 
-            glfwGetFramebufferSize(
-                    window, framebufferWidth, framebufferHeight);
+            glfwGetFramebufferSize(window, framebufferWidth, framebufferHeight);
             glfwGetWindowSize(window, windowWidth, windowHeight);
 
             renderer.render(
                     framebufferWidth[0],
                     framebufferHeight[0],
                     player.getCamera(),
-                    player
+                    player,
+                    screenMode
             );
 
             float hudMouseX = (float) mouseX;
             float hudMouseY = (float) mouseY;
-
             if (windowWidth[0] > 0 && windowHeight[0] > 0) {
                 hudMouseX *= (float) framebufferWidth[0] / windowWidth[0];
                 hudMouseY *= (float) framebufferHeight[0] / windowHeight[0];
@@ -628,19 +604,20 @@ public final class Main implements InputController.Callbacks {
                     hudMouseY,
                     screenMode,
                     statusMessage,
-                    saveSlotsExist
+                    visibleSaveLabels(),
+                    visibleSaveExists(),
+                    savePage,
+                    hasPreviousSavePage(),
+                    hasNextSavePage()
             );
 
             glfwSwapBuffers(window);
 
-            // Swap the status screen before doing file I/O so users see
-            // that the world is loading or saving.
             if (loadPending) {
                 loadWorld();
             }
             if (savePending
-                    && System.nanoTime() - savingScreenStartedAtNanos
-                            >= MIN_SAVING_SCREEN_NANOS) {
+                    && System.nanoTime() - savingScreenStartedAtNanos >= MIN_SAVING_SCREEN_NANOS) {
                 saveWorld();
             }
         }

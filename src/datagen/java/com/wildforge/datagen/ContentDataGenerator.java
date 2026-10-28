@@ -70,15 +70,16 @@ public final class ContentDataGenerator {
         blockWithItem("gravel",   15, 16, 1);
         blockWithItem("sand",     16, 17, 1);
         blockWithItem("sandstone",17, 18, 2);
+        blockWithItem("cobblestone", 18, 19, 2);
 
         // Items without a placeable block use item(...).
         item("coal", 4, 64, "coal");
 
         // Tags are generated, indexed and resolved at runtime. # references nest tags.
-        blockTag("stone", "stone", "andesite", "basalt", "diorite", "gabbro");
+        blockTag("stone", "stone", "andesite", "basalt", "diorite", "gabbro", "cobblestone");
         blockTag("natural_stone", "#stone", "sandstone");
         itemTag("stone_blocks", "stone_block", "andesite_block", "basalt_block",
-                "diorite_block", "gabbro_block");
+                "diorite_block", "gabbro_block", "cobblestone_block");
         itemTag("building_blocks", "#stone_blocks", "dirt_block", "sandstone_block");
     }
 

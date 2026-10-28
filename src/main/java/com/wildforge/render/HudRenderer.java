@@ -78,6 +78,9 @@ public final class HudRenderer {
         SAVE_ONE,
         SAVE_TWO,
         SAVE_THREE,
+        NEW_GAME,
+        PREVIOUS_PAGE,
+        NEXT_PAGE,
         BACK,
         NONE
     }
@@ -175,7 +178,11 @@ public final class HudRenderer {
             float mouseY,
             ScreenMode screenMode,
             String statusMessage,
-            boolean[] saveSlotsExist) {
+            String[] visibleSaveLabels,
+            boolean[] visibleSaveExists,
+            int savePage,
+            boolean hasPreviousSavePage,
+            boolean hasNextSavePage) {
 
         if (width <= 0 || height <= 0) {
             return;
@@ -236,7 +243,9 @@ public final class HudRenderer {
                 || screenMode == ScreenMode.PAUSED) {
             drawMenu(
                     data, width, height, mouseX, mouseY,
-                    screenMode, statusMessage, saveSlotsExist);
+                    screenMode, statusMessage,
+                    visibleSaveLabels, visibleSaveExists,
+                    savePage, hasPreviousSavePage, hasNextSavePage);
         } else {
             drawStatusScreen(data, width, height, screenMode, statusMessage);
         }
@@ -369,6 +378,10 @@ public final class HudRenderer {
         return MenuButton.NONE;
     }
 
+    /**
+     * The artwork contains the Wildforge logo, so the main menu must not draw
+     * another title over it. Buttons sit in a low-profile footer instead.
+     */
     private void drawMenu(
             List<Float> data,
             int width,
@@ -377,92 +390,200 @@ public final class HudRenderer {
             float mouseY,
             ScreenMode screenMode,
             String statusMessage,
-            boolean[] saveSlotsExist) {
+            String[] visibleSaveLabels,
+            boolean[] visibleSaveExists,
+            int savePage,
+            boolean hasPreviousSavePage,
+            boolean hasNextSavePage) {
 
-        rect(data, 0, 0, width, height,
-                0.025f, 0.035f, 0.055f, 0.78f);
+        if (screenMode == ScreenMode.MAIN_MENU) {
+            // Keep the sunset and built-in logo bright. Darken only the footer
+            // behind our controls rather than dimming the entire artwork.
+            rect(data, 0, height * 0.76f, width, height * 0.24f,
+                    0.025f, 0.033f, 0.047f, 0.22f);
+            rect(data, 0, height * 0.84f, width, height * 0.16f,
+                    0.025f, 0.033f, 0.047f, 0.38f);
+            float s = mainMenuScale(width, height);
+            menuText(data, "EXPLORE  BUILD  FORGE", width * 0.5f,
+                    height - 26f * s, 1.65f * s, 0.94f, 0.79f, 0.52f, 0.9f);
+        } else {
+            rect(data, 0, 0, width, height,
+                    0.018f, 0.028f, 0.035f,
+                    screenMode == ScreenMode.SAVE_SELECT ? 0.40f : 0.56f);
 
-        String title = switch (screenMode) {
-            case MAIN_MENU -> "WILDFORGE";
-            case SAVE_SELECT -> "SELECT A SAVE";
-            default -> "PAUSED";
-        };
-        float titleScale = 6.0f;
-        drawText(
-                data, title,
-                width / 2.0f,
-                height * 0.20f,
-                titleScale,
-                0.96f, 0.78f, 0.30f, 1.0f
-        );
+            if (screenMode == ScreenMode.SAVE_SELECT) {
+                float s = saveMenuScale(width, height);
+                float panelWidth = 570f * s;
+                float panelHeight = 645f * s;
+                float panelX = (width - panelWidth) / 2f;
+                float panelY = (height - panelHeight) / 2f;
+                drawForgePanel(data, panelX, panelY, panelWidth, panelHeight, s);
+                menuText(data, "SELECT WORLD", width * 0.5f,
+                        panelY + 39f * s, 3.65f * s,
+                        0.98f, 0.83f, 0.55f, 1f);
+                menuText(data, "CHOOSE A SAVE OR START FRESH", width * 0.5f,
+                        panelY + 81f * s, 1.65f * s,
+                        0.76f, 0.76f, 0.72f, 1f);
+                rect(data, panelX + 36f * s, panelY + 103f * s,
+                        panelWidth - 72f * s, 2f * s,
+                        0.63f, 0.39f, 0.17f, 0.85f);
+                menuText(data, "PAGE " + (savePage + 1), width * 0.5f,
+                        panelY + 524f * s, 1.65f * s,
+                        0.83f, 0.79f, 0.71f, 1f);
+            } else {
+                float s = pauseMenuScale(width, height);
+                float panelW = 510f * s;
+                float panelH = 435f * s;
+                float x = (width - panelW) / 2f;
+                float y = (height - panelH) / 2f;
+                drawForgePanel(data, x, y, panelW, panelH, s);
+                menuText(data, "GAME PAUSED", width * 0.5f,
+                        y + 61f * s, 4.0f * s,
+                        0.98f, 0.83f, 0.55f, 1f);
+                menuText(data, "YOUR ADVENTURE AWAITS", width * 0.5f,
+                        y + 112f * s, 1.7f * s,
+                        0.77f, 0.77f, 0.74f, 1f);
+            }
+        }
 
         for (int index = 0; index < buttonCount(screenMode); index++) {
             MenuButton button = buttonForIndex(index, screenMode);
             float[] bounds = buttonBounds(index, width, height, screenMode);
-            boolean hovered = buttonAt(
-                    mouseX, mouseY, width, height, screenMode) == button;
+            float x = bounds[0];
+            float y = bounds[1];
+            float w = bounds[2];
+            float h = bounds[3];
 
-            float border = hovered ? 0.95f : 0.58f;
-            rect(data,
-                    bounds[0] - 2, bounds[1] - 2,
-                    bounds[2] + 4, bounds[3] + 4,
-                    border, hovered ? 0.76f : 0.62f,
-                    hovered ? 0.26f : 0.70f, 1.0f);
-            rect(data,
-                    bounds[0], bounds[1], bounds[2], bounds[3],
-                    hovered ? 0.24f : 0.12f,
-                    hovered ? 0.27f : 0.16f,
-                    hovered ? 0.31f : 0.21f, 0.98f);
+            boolean saveEntry = screenMode == ScreenMode.SAVE_SELECT && index < 3;
+            boolean existingSave = saveEntry
+                    && visibleSaveExists != null
+                    && index < visibleSaveExists.length
+                    && visibleSaveExists[index];
+            boolean disabled = button == MenuButton.OPTIONS
+                    || (saveEntry && !existingSave)
+                    || (button == MenuButton.PREVIOUS_PAGE && !hasPreviousSavePage)
+                    || (button == MenuButton.NEXT_PAGE && !hasNextSavePage);
+            boolean hovered = !disabled && buttonAt(mouseX, mouseY,
+                    width, height, screenMode) == button;
+            boolean emphasized = button == MenuButton.PLAY || button == MenuButton.NEW_GAME
+                    || (button == MenuButton.CONTINUE && screenMode == ScreenMode.PAUSED);
+            float s = screenMode == ScreenMode.SAVE_SELECT
+                    ? saveMenuScale(width, height)
+                    : screenMode == ScreenMode.MAIN_MENU
+                    ? mainMenuScale(width, height)
+                    : pauseMenuScale(width, height);
 
-            if (screenMode == ScreenMode.SAVE_SELECT
-                    && index < 3) {
-                drawText(
-                        data,
-                        buttonLabel(button),
-                        bounds[0] + bounds[2] / 2.0f,
-                        bounds[1] + 8.0f,
-                        2.5f,
-                        0.96f, 0.96f, 0.94f, 1.0f
-                );
+            drawForgeButton(data, x, y, w, h, hovered, emphasized, disabled, s);
 
-                boolean exists = saveSlotsExist != null
-                        && index < saveSlotsExist.length
-                        && saveSlotsExist[index];
-                drawText(
-                        data,
-                        exists ? "SAVED" : "EMPTY",
-                        bounds[0] + bounds[2] / 2.0f,
-                        bounds[1] + 36.0f,
-                        1.8f,
-                        exists ? 0.65f : 0.76f,
-                        exists ? 0.88f : 0.76f,
-                        exists ? 0.68f : 0.76f,
-                        1.0f
-                );
+            if (saveEntry) {
+                String label = existingSave && visibleSaveLabels != null
+                        && index < visibleSaveLabels.length
+                        && visibleSaveLabels[index] != null
+                        ? visibleSaveLabels[index] : "EMPTY SLOT";
+                menuText(data, label, x + w / 2f, y + 13f * s,
+                        2.65f * s,
+                        existingSave ? 0.96f : 0.70f,
+                        existingSave ? 0.92f : 0.70f,
+                        existingSave ? 0.82f : 0.70f, 1f);
+                menuText(data, existingSave ? "LOAD WORLD" : "CREATE WITH NEW GAME",
+                        x + w / 2f, y + 43f * s, 1.4f * s,
+                        existingSave ? 0.74f : 0.60f,
+                        existingSave ? 0.76f : 0.61f,
+                        existingSave ? 0.70f : 0.59f, 1f);
             } else {
-                drawText(
-                        data,
-                        buttonLabel(button),
-                        bounds[0] + bounds[2] / 2.0f,
-                        bounds[1] + (bounds[3] - 7 * 3.0f) / 2.0f,
-                        3.0f,
-                        0.96f, 0.96f, 0.94f, 1.0f
-                );
+                String label = button == MenuButton.PREVIOUS_PAGE ? "PREVIOUS"
+                        : button == MenuButton.NEXT_PAGE ? "NEXT"
+                        : buttonLabel(button);
+                float size = screenMode == ScreenMode.SAVE_SELECT ? 2.35f * s : 2.95f * s;
+                menuText(data, label, x + w / 2f,
+                        y + (h - 7f * size) / 2f, size,
+                        disabled ? 0.54f : hovered ? 1.0f : 0.96f,
+                        disabled ? 0.55f : hovered ? 0.87f : 0.93f,
+                        disabled ? 0.53f : hovered ? 0.58f : 0.86f, 1f);
             }
         }
 
         if (statusMessage != null && !statusMessage.isBlank()) {
-            drawText(
-                    data,
-                    statusMessage.toUpperCase(),
-                    width / 2.0f,
-                    height * 0.90f,
-                    2.0f,
-                    1.0f, 0.55f, 0.45f, 1.0f
-            );
+            menuText(data, statusMessage.toUpperCase(), width / 2f,
+                    height * 0.96f, 1.9f, 1f, 0.55f, 0.43f, 1f);
         }
+    }
 
+    /** Stylized metal/stone panels with ember-colored trim. */
+    private void drawForgePanel(List<Float> data, float x, float y,
+                                float w, float h, float s) {
+        rect(data, x + 8f * s, y + 10f * s, w, h,
+                0.006f, 0.007f, 0.010f, 0.62f); // drop shadow
+        rect(data, x - 3f * s, y - 3f * s, w + 6f * s, h + 6f * s,
+                0.10f, 0.11f, 0.12f, 0.98f);
+        rect(data, x, y, w, h,
+                0.095f, 0.106f, 0.116f, 0.96f);
+        rect(data, x + 5f * s, y + 5f * s, w - 10f * s, h - 10f * s,
+                0.14f, 0.15f, 0.16f, 0.96f);
+        rect(data, x + 9f * s, y + 9f * s, w - 18f * s, h - 18f * s,
+                0.085f, 0.095f, 0.104f, 0.95f);
+        // Forge seam and four rivets.
+        rect(data, x + 3f * s, y + 3f * s, w - 6f * s, 3f * s,
+                0.62f, 0.40f, 0.21f, 0.95f);
+        rect(data, x + 3f * s, y + h - 6f * s, w - 6f * s, 3f * s,
+                0.29f, 0.24f, 0.19f, 0.95f);
+        for (float rx : new float[] {x + 17f * s, x + w - 22f * s}) {
+            for (float ry : new float[] {y + 19f * s, y + h - 24f * s}) {
+                rect(data, rx, ry, 6f * s, 6f * s, 0.30f, 0.31f, 0.30f, 1f);
+                rect(data, rx + s, ry + s, 3f * s, 3f * s,
+                        0.67f, 0.58f, 0.45f, 1f);
+            }
+        }
+    }
 
+    /** A beveled voxel-style button; warm focus state is unique to Wildforge. */
+    private void drawForgeButton(List<Float> data, float x, float y,
+                                 float w, float h,
+                                 boolean hovered, boolean emphasized,
+                                 boolean disabled, float s) {
+        float borderR = disabled ? 0.24f : hovered ? 0.97f : emphasized ? 0.63f : 0.43f;
+        float borderG = disabled ? 0.25f : hovered ? 0.62f : emphasized ? 0.43f : 0.45f;
+        float borderB = disabled ? 0.25f : hovered ? 0.23f : emphasized ? 0.24f : 0.46f;
+        rect(data, x + 2f * s, y + 5f * s, w, h,
+                0.008f, 0.009f, 0.013f, 0.70f);
+        rect(data, x - 2f * s, y - 2f * s, w + 4f * s, h + 4f * s,
+                borderR, borderG, borderB, 1f);
+        rect(data, x, y, w, h,
+                disabled ? 0.14f : hovered ? 0.29f : emphasized ? 0.23f : 0.18f,
+                disabled ? 0.15f : hovered ? 0.22f : emphasized ? 0.20f : 0.20f,
+                disabled ? 0.16f : hovered ? 0.17f : emphasized ? 0.17f : 0.21f, 0.97f);
+        // Pixel beveled highlights and the dark bottom edge.
+        rect(data, x + 3f * s, y + 3f * s, w - 6f * s, 2f * s,
+                hovered ? 0.87f : 0.51f, hovered ? 0.56f : 0.53f,
+                hovered ? 0.22f : 0.54f, disabled ? 0.25f : 0.84f);
+        rect(data, x + 3f * s, y + h - 5f * s, w - 6f * s, 3f * s,
+                0.045f, 0.052f, 0.061f, 0.95f);
+        if (hovered || emphasized) {
+            rect(data, x + 2f * s, y + 5f * s, 4f * s, h - 10f * s,
+                    hovered ? 1f : 0.72f, hovered ? 0.58f : 0.40f,
+                    hovered ? 0.20f : 0.19f, disabled ? 0.25f : 0.94f);
+        }
+    }
+
+    private void menuText(List<Float> data, String value, float centerX,
+                          float y, float size, float r, float g, float b,
+                          float alpha) {
+        drawText(data, value, centerX + size * 0.52f, y + size * 0.6f,
+                size, 0.015f, 0.018f, 0.024f, alpha * 0.8f);
+        drawText(data, value, centerX, y,
+                size, r, g, b, alpha);
+    }
+
+    private float mainMenuScale(int width, int height) {
+        return Math.min(1f, Math.min((width - 36f) / 940f, (height - 30f) / 720f));
+    }
+
+    private float saveMenuScale(int width, int height) {
+        return Math.min(1f, Math.min((width - 24f) / 570f, (height - 24f) / 645f));
+    }
+
+    private float pauseMenuScale(int width, int height) {
+        return Math.min(1f, Math.min((width - 24f) / 510f, (height - 24f) / 435f));
     }
 
     private void drawStatusScreen(
@@ -498,31 +619,53 @@ public final class HudRenderer {
     }
 
     private int buttonCount(ScreenMode screenMode) {
-        return screenMode == ScreenMode.SAVE_SELECT ? 4 : 3;
+        return screenMode == ScreenMode.SAVE_SELECT ? 7 : 3;
     }
 
+    /** The click geometry and draw geometry share this one layout. */
     private float[] buttonBounds(
             int index, int width, int height, ScreenMode screenMode) {
-
-        float buttonWidth = Math.min(360.0f, Math.max(180.0f, width - 40.0f));
-        float buttonHeight = screenMode == ScreenMode.SAVE_SELECT
-                ? 58.0f : 56.0f;
-        float gap = screenMode == ScreenMode.SAVE_SELECT ? 10.0f : 14.0f;
-        float startY;
-
         if (screenMode == ScreenMode.MAIN_MENU) {
-            startY = height * 0.48f;
-        } else if (screenMode == ScreenMode.SAVE_SELECT) {
-            startY = height * 0.30f;
-        } else {
-            startY = height * 0.39f;
+            float s = mainMenuScale(width, height);
+            float w = 284f * s;
+            float gap = 22f * s;
+            float total = 3f * w + 2f * gap;
+            return new float[] {
+                    (width - total) / 2f + index * (w + gap),
+                    height - 99f * s,
+                    w, 55f * s
+            };
         }
-
+        if (screenMode == ScreenMode.SAVE_SELECT) {
+            float s = saveMenuScale(width, height);
+            float panelX = (width - 570f * s) / 2f;
+            float panelY = (height - 645f * s) / 2f;
+            if (index < 3) {
+                return new float[] {panelX + 46f * s,
+                        panelY + (117f + index * 82f) * s,
+                        478f * s, 72f * s};
+            }
+            if (index == 3) {
+                return new float[] {panelX + 46f * s,
+                        panelY + 381f * s,
+                        478f * s, 57f * s};
+            }
+            if (index == 4 || index == 5) {
+                return new float[] {panelX + (index == 4 ? 46f : 291f) * s,
+                        panelY + 457f * s,
+                        233f * s, 48f * s};
+            }
+            return new float[] {panelX + 46f * s,
+                    panelY + 556f * s,
+                    478f * s, 52f * s};
+        }
+        float s = pauseMenuScale(width, height);
+        float panelY = (height - 435f * s) / 2f;
+        float w = 396f * s;
         return new float[] {
-                (width - buttonWidth) / 2.0f,
-                startY + index * (buttonHeight + gap),
-                buttonWidth,
-                buttonHeight
+                (width - w) / 2f,
+                panelY + (170f + index * 79f) * s,
+                w, 58f * s
         };
     }
 
@@ -541,7 +684,10 @@ public final class HudRenderer {
                 case 0 -> MenuButton.SAVE_ONE;
                 case 1 -> MenuButton.SAVE_TWO;
                 case 2 -> MenuButton.SAVE_THREE;
-                case 3 -> MenuButton.BACK;
+                case 3 -> MenuButton.NEW_GAME;
+                case 4 -> MenuButton.PREVIOUS_PAGE;
+                case 5 -> MenuButton.NEXT_PAGE;
+                case 6 -> MenuButton.BACK;
                 default -> MenuButton.NONE;
             };
         }
@@ -563,6 +709,9 @@ public final class HudRenderer {
             case SAVE_ONE -> "WORLD ONE";
             case SAVE_TWO -> "WORLD TWO";
             case SAVE_THREE -> "WORLD THREE";
+            case NEW_GAME -> "NEW GAME";
+            case PREVIOUS_PAGE -> "PREVIOUS PAGE";
+            case NEXT_PAGE -> "NEXT PAGE";
             case BACK -> "BACK";
             case NONE -> "";
         };
@@ -628,6 +777,16 @@ public final class HudRenderer {
             case 'X' -> new String[] {"10001", "10001", "01010", "00100", "01010", "10001", "10001"};
             case 'Y' -> new String[] {"10001", "10001", "01010", "00100", "00100", "00100", "00100"};
             case 'Z' -> new String[] {"11111", "00001", "00010", "00100", "01000", "10000", "11111"};
+            case '0' -> new String[] {"01110", "10001", "10011", "10101", "11001", "10001", "01110"};
+            case '1' -> new String[] {"00100", "01100", "00100", "00100", "00100", "00100", "01110"};
+            case '2' -> new String[] {"01110", "10001", "00001", "00010", "00100", "01000", "11111"};
+            case '3' -> new String[] {"11110", "00001", "00001", "01110", "00001", "00001", "11110"};
+            case '4' -> new String[] {"00010", "00110", "01010", "10010", "11111", "00010", "00010"};
+            case '5' -> new String[] {"11111", "10000", "10000", "11110", "00001", "00001", "11110"};
+            case '6' -> new String[] {"01110", "10000", "10000", "11110", "10001", "10001", "01110"};
+            case '7' -> new String[] {"11111", "00001", "00010", "00100", "01000", "01000", "01000"};
+            case '8' -> new String[] {"01110", "10001", "10001", "01110", "10001", "10001", "01110"};
+            case '9' -> new String[] {"01110", "10001", "10001", "01111", "00001", "00001", "01110"};
             default -> new String[] {"00000", "00000", "00000", "00000", "00000", "00000", "00000"};
         };
     }

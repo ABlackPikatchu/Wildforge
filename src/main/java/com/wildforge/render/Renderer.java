@@ -78,6 +78,7 @@ public final class Renderer {
     private final TerrainMesh terrain;
     private final HudRenderer hud;
     private final BlockTextures blockTextures;
+    private final TitleScreenRenderer titleScreen;
 
     private int shaderProgram;
     private int terrainMvpLocation = -1;
@@ -101,6 +102,7 @@ public final class Renderer {
         this.terrain = terrain;
         this.blockTextures = new BlockTextures();
         this.hud = new HudRenderer(blockTextures);
+        this.titleScreen = new TitleScreenRenderer();
 
         initializeShaders();
         initializeTerrain();
@@ -551,7 +553,12 @@ public final class Renderer {
         return offset;
     }
 
-    public void render(int width, int height, Camera camera, Player player) {
+    public void render(
+            int width,
+            int height,
+            Camera camera,
+            Player player,
+            HudRenderer.ScreenMode screenMode) {
         if (width <= 0 || height <= 0) {
             return;
         }
@@ -559,6 +566,12 @@ public final class Renderer {
         glViewport(0, 0, width, height);
         glClearColor(0.48f, 0.68f, 0.88f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        if (screenMode == HudRenderer.ScreenMode.MAIN_MENU
+                || screenMode == HudRenderer.ScreenMode.SAVE_SELECT) {
+            titleScreen.render(width, height);
+            return;
+        }
 
         updateTerrainIfNeeded();
 
@@ -695,16 +708,23 @@ public final class Renderer {
             float mouseY,
             HudRenderer.ScreenMode screenMode,
             String statusMessage,
-            boolean[] saveSlotsExist
+            String[] visibleSaveLabels,
+            boolean[] visibleSaveExists,
+            int savePage,
+            boolean hasPreviousSavePage,
+            boolean hasNextSavePage
     ) {
         hud.render(
                 width, height, player, mouseX, mouseY,
-                screenMode, statusMessage, saveSlotsExist
+                screenMode, statusMessage,
+                visibleSaveLabels, visibleSaveExists,
+                savePage, hasPreviousSavePage, hasNextSavePage
         );
     }
 
     public void close() {
         hud.close();
+        titleScreen.close();
         blockTextures.close();
 
         if (vao != 0) glDeleteVertexArrays(vao);

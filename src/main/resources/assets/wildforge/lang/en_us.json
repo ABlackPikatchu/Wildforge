@@ -33,5 +33,7 @@
   "item.wildforge.gabbro_block": "Gabbro",
   "item.wildforge.gravel_block": "Gravel",
   "item.wildforge.sand_block": "Sand",
-  "item.wildforge.sandstone_block": "Sandstone"
+  "item.wildforge.sandstone_block": "Sandstone",
+  "block.wildforge.cobblestone": "Cobbleston",
+  "item.wildforge.cobblestone_block": "Cobblestone"
 }
