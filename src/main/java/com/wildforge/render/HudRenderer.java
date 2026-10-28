@@ -1,6 +1,8 @@
 
 package com.wildforge.render;
 
+import com.wildforge.core.GameSettings;
+import com.wildforge.core.KeyBindings;
 import com.wildforge.item.ItemStack;
 import com.wildforge.item.ItemType;
 import com.wildforge.player.Player;
@@ -64,6 +66,9 @@ public final class HudRenderer {
     public enum ScreenMode {
         MAIN_MENU,
         SAVE_SELECT,
+        OPTIONS,
+        KEYBINDS,
+        DELETE_CONFIRM,
         PLAYING,
         PAUSED,
         LOADING,
@@ -81,6 +86,32 @@ public final class HudRenderer {
         NEW_GAME,
         PREVIOUS_PAGE,
         NEXT_PAGE,
+        DELETE_ONE,
+        DELETE_TWO,
+        DELETE_THREE,
+        CONFIRM_DELETE,
+        CANCEL_DELETE,
+        VIDEO_TAB,
+        CONTROLS_TAB,
+        FULLSCREEN,
+        RESOLUTION,
+        VSYNC,
+        FPS_LIMIT,
+        FOV,
+        SHOW_FPS,
+        SENSITIVITY,
+        CROSSHAIR,
+        UI_SCALE,
+        KEYBINDS_TAB,
+        BIND_1,
+        BIND_2,
+        BIND_3,
+        BIND_4,
+        BIND_5,
+        BIND_6,
+        BIND_PREVIOUS,
+        BIND_NEXT,
+        RESET_BINDS,
         BACK,
         NONE
     }
@@ -96,13 +127,46 @@ public final class HudRenderer {
     private int iconVbo;
     private int iconResolutionLocation;
     private int iconTextureLocation;
+    private boolean showCrosshair = true;
+    private boolean showFps;
+    private int measuredFps;
+    // One global scale for menus, dialogs, inventory, icons, text and the HUD.
+    private static float interfaceScale = 1.25f;
+
+    public void setUiScale(float scale) {
+        interfaceScale = Math.max(0.75f, Math.min(2f, scale));
+    }
+
+    /**
+     * Make the interface responsive, keeping inventory accessible on small screens.
+     * Menu panels have their own proportional fit rules in virtual coordinates.
+     */
+    private static float effectiveUiScale(int width, int height) {
+        return Math.min(interfaceScale, Math.min(width / 610f, height / 400f));
+    }
+
+    private static int virtualSize(int physicalSize, float scale) {
+        return Math.round(physicalSize / scale);
+    }
+
+    public void setShowCrosshair(boolean enabled) {
+        showCrosshair = enabled;
+    }
+
+    public void setShowFps(boolean enabled) {
+        showFps = enabled;
+    }
+
+    public void setMeasuredFps(int fps) {
+        measuredFps = Math.max(0, fps);
+    }
 
     private static final int SLOT_SIZE = 48;
     private static final int SLOT_GAP = 5;
-    private static final int INVENTORY_PANEL_WIDTH = 540;
-    private static final int INVENTORY_PANEL_HEIGHT = 330;
-    private static final int INVENTORY_TOP_PADDING = 35;
-    private static final int HOTBAR_ROW_PADDING = 12;
+    private static final int INVENTORY_PANEL_WIDTH = 568;
+    private static final int INVENTORY_PANEL_HEIGHT = 355;
+    private static final int INVENTORY_TOP_PADDING = 67;
+    private static final int HOTBAR_ROW_PADDING = 27;
 
     public HudRenderer(BlockTextures blockTextures) {
         if (blockTextures == null) {
@@ -182,11 +246,22 @@ public final class HudRenderer {
             boolean[] visibleSaveExists,
             int savePage,
             boolean hasPreviousSavePage,
-            boolean hasNextSavePage) {
+            boolean hasNextSavePage,
+            GameSettings settings,
+            String deleteWorldLabel,
+            int optionsPage) {
 
         if (width <= 0 || height <= 0) {
             return;
         }
+
+        // Every UI screen uses the same virtual coordinate transform. The title
+        // background is drawn separately at the native framebuffer resolution.
+        float scale = effectiveUiScale(width, height);
+        width = virtualSize(width, scale);
+        height = virtualSize(height, scale);
+        mouseX /= scale;
+        mouseY /= scale;
 
         List<Float> data = new ArrayList<>();
         List<Float> iconData = new ArrayList<>();
@@ -194,19 +269,27 @@ public final class HudRenderer {
         List<Float> tooltipData = new ArrayList<>();
 
         if (screenMode == ScreenMode.PLAYING) {
-            // Crosshair.
-            rect(data, width / 2f - 1, height / 2f - 8,
-                    2, 16, 1f, 1f, 1f, 0.9f);
-            rect(data, width / 2f - 8, height / 2f - 1,
-                    16, 2, 1f, 1f, 1f, 0.9f);
+            // Crosshair can be hidden through Options.
+            if (showCrosshair) {
+                rect(data, width / 2f - 1, height / 2f - 8,
+                        2, 16, 1f, 1f, 1f, 0.9f);
+                rect(data, width / 2f - 8, height / 2f - 1,
+                        16, 2, 1f, 1f, 1f, 0.9f);
+            }
 
             drawHotbar(
-                    data, iconData, countData, width, height, player);
+                    data, iconData, countData, width, height, player, settings);
+
+            if (showFps) {
+                rect(data, 10f, 10f, 132f, 37f, 0.04f, 0.05f, 0.06f, 0.68f);
+                menuText(data, "FPS " + measuredFps, 76f, 19f, 2.05f,
+                        0.96f, 0.86f, 0.66f, 1f);
+            }
 
             if (player.isInventoryOpen()) {
                 drawInventory(
                         data, iconData, countData,
-                        width, height, player);
+                        width, height, player, settings);
 
                 // Draw the held stack above the inventory and cursor.
                 ItemStack cursorStack = player.getCursorStack();
@@ -226,7 +309,7 @@ public final class HudRenderer {
                 }
 
                 int hoveredSlot =
-                        inventorySlotAt(mouseX, mouseY, width, height);
+                        inventorySlotAtVirtual(mouseX, mouseY, width, height);
                 if (hoveredSlot >= 0) {
                     ItemStack hoveredStack =
                             player.getInventoryStack(hoveredSlot);
@@ -240,12 +323,16 @@ public final class HudRenderer {
             }
         } else if (screenMode == ScreenMode.MAIN_MENU
                 || screenMode == ScreenMode.SAVE_SELECT
+                || screenMode == ScreenMode.OPTIONS
+                || screenMode == ScreenMode.KEYBINDS
+                || screenMode == ScreenMode.DELETE_CONFIRM
                 || screenMode == ScreenMode.PAUSED) {
             drawMenu(
                     data, width, height, mouseX, mouseY,
                     screenMode, statusMessage,
                     visibleSaveLabels, visibleSaveExists,
-                    savePage, hasPreviousSavePage, hasNextSavePage);
+                    savePage, hasPreviousSavePage, hasNextSavePage,
+                    settings, deleteWorldLabel, optionsPage);
         } else {
             drawStatusScreen(data, width, height, screenMode, statusMessage);
         }
@@ -258,6 +345,13 @@ public final class HudRenderer {
 
     /** Returns the inventory or hotbar slot at a framebuffer coordinate. */
     public static int inventorySlotAt(
+            float mouseX, float mouseY, int width, int height) {
+        float scale = effectiveUiScale(width, height);
+        return inventorySlotAtVirtual(mouseX / scale, mouseY / scale,
+                virtualSize(width, scale), virtualSize(height, scale));
+    }
+
+    private static int inventorySlotAtVirtual(
             float mouseX, float mouseY, int width, int height) {
 
         float panelX = (width - INVENTORY_PANEL_WIDTH) / 2f;
@@ -358,24 +452,112 @@ public final class HudRenderer {
             int width,
             int height,
             ScreenMode screenMode) {
+        return buttonAt(mouseX, mouseY, width, height, screenMode, 0);
+    }
+
+    public MenuButton buttonAt(
+            float mouseX,
+            float mouseY,
+            int width,
+            int height,
+            ScreenMode screenMode,
+            int optionsPage) {
 
         if (screenMode != ScreenMode.MAIN_MENU
                 && screenMode != ScreenMode.SAVE_SELECT
-                && screenMode != ScreenMode.PAUSED) {
+                && screenMode != ScreenMode.OPTIONS
+                && screenMode != ScreenMode.DELETE_CONFIRM
+                && screenMode != ScreenMode.PAUSED
+                && screenMode != ScreenMode.KEYBINDS) {
             return MenuButton.NONE;
         }
 
-        for (int index = 0; index < buttonCount(screenMode); index++) {
-            float[] bounds = buttonBounds(index, width, height, screenMode);
+        float scale = effectiveUiScale(width, height);
+        mouseX /= scale;
+        mouseY /= scale;
+        width = virtualSize(width, scale);
+        height = virtualSize(height, scale);
+        return buttonAtVirtual(mouseX, mouseY, width, height, screenMode, optionsPage);
+    }
+
+    private MenuButton buttonAtVirtual(float mouseX, float mouseY,
+                                       int width, int height,
+                                       ScreenMode screenMode, int optionsPage) {
+        // Delete buttons are inset inside save rows; test those first.
+        for (int index = buttonCount(screenMode, optionsPage) - 1; index >= 0; index--) {
+            float[] bounds = buttonBounds(index, width, height, screenMode, optionsPage);
             if (mouseX >= bounds[0]
                     && mouseX < bounds[0] + bounds[2]
                     && mouseY >= bounds[1]
                     && mouseY < bounds[1] + bounds[3]) {
-                return buttonForIndex(index, screenMode);
+                return buttonForIndex(index, screenMode, optionsPage);
             }
         }
 
         return MenuButton.NONE;
+    }
+
+    /** Convert physical framebuffer coordinates to the virtual FOV slider. */
+    public int fovSliderValueAt(float mouseX, float mouseY,
+                                int width, int height, int optionsPage) {
+        if (optionsPage != 0) return -1;
+        float scale = effectiveUiScale(width, height);
+        mouseX /= scale;
+        mouseY /= scale;
+        width = virtualSize(width, scale);
+        height = virtualSize(height, scale);
+        float[] row = buttonBounds(6, width, height, ScreenMode.OPTIONS, optionsPage);
+        float[] track = fovSliderBounds(row, optionsMenuScale(width, height));
+        float margin = Math.max(6f * optionsMenuScale(width, height), 4f);
+        if (mouseX < track[0] - margin || mouseX > track[0] + track[2] + margin
+                || mouseY < row[1] || mouseY > row[1] + row[3]) return -1;
+        return sliderValue(mouseX, track, GameSettings.MIN_FOV, GameSettings.MAX_FOV, 1);
+    }
+
+    public int fovSliderValueClamped(float mouseX, int width, int height, int optionsPage) {
+        if (optionsPage != 0) return -1;
+        float scale = effectiveUiScale(width, height);
+        mouseX /= scale;
+        width = virtualSize(width, scale);
+        height = virtualSize(height, scale);
+        float[] row = buttonBounds(6, width, height, ScreenMode.OPTIONS, optionsPage);
+        float[] track = fovSliderBounds(row, optionsMenuScale(width, height));
+        return sliderValue(mouseX, track, GameSettings.MIN_FOV, GameSettings.MAX_FOV, 1);
+    }
+
+    /**
+     * Return an anchored, physical-pixel slider track for drag gestures. The
+     * scale changes as the user drags, so the gesture must retain the original
+     * geometry rather than jumping when the menu itself resizes.
+     */
+    public float[] uiScaleSliderTrack(int width, int height, int optionsPage) {
+        if (optionsPage != 0 || width <= 0 || height <= 0) return null;
+        float scale = effectiveUiScale(width, height);
+        int virtualWidth = virtualSize(width, scale);
+        int virtualHeight = virtualSize(height, scale);
+        float[] row = buttonBounds(8, virtualWidth, virtualHeight,
+                ScreenMode.OPTIONS, optionsPage);
+        float[] virtualTrack = fovSliderBounds(row,
+                optionsMenuScale(virtualWidth, virtualHeight));
+        return new float[] {
+                virtualTrack[0] * scale,
+                virtualTrack[1] * scale,
+                virtualTrack[2] * scale,
+                virtualTrack[3] * scale
+        };
+    }
+
+    private static int sliderValue(float cursorX, float[] track,
+                                   int minimum, int maximum, int step) {
+        float ratio = Math.max(0f, Math.min(1f,
+                (cursorX - track[0]) / track[2]));
+        int value = minimum + Math.round(ratio * (maximum - minimum) / step) * step;
+        return Math.max(minimum, Math.min(maximum, value));
+    }
+
+    private float[] fovSliderBounds(float[] row, float scale) {
+        return new float[] {row[0] + 258f * scale, row[1] + 29f * scale,
+                row[2] - 355f * scale, 10f * scale};
     }
 
     /**
@@ -394,7 +576,10 @@ public final class HudRenderer {
             boolean[] visibleSaveExists,
             int savePage,
             boolean hasPreviousSavePage,
-            boolean hasNextSavePage) {
+            boolean hasNextSavePage,
+            GameSettings settings,
+            String deleteWorldLabel,
+            int optionsPage) {
 
         if (screenMode == ScreenMode.MAIN_MENU) {
             // Keep the sunset and built-in logo bright. Darken only the footer
@@ -430,6 +615,44 @@ public final class HudRenderer {
                 menuText(data, "PAGE " + (savePage + 1), width * 0.5f,
                         panelY + 524f * s, 1.65f * s,
                         0.83f, 0.79f, 0.71f, 1f);
+            } else if (screenMode == ScreenMode.OPTIONS) {
+                float s = optionsMenuScale(width, height);
+                float panelW = 660f * s;
+                float panelH = 750f * s;
+                float x = (width - panelW) / 2f;
+                float y = (height - panelH) / 2f;
+                drawForgePanel(data, x, y, panelW, panelH, s);
+                menuText(data, "OPTIONS", width * 0.5f, y + 36f * s,
+                        4.0f * s, 0.98f, 0.83f, 0.55f, 1f);
+                menuText(data, optionsPage == 0 ? "VIDEO AND DISPLAY SETTINGS"
+                                : "CONTROLS AND INTERFACE",
+                        width * 0.5f, y + 78f * s, 1.65f * s,
+                        0.78f, 0.78f, 0.73f, 1f);
+            } else if (screenMode == ScreenMode.KEYBINDS) {
+                float sc = optionsMenuScale(width, height);
+                float px = (width - 660f * sc) / 2f;
+                float py = (height - 750f * sc) / 2f;
+                drawForgePanel(data, px, py, 660f * sc, 750f * sc, sc);
+                menuText(data, "KEY BINDINGS", width * 0.5f, py + 36f * sc,
+                        3.75f * sc, 0.98f, 0.83f, 0.55f, 1f);
+                menuText(data, "CLICK A KEY TO REBIND   PAGE " + (optionsPage - 1) + " OF 3",
+                        width * 0.5f, py + 83f * sc, 1.5f * sc,
+                        0.78f, 0.79f, 0.75f, 1f);
+            } else if (screenMode == ScreenMode.DELETE_CONFIRM) {
+                float s = confirmMenuScale(width, height);
+                float panelW = 570f * s;
+                float panelH = 380f * s;
+                float x = (width - panelW) / 2f;
+                float y = (height - panelH) / 2f;
+                drawForgePanel(data, x, y, panelW, panelH, s);
+                menuText(data, "DELETE WORLD?", width * 0.5f,
+                        y + 37f * s, 3.8f * s, 1f, 0.67f, 0.46f, 1f);
+                menuText(data, deleteWorldLabel == null ? "WORLD" : deleteWorldLabel,
+                        width * 0.5f, y + 112f * s, 2.65f * s,
+                        0.98f, 0.94f, 0.86f, 1f);
+                menuText(data, "THIS CANNOT BE UNDONE", width * 0.5f,
+                        y + 161f * s, 1.7f * s,
+                        1.0f, 0.54f, 0.45f, 1f);
             } else {
                 float s = pauseMenuScale(width, height);
                 float panelW = 510f * s;
@@ -446,55 +669,128 @@ public final class HudRenderer {
             }
         }
 
-        for (int index = 0; index < buttonCount(screenMode); index++) {
-            MenuButton button = buttonForIndex(index, screenMode);
-            float[] bounds = buttonBounds(index, width, height, screenMode);
+        for (int index = 0; index < buttonCount(screenMode, optionsPage); index++) {
+            MenuButton button = buttonForIndex(index, screenMode, optionsPage);
+            float[] bounds = buttonBounds(index, width, height, screenMode, optionsPage);
             float x = bounds[0];
             float y = bounds[1];
             float w = bounds[2];
             float h = bounds[3];
 
             boolean saveEntry = screenMode == ScreenMode.SAVE_SELECT && index < 3;
-            boolean existingSave = saveEntry
+            boolean deleteEntry = screenMode == ScreenMode.SAVE_SELECT && index >= 7;
+            int worldIndex = deleteEntry ? index - 7 : index;
+            boolean existingSave = (saveEntry || deleteEntry)
                     && visibleSaveExists != null
-                    && index < visibleSaveExists.length
-                    && visibleSaveExists[index];
-            boolean disabled = button == MenuButton.OPTIONS
-                    || (saveEntry && !existingSave)
+                    && worldIndex < visibleSaveExists.length
+                    && visibleSaveExists[worldIndex];
+            boolean disabled = (screenMode == ScreenMode.KEYBINDS
+                    && ((button == MenuButton.BIND_PREVIOUS && optionsPage <= 2)
+                        || (button == MenuButton.BIND_NEXT && optionsPage >= 4)
+                        || (button.name().startsWith("BIND_")
+                            && button.ordinal() >= MenuButton.BIND_1.ordinal()
+                            && button.ordinal() <= MenuButton.BIND_6.ordinal()
+                            && KeyBindings.Action.at((optionsPage - 2) * 6
+                                + button.ordinal() - MenuButton.BIND_1.ordinal()) == null)))
+                    || ((saveEntry || deleteEntry) && !existingSave)
                     || (button == MenuButton.PREVIOUS_PAGE && !hasPreviousSavePage)
                     || (button == MenuButton.NEXT_PAGE && !hasNextSavePage);
-            boolean hovered = !disabled && buttonAt(mouseX, mouseY,
-                    width, height, screenMode) == button;
+            boolean hovered = !disabled && buttonAtVirtual(mouseX, mouseY,
+                    width, height, screenMode, optionsPage) == button;
             boolean emphasized = button == MenuButton.PLAY || button == MenuButton.NEW_GAME
                     || (button == MenuButton.CONTINUE && screenMode == ScreenMode.PAUSED);
-            float s = screenMode == ScreenMode.SAVE_SELECT
-                    ? saveMenuScale(width, height)
-                    : screenMode == ScreenMode.MAIN_MENU
-                    ? mainMenuScale(width, height)
-                    : pauseMenuScale(width, height);
+            float s = switch (screenMode) {
+                case SAVE_SELECT -> saveMenuScale(width, height);
+                case MAIN_MENU -> mainMenuScale(width, height);
+                case OPTIONS, KEYBINDS -> optionsMenuScale(width, height);
+                case DELETE_CONFIRM -> confirmMenuScale(width, height);
+                default -> pauseMenuScale(width, height);
+            };
 
-            drawForgeButton(data, x, y, w, h, hovered, emphasized, disabled, s);
+            drawForgeButton(data, x, y, w, h, hovered, emphasized,
+                    disabled, s);
+
+            if (screenMode == ScreenMode.KEYBINDS && button.ordinal() >= MenuButton.BIND_1.ordinal()
+                    && button.ordinal() <= MenuButton.BIND_6.ordinal()) {
+                KeyBindings.Action action = KeyBindings.Action.at((optionsPage - 2) * 6
+                        + button.ordinal() - MenuButton.BIND_1.ordinal());
+                if (action != null && settings != null) {
+                    menuText(data, action.label(), x + 175f * s, y + 15f * s,
+                            1.9f * s, 0.95f, 0.93f, 0.86f, 1f);
+                    menuText(data, settings.keyBindings().keyLabel(action), x + 475f * s,
+                            y + 15f * s, 1.9f * s, 1f, 0.74f, 0.42f, 1f);
+                }
+                continue;
+            }
+            if (screenMode == ScreenMode.OPTIONS && settings != null
+                    && (button == MenuButton.FOV || button == MenuButton.UI_SCALE)) {
+                boolean isFov = button == MenuButton.FOV;
+                menuText(data, isFov ? "FIELD OF VIEW" : "UI SCALE", x + 120f * s,
+                        y + 17f * s, 2.0f * s,
+                        0.96f, 0.92f, 0.85f, 1f);
+                float[] track = fovSliderBounds(bounds, s);
+                float ratio = isFov
+                        ? (settings.fov() - GameSettings.MIN_FOV)
+                                / (float) (GameSettings.MAX_FOV - GameSettings.MIN_FOV)
+                        : (settings.uiScalePercent() - GameSettings.MIN_UI_SCALE)
+                                / (float) (GameSettings.MAX_UI_SCALE - GameSettings.MIN_UI_SCALE);
+                ratio = Math.max(0f, Math.min(1f, ratio));
+                rect(data, track[0], track[1], track[2], track[3],
+                        0.045f, 0.047f, 0.05f, 1f);
+                rect(data, track[0], track[1], track[2] * ratio, track[3],
+                        0.91f, 0.49f, 0.15f, 1f);
+                float knobX = track[0] + ratio * track[2];
+                rect(data, knobX - 5f * s, track[1] - 7f * s,
+                        10f * s, 24f * s, 0.98f, 0.82f, 0.48f, 1f);
+                menuText(data, isFov ? settings.fov() + " DEG"
+                                : settings.uiScalePercent() + " PCT", x + 519f * s,
+                        y + 15f * s, 1.9f * s,
+                        0.99f, 0.87f, 0.66f, 1f);
+                continue;
+            }
+            if (screenMode == ScreenMode.OPTIONS
+                    && (button == MenuButton.VIDEO_TAB || button == MenuButton.CONTROLS_TAB)) {
+                boolean selected = button == MenuButton.VIDEO_TAB ? optionsPage == 0 : optionsPage == 1;
+                if (selected) {
+                    rect(data, x + 5f * s, y + h - 7f * s,
+                            w - 10f * s, 4f * s, 0.96f, 0.53f, 0.19f, 1f);
+                }
+            }
+            if (deleteEntry) {
+                menuText(data, "DELETE", x + w / 2f,
+                        y + (h - 7f * 1.65f * s) / 2f, 1.65f * s,
+                        disabled ? 0.55f : hovered ? 1f : 0.94f,
+                        disabled ? 0.55f : 0.55f,
+                        disabled ? 0.55f : 0.46f, 1f);
+                continue;
+            }
 
             if (saveEntry) {
                 String label = existingSave && visibleSaveLabels != null
                         && index < visibleSaveLabels.length
                         && visibleSaveLabels[index] != null
                         ? visibleSaveLabels[index] : "EMPTY SLOT";
-                menuText(data, label, x + w / 2f, y + 13f * s,
+                menuText(data, label, x + w * 0.40f, y + 13f * s,
                         2.65f * s,
                         existingSave ? 0.96f : 0.70f,
                         existingSave ? 0.92f : 0.70f,
                         existingSave ? 0.82f : 0.70f, 1f);
                 menuText(data, existingSave ? "LOAD WORLD" : "CREATE WITH NEW GAME",
-                        x + w / 2f, y + 43f * s, 1.4f * s,
+                        x + w * 0.40f, y + 43f * s, 1.4f * s,
                         existingSave ? 0.74f : 0.60f,
                         existingSave ? 0.76f : 0.61f,
                         existingSave ? 0.70f : 0.59f, 1f);
             } else {
-                String label = button == MenuButton.PREVIOUS_PAGE ? "PREVIOUS"
+                String label = button == MenuButton.BIND_PREVIOUS ? "PREVIOUS"
+                        : button == MenuButton.BIND_NEXT ? "NEXT"
+                        : button == MenuButton.RESET_BINDS ? "RESET DEFAULTS"
+                        : button == MenuButton.PREVIOUS_PAGE ? "PREVIOUS"
                         : button == MenuButton.NEXT_PAGE ? "NEXT"
+                        : screenMode == ScreenMode.OPTIONS ? optionLabel(button, settings)
                         : buttonLabel(button);
-                float size = screenMode == ScreenMode.SAVE_SELECT ? 2.35f * s : 2.95f * s;
+                float size = screenMode == ScreenMode.SAVE_SELECT ? 2.35f * s
+                        : screenMode == ScreenMode.OPTIONS || screenMode == ScreenMode.KEYBINDS
+                                ? 2.15f * s : 2.95f * s;
                 menuText(data, label, x + w / 2f,
                         y + (h - 7f * size) / 2f, size,
                         disabled ? 0.54f : hovered ? 1.0f : 0.96f,
@@ -507,6 +803,24 @@ public final class HudRenderer {
             menuText(data, statusMessage.toUpperCase(), width / 2f,
                     height * 0.96f, 1.9f, 1f, 0.55f, 0.43f, 1f);
         }
+    }
+
+    private String optionLabel(MenuButton button, GameSettings settings) {
+        if (settings == null) return buttonLabel(button);
+        return switch (button) {
+            case VSYNC -> "VSYNC " + (settings.vsync() ? "ON" : "OFF");
+            case FULLSCREEN -> "FULLSCREEN " + (settings.fullscreen() ? "ON" : "OFF");
+            case RESOLUTION -> "RESOLUTION " + settings.resolutionLabel();
+            case FPS_LIMIT -> "MAX FPS " + settings.fpsLimitLabel();
+            case SHOW_FPS -> "SHOW FPS " + (settings.showFps() ? "ON" : "OFF");
+            case VIDEO_TAB -> "VIDEO";
+            case CONTROLS_TAB -> "CONTROLS";
+            case SENSITIVITY -> "MOUSE SPEED " + settings.sensitivityPercent() + " PCT";
+            case CROSSHAIR -> "CROSSHAIR " + (settings.crosshair() ? "ON" : "OFF");
+            case UI_SCALE -> "UI SCALE " + settings.uiScalePercent() + " PCT";
+            case KEYBINDS_TAB -> "KEY BINDINGS";
+            default -> buttonLabel(button);
+        };
     }
 
     /** Stylized metal/stone panels with ember-colored trim. */
@@ -586,6 +900,14 @@ public final class HudRenderer {
         return Math.min(1f, Math.min((width - 24f) / 510f, (height - 24f) / 435f));
     }
 
+    private float optionsMenuScale(int width, int height) {
+        return Math.min(1f, Math.min((width - 24f) / 660f, (height - 24f) / 750f));
+    }
+
+    private float confirmMenuScale(int width, int height) {
+        return Math.min(1f, Math.min((width - 24f) / 570f, (height - 24f) / 380f));
+    }
+
     private void drawStatusScreen(
             List<Float> data,
             int width,
@@ -618,13 +940,20 @@ public final class HudRenderer {
         }
     }
 
-    private int buttonCount(ScreenMode screenMode) {
-        return screenMode == ScreenMode.SAVE_SELECT ? 7 : 3;
+    private int buttonCount(ScreenMode screenMode, int optionsPage) {
+        return switch (screenMode) {
+            case SAVE_SELECT -> 10;
+            case OPTIONS -> optionsPage == 0 ? 10 : 6;
+            case KEYBINDS -> 10;
+            case DELETE_CONFIRM -> 2;
+            default -> 3;
+        };
     }
 
-    /** The click geometry and draw geometry share this one layout. */
+
+
     private float[] buttonBounds(
-            int index, int width, int height, ScreenMode screenMode) {
+            int index, int width, int height, ScreenMode screenMode, int optionsPage) {
         if (screenMode == ScreenMode.MAIN_MENU) {
             float s = mainMenuScale(width, height);
             float w = 284f * s;
@@ -640,6 +969,12 @@ public final class HudRenderer {
             float s = saveMenuScale(width, height);
             float panelX = (width - 570f * s) / 2f;
             float panelY = (height - 645f * s) / 2f;
+            if (index >= 7 && index <= 9) {
+                int rowIndex = index - 7;
+                return new float[] {panelX + 405f * s,
+                        panelY + (131f + rowIndex * 82f) * s,
+                        107f * s, 43f * s};
+            }
             if (index < 3) {
                 return new float[] {panelX + 46f * s,
                         panelY + (117f + index * 82f) * s,
@@ -659,6 +994,46 @@ public final class HudRenderer {
                     panelY + 556f * s,
                     478f * s, 52f * s};
         }
+        if (screenMode == ScreenMode.OPTIONS) {
+            float s = optionsMenuScale(width, height);
+            float panelX = (width - 660f * s) / 2f;
+            float panelY = (height - 750f * s) / 2f;
+            if (index < 2) {
+                return new float[] {panelX + (index == 0 ? 45f : 343f) * s,
+                        panelY + 106f * s, 272f * s, 44f * s};
+            }
+            if ((optionsPage == 0 && index == 9) || (optionsPage == 1 && index == 5)) {
+                return new float[] {panelX + 46f * s, panelY + 652f * s,
+                        568f * s, 52f * s};
+            }
+            return new float[] {panelX + 46f * s,
+                    panelY + (170f + (index - 2) * 62f) * s,
+                    568f * s, 50f * s};
+        }
+        if (screenMode == ScreenMode.KEYBINDS) {
+            float sc = optionsMenuScale(width, height);
+            float px = (width - 660f * sc) / 2f;
+            float py = (height - 750f * sc) / 2f;
+            if (index < 6) {
+                return new float[] {px + 46f * sc, py + (127f + index * 71f) * sc,
+                        568f * sc, 55f * sc};
+            }
+            if (index == 6 || index == 7) {
+                return new float[] {px + (index == 6 ? 46f : 336f) * sc,
+                        py + 574f * sc, 278f * sc, 45f * sc};
+            }
+            return new float[] {px + (index == 8 ? 46f : 336f) * sc,
+                    py + 647f * sc, 278f * sc, 54f * sc};
+        }
+        if (screenMode == ScreenMode.DELETE_CONFIRM) {
+            float s = confirmMenuScale(width, height);
+            float panelY = (height - 380f * s) / 2f;
+            return new float[] {
+                    (width - 478f * s) / 2f,
+                    panelY + (209f + index * 78f) * s,
+                    478f * s, 59f * s
+            };
+        }
         float s = pauseMenuScale(width, height);
         float panelY = (height - 435f * s) / 2f;
         float w = 396f * s;
@@ -669,7 +1044,7 @@ public final class HudRenderer {
         };
     }
 
-    private MenuButton buttonForIndex(int index, ScreenMode screenMode) {
+    private MenuButton buttonForIndex(int index, ScreenMode screenMode, int optionsPage) {
         if (screenMode == ScreenMode.MAIN_MENU) {
             return switch (index) {
                 case 0 -> MenuButton.PLAY;
@@ -688,6 +1063,57 @@ public final class HudRenderer {
                 case 4 -> MenuButton.PREVIOUS_PAGE;
                 case 5 -> MenuButton.NEXT_PAGE;
                 case 6 -> MenuButton.BACK;
+                case 7 -> MenuButton.DELETE_ONE;
+                case 8 -> MenuButton.DELETE_TWO;
+                case 9 -> MenuButton.DELETE_THREE;
+                default -> MenuButton.NONE;
+            };
+        }
+        if (screenMode == ScreenMode.OPTIONS) {
+            if (optionsPage == 0) {
+                return switch (index) {
+                    case 0 -> MenuButton.VIDEO_TAB;
+                    case 1 -> MenuButton.CONTROLS_TAB;
+                    case 2 -> MenuButton.FULLSCREEN;
+                    case 3 -> MenuButton.RESOLUTION;
+                    case 4 -> MenuButton.VSYNC;
+                    case 5 -> MenuButton.FPS_LIMIT;
+                    case 6 -> MenuButton.FOV;
+                    case 7 -> MenuButton.SHOW_FPS;
+                    case 8 -> MenuButton.UI_SCALE;
+                    case 9 -> MenuButton.BACK;
+                    default -> MenuButton.NONE;
+                };
+            }
+            return switch (index) {
+                case 0 -> MenuButton.VIDEO_TAB;
+                case 1 -> MenuButton.CONTROLS_TAB;
+                case 2 -> MenuButton.SENSITIVITY;
+                case 3 -> MenuButton.CROSSHAIR;
+                case 4 -> MenuButton.KEYBINDS_TAB;
+                case 5 -> MenuButton.BACK;
+                default -> MenuButton.NONE;
+            };
+        }
+        if (screenMode == ScreenMode.KEYBINDS) {
+            return switch (index) {
+                case 0 -> MenuButton.BIND_1;
+                case 1 -> MenuButton.BIND_2;
+                case 2 -> MenuButton.BIND_3;
+                case 3 -> MenuButton.BIND_4;
+                case 4 -> MenuButton.BIND_5;
+                case 5 -> MenuButton.BIND_6;
+                case 6 -> MenuButton.BIND_PREVIOUS;
+                case 7 -> MenuButton.BIND_NEXT;
+                case 8 -> MenuButton.RESET_BINDS;
+                case 9 -> MenuButton.BACK;
+                default -> MenuButton.NONE;
+            };
+        }
+        if (screenMode == ScreenMode.DELETE_CONFIRM) {
+            return switch (index) {
+                case 0 -> MenuButton.CONFIRM_DELETE;
+                case 1 -> MenuButton.CANCEL_DELETE;
                 default -> MenuButton.NONE;
             };
         }
@@ -712,6 +1138,25 @@ public final class HudRenderer {
             case NEW_GAME -> "NEW GAME";
             case PREVIOUS_PAGE -> "PREVIOUS PAGE";
             case NEXT_PAGE -> "NEXT PAGE";
+            case DELETE_ONE, DELETE_TWO, DELETE_THREE -> "DELETE";
+            case CONFIRM_DELETE -> "DELETE FOREVER";
+            case CANCEL_DELETE -> "CANCEL";
+            case VIDEO_TAB -> "VIDEO";
+            case CONTROLS_TAB -> "CONTROLS";
+            case FULLSCREEN -> "FULLSCREEN";
+            case RESOLUTION -> "RESOLUTION";
+            case VSYNC -> "VSYNC";
+            case FPS_LIMIT -> "MAX FPS";
+            case SHOW_FPS -> "SHOW FPS";
+            case FOV -> "FIELD OF VIEW";
+            case SENSITIVITY -> "MOUSE SENSITIVITY";
+            case CROSSHAIR -> "CROSSHAIR";
+            case UI_SCALE -> "UI SCALE";
+            case KEYBINDS_TAB -> "KEY BINDINGS";
+            case BIND_1, BIND_2, BIND_3, BIND_4, BIND_5, BIND_6 -> "REMAP KEY";
+            case BIND_PREVIOUS -> "PREVIOUS";
+            case BIND_NEXT -> "NEXT";
+            case RESET_BINDS -> "RESET DEFAULTS";
             case BACK -> "BACK";
             case NONE -> "";
         };
@@ -797,11 +1242,20 @@ public final class HudRenderer {
             List<Float> countData,
             int width,
             int height,
-            Player player) {
+            Player player,
+            GameSettings settings) {
 
         int totalWidth = hotbarWidth();
         float startX = (width - totalWidth) / 2f;
-        float y = height - SLOT_SIZE - 24;
+        float y = height - SLOT_SIZE - 22;
+        rect(data, startX - 12, y - 12, totalWidth + 24, SLOT_SIZE + 24,
+                0.045f, 0.048f, 0.050f, 0.90f);
+        rect(data, startX - 9, y - 9, totalWidth + 18, SLOT_SIZE + 18,
+                0.25f, 0.23f, 0.19f, 0.94f);
+        rect(data, startX - 7, y - 7, totalWidth + 14, SLOT_SIZE + 14,
+                0.085f, 0.095f, 0.102f, 1f);
+        rect(data, startX - 7, y - 7, totalWidth + 14, 2,
+                0.70f, 0.42f, 0.18f, 0.92f);
 
         for (int i = 0; i < Player.HOTBAR_SLOTS; i++) {
             float x = startX + i * (SLOT_SIZE + SLOT_GAP);
@@ -819,9 +1273,8 @@ public final class HudRenderer {
                         y + SLOT_SIZE - 17, stack.getCount());
             }
 
-            // Hotbar key label.
-            drawDigit(data, x + 5, y + 5,
-                    i + 1, 0.9f, 0.9f, 0.9f);
+            // Reflect remapped hotbar keys instead of hardcoding 1 through 9.
+            drawHotbarKey(data, x, y, i, settings);
         }
     }
 
@@ -831,23 +1284,23 @@ public final class HudRenderer {
             List<Float> countData,
             int width,
             int height,
-            Player player) {
+            Player player,
+            GameSettings settings) {
 
         float panelWidth = INVENTORY_PANEL_WIDTH;
         float panelHeight = INVENTORY_PANEL_HEIGHT;
         float panelX = (width - panelWidth) / 2f;
         float panelY = (height - panelHeight) / 2f;
 
-        // Dim the world behind the inventory.
-        rect(data, 0, 0, width, height,
-                0f, 0f, 0f, 0.58f);
-
-        // Panel and inner background.
-        rect(data, panelX, panelY, panelWidth, panelHeight,
-                0.11f, 0.10f, 0.08f, 0.98f);
-        rect(data, panelX + 4, panelY + 4,
-                panelWidth - 8, panelHeight - 8,
-                0.19f, 0.17f, 0.13f, 0.98f);
+        // Forge-styled inventory: a softer dimmer, metal shell, stone insert and ember trim.
+        rect(data, 0, 0, width, height, 0f, 0f, 0f, 0.42f);
+        drawForgePanel(data, panelX, panelY, panelWidth, panelHeight, 1f);
+        menuText(data, "INVENTORY", width / 2f, panelY + 16f,
+                2.9f, 0.99f, 0.83f, 0.57f, 1f);
+        rect(data, panelX + 26f, panelY + 52f, panelWidth - 52f, 2,
+                0.65f, 0.36f, 0.14f, 0.9f);
+        menuText(data, "STORAGE", panelX + 72f, panelY + 54f,
+                1.2f, 0.76f, 0.76f, 0.73f, 1f);
 
         float gridWidth =
                 Player.HOTBAR_SLOTS * SLOT_SIZE
@@ -875,8 +1328,10 @@ public final class HudRenderer {
                 startY + 3 * (SLOT_SIZE + SLOT_GAP)
                 + HOTBAR_ROW_PADDING;
 
-        rect(data, startX, hotbarY - 7,
-                gridWidth, 2, 0.43f, 0.39f, 0.29f, 0.95f);
+        rect(data, startX, hotbarY - 10,
+                gridWidth, 2, 0.68f, 0.41f, 0.19f, 0.95f);
+        menuText(data, "QUICK ACCESS", width / 2f, hotbarY - 25f,
+                1.35f, 0.92f, 0.77f, 0.55f, 1f);
 
         // Hotbar slots also appear in the inventory.
         for (int col = 0; col < Player.HOTBAR_SLOTS; col++) {
@@ -889,9 +1344,21 @@ public final class HudRenderer {
             drawStack(data, iconData, countData, x, hotbarY,
                     player.getInventoryStack(index));
 
-            drawDigit(data, x + 5, hotbarY + 5,
-                    col + 1, 0.9f, 0.9f, 0.9f);
+            drawHotbarKey(data, x, hotbarY, col, settings);
         }
+
+        menuText(data, "DRAG TO MOVE ITEMS", width / 2f, panelY + panelHeight - 29f,
+                1.2f, 0.70f, 0.71f, 0.69f, 0.86f);
+    }
+
+    private void drawHotbarKey(List<Float> data, float x, float y,
+                               int index, GameSettings settings) {
+        String key = settings == null ? Integer.toString(index + 1)
+                : settings.keyBindings().keyLabel(KeyBindings.Action.at(
+                        KeyBindings.Action.HOTBAR_1.ordinal() + index));
+        if (key.length() > 4) key = key.substring(0, 4);
+        menuText(data, key, x + 11f, y + 5f, 1.05f,
+                0.86f, 0.79f, 0.64f, 0.96f);
     }
 
     private void drawStack(
@@ -917,20 +1384,21 @@ public final class HudRenderer {
         if (selected) {
             rect(data, x - 2, y - 2,
                     SLOT_SIZE + 4, SLOT_SIZE + 4,
-                    0.57f, 0.68f, 0.42f, 1f);
+                    0.96f, 0.57f, 0.21f, 1f);
         }
 
         rect(data, x, y, SLOT_SIZE, SLOT_SIZE,
-                0.045f, 0.040f, 0.030f, 1f);
-
+                selected ? 0.60f : 0.045f, selected ? 0.34f : 0.053f,
+                selected ? 0.16f : 0.064f, 1f);
         rect(data, x + 2, y + 2,
                 SLOT_SIZE - 4, SLOT_SIZE - 4,
-                0.19f, 0.17f, 0.13f, 1f);
-
-        // Inner highlight.
-        rect(data, x + 3, y + 3,
-                SLOT_SIZE - 6, 1,
-                0.34f, 0.30f, 0.23f, 0.85f);
+                selected ? 0.23f : 0.13f, selected ? 0.19f : 0.14f,
+                selected ? 0.14f : 0.15f, 1f);
+        rect(data, x + 3, y + 3, SLOT_SIZE - 6, 2,
+                selected ? 0.98f : 0.31f, selected ? 0.72f : 0.32f,
+                selected ? 0.37f : 0.34f, 0.96f);
+        rect(data, x + 3, y + SLOT_SIZE - 5, SLOT_SIZE - 6, 2,
+                0.045f, 0.046f, 0.050f, 0.90f);
     }
 
     private void drawItemIcon(

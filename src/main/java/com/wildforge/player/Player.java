@@ -1,6 +1,7 @@
 package com.wildforge.player;
 
 import com.wildforge.content.ContentLoader;
+import com.wildforge.core.KeyBindings;
 import com.wildforge.item.ItemStack;
 import com.wildforge.inventory.Inventory;
 import com.wildforge.item.ItemType;
@@ -39,7 +40,20 @@ private static final float PLAYER_HEIGHT = 1.80f;
 private static final float PLAYER_RADIUS = 0.30f;
 private static final float MAX_STEP_HEIGHT = 1.01f;
 private static final float MAX_STEP_DOWN_HEIGHT = 0.05f;
-private static final float MOUSE_SENSITIVITY = 0.12f;
+private float mouseSensitivity = 0.12f;
+private KeyBindings keyBindings = new KeyBindings();
+
+public void setKeyBindings(KeyBindings bindings) {
+    if (bindings == null) throw new IllegalArgumentException("Keybindings are required");
+    keyBindings = bindings;
+}
+
+public void setMouseSensitivity(float sensitivity) {
+    if (!Float.isFinite(sensitivity) || sensitivity <= 0f || sensitivity > 1f) {
+        throw new IllegalArgumentException("Invalid mouse sensitivity: " + sensitivity);
+    }
+    mouseSensitivity = sensitivity;
+}
 
 private static final float STEP_UP_SMOOTHING = 10.0f;
 private static final float STEP_DOWN_SMOOTHING = 22.0f;
@@ -401,16 +415,16 @@ public void onMouseMove(double mouseX, double mouseY) {
     lastMouseY = mouseY;
 
     camera.rotate(
-            deltaX * MOUSE_SENSITIVITY,
-            deltaY * MOUSE_SENSITIVITY
+            deltaX * mouseSensitivity,
+            deltaY * mouseSensitivity
     );
 }
 
 public void moveMouse(float deltaX, float deltaY) {
     if (mouseCaptured && !inventoryOpen) {
         camera.rotate(
-                deltaX * MOUSE_SENSITIVITY,
-                deltaY * MOUSE_SENSITIVITY
+                deltaX * mouseSensitivity,
+                deltaY * mouseSensitivity
         );
     }
 }
@@ -499,7 +513,7 @@ public void update(
     }
 
     boolean inventoryPressed =
-            isKeyDown(window, GLFW.GLFW_KEY_E);
+            isKeyDown(window, keyBindings.get(KeyBindings.Action.INVENTORY));
 
     if (inventoryPressed && !inventoryKeyWasPressed) {
         toggleInventory();
@@ -508,7 +522,7 @@ public void update(
     inventoryKeyWasPressed = inventoryPressed;
 
     for (int i = 0; i < HOTBAR_SLOTS; i++) {
-        if (isKeyDown(window, GLFW.GLFW_KEY_1 + i)) {
+        if (isKeyDown(window, keyBindings.get(KeyBindings.Action.at(KeyBindings.Action.HOTBAR_1.ordinal() + i)))) {
             selectHotbarSlot(i);
         }
     }
@@ -552,19 +566,19 @@ private void updateMovement(
     float moveX = 0.0f;
     float moveZ = 0.0f;
 
-    if (isKeyDown(window, GLFW.GLFW_KEY_W)) {
+    if (isKeyDown(window, keyBindings.get(KeyBindings.Action.FORWARD))) {
         moveX += forwardX;
         moveZ += forwardZ;
     }
-    if (isKeyDown(window, GLFW.GLFW_KEY_S)) {
+    if (isKeyDown(window, keyBindings.get(KeyBindings.Action.BACKWARD))) {
         moveX -= forwardX;
         moveZ -= forwardZ;
     }
-    if (isKeyDown(window, GLFW.GLFW_KEY_D)) {
+    if (isKeyDown(window, keyBindings.get(KeyBindings.Action.RIGHT))) {
         moveX += rightX;
         moveZ += rightZ;
     }
-    if (isKeyDown(window, GLFW.GLFW_KEY_A)) {
+    if (isKeyDown(window, keyBindings.get(KeyBindings.Action.LEFT))) {
         moveX -= rightX;
         moveZ -= rightZ;
     }
@@ -596,7 +610,7 @@ private void updateMovement(
         grounded = false;
     }
 
-    boolean jumpPressed = isKeyDown(window, GLFW.GLFW_KEY_SPACE);
+    boolean jumpPressed = isKeyDown(window, keyBindings.get(KeyBindings.Action.JUMP));
 
     if (jumpPressed && !jumpWasPressed && grounded) {
         verticalVelocity = JUMP_SPEED;

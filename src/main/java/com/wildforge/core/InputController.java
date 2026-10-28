@@ -18,6 +18,8 @@ public final class InputController {
         void onWindowCloseRequested(long window);
 
         void onMouseButton(long window, int button, int action, int mods);
+
+        void onKey(long window, int key, int scancode, int action, int mods);
     }
 
     private final long window;
@@ -55,6 +57,8 @@ public final class InputController {
         glfwSetMouseButtonCallback(window,
                 (handle, button, action, mods) ->
                         callbacks.onMouseButton(handle, button, action, mods));
+        glfwSetKeyCallback(window, (handle, key, scancode, action, mods) ->
+                callbacks.onKey(handle, key, scancode, action, mods));
 
         installed = true;
     }

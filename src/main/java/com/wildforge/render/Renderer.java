@@ -79,6 +79,42 @@ public final class Renderer {
     private final HudRenderer hud;
     private final BlockTextures blockTextures;
     private final TitleScreenRenderer titleScreen;
+    private float fov = 70f;
+
+    public void setFov(float fieldOfView) {
+        if (fieldOfView < 40f || fieldOfView > 120f) {
+            throw new IllegalArgumentException("Invalid FOV: " + fieldOfView);
+        }
+        fov = fieldOfView;
+    }
+
+    public void setShowCrosshair(boolean enabled) {
+        hud.setShowCrosshair(enabled);
+    }
+
+    public void setShowFps(boolean enabled) {
+        hud.setShowFps(enabled);
+    }
+
+    public void setUiScale(float scale) {
+        hud.setUiScale(scale);
+    }
+
+    public void setMeasuredFps(int fps) {
+        hud.setMeasuredFps(fps);
+    }
+
+    public float[] uiScaleSliderTrack(int width, int height, int optionsPage) {
+        return hud.uiScaleSliderTrack(width, height, optionsPage);
+    }
+
+    public int fovSliderValueAt(float x, float y, int width, int height, int optionsPage) {
+        return hud.fovSliderValueAt(x, y, width, height, optionsPage);
+    }
+
+    public int fovSliderValueClamped(float x, int width, int height, int optionsPage) {
+        return hud.fovSliderValueClamped(x, width, height, optionsPage);
+    }
 
     private int shaderProgram;
     private int terrainMvpLocation = -1;
@@ -558,7 +594,8 @@ public final class Renderer {
             int height,
             Camera camera,
             Player player,
-            HudRenderer.ScreenMode screenMode) {
+            HudRenderer.ScreenMode screenMode,
+            boolean useMenuBackground) {
         if (width <= 0 || height <= 0) {
             return;
         }
@@ -568,7 +605,10 @@ public final class Renderer {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if (screenMode == HudRenderer.ScreenMode.MAIN_MENU
-                || screenMode == HudRenderer.ScreenMode.SAVE_SELECT) {
+                || screenMode == HudRenderer.ScreenMode.SAVE_SELECT
+                || screenMode == HudRenderer.ScreenMode.DELETE_CONFIRM
+                || ((screenMode == HudRenderer.ScreenMode.OPTIONS
+                        || screenMode == HudRenderer.ScreenMode.KEYBINDS) && useMenuBackground)) {
             titleScreen.render(width, height);
             return;
         }
@@ -576,7 +616,7 @@ public final class Renderer {
         updateTerrainIfNeeded();
 
         Matrix4f projection = new Matrix4f().perspective(
-                (float) Math.toRadians(70.0f),
+                (float) Math.toRadians(fov),
                 (float) width / (float) height,
                 0.1f,
                 200.0f
@@ -695,9 +735,10 @@ public final class Renderer {
             float mouseY,
             int width,
             int height,
-            HudRenderer.ScreenMode screenMode
+            HudRenderer.ScreenMode screenMode,
+            int optionsPage
     ) {
-        return hud.buttonAt(mouseX, mouseY, width, height, screenMode);
+        return hud.buttonAt(mouseX, mouseY, width, height, screenMode, optionsPage);
     }
 
     public void renderUi(
@@ -712,13 +753,17 @@ public final class Renderer {
             boolean[] visibleSaveExists,
             int savePage,
             boolean hasPreviousSavePage,
-            boolean hasNextSavePage
+            boolean hasNextSavePage,
+            com.wildforge.core.GameSettings settings,
+            String deleteWorldLabel,
+            int optionsPage
     ) {
         hud.render(
                 width, height, player, mouseX, mouseY,
                 screenMode, statusMessage,
                 visibleSaveLabels, visibleSaveExists,
-                savePage, hasPreviousSavePage, hasNextSavePage
+                savePage, hasPreviousSavePage, hasNextSavePage,
+                settings, deleteWorldLabel, optionsPage
         );
     }
 

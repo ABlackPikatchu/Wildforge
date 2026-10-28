@@ -33,7 +33,7 @@ public final class SaveManager {
     }
 
     public boolean isValidSlot(int slot) {
-        return slot >= 0;
+        return slot >= 0 && slot < Integer.MAX_VALUE;
     }
 
     public void loadTerrain(int slot, TerrainMesh terrain) throws IOException {
@@ -91,10 +91,14 @@ public final class SaveManager {
                     String name = path.getFileName().toString();
                     Matcher world = WORLD_FILE.matcher(name);
                     Matcher player = PLAYER_FILE.matcher(name);
-                    if (world.matches()) {
-                        slots.add(parseSlotIndex(world.group(1)));
-                    } else if (player.matches()) {
-                        slots.add(parseSlotIndex(player.group(1)));
+                    try {
+                        if (world.matches()) {
+                            slots.add(parseSlotIndex(world.group(1)));
+                        } else if (player.matches()) {
+                            slots.add(parseSlotIndex(player.group(1)));
+                        }
+                    } catch (NumberFormatException ignored) {
+                        // Ignore invalid or oversized filenames.
                     }
                 }
             } catch (IOException ignored) {
@@ -135,9 +139,25 @@ public final class SaveManager {
                 || (slot == 0 && Files.isRegularFile(LEGACY_SAVE_PATH));
     }
 
+
+    /** Permanently delete only this world's recognized files; never traverse folders. */
+    public void deleteWorld(int slot) throws IOException {
+        requireValidSlot(slot);
+        if (!slotExists(slot)) {
+            throw new IOException("World does not exist: " + (slot + 1));
+        }
+        // Do not touch any unrelated saves or files in the saves directory.
+        Files.deleteIfExists(worldPath(slot));
+        Files.deleteIfExists(playerPath(slot));
+        if (slot == 0) {
+            Files.deleteIfExists(LEGACY_SAVE_PATH);
+        }
+    }
+
     private static int parseSlotIndex(String oneBasedValue) {
         int fileNumber = Integer.parseInt(oneBasedValue);
-        return Math.max(0, fileNumber - 1);
+        if (fileNumber < 1) throw new NumberFormatException("Invalid save number");
+        return fileNumber - 1;
     }
 
     private Path worldPath(int slot) {
