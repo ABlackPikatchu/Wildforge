@@ -94,3 +94,33 @@ tasks.register('saveCheck', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('contentCheck'), tasks.named('saveCheck')
 }
+
+// Add alongside the existing Gradle task definitions.
+// generateContent already runs before processResources; worldgen's config
+// and texture manifest are included automatically in its output folder.
+tasks.named('generateContent') {
+    inputs.dir('src/main/resources/textures')
+}
+
+tasks.register('worldgenPreview', JavaExec) {
+    group = 'wildforge'
+    description = 'Generate biome and elevation PNG previews (does not change game worlds)'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.wildforge.worldgen.WorldGenPreview'
+    args layout.buildDirectory.dir('worldgen-preview').get().asFile.absolutePath, (project.findProperty('worldSeed') ?: '20261028').toString()
+    inputs.property('worldSeed', (project.findProperty('worldSeed') ?: '20261028').toString())
+    outputs.dir layout.buildDirectory.dir('worldgen-preview')
+}
+
+tasks.register('worldgenCheck', JavaExec) {
+    group = 'verification'
+    description = 'Check deterministic seeded terrain, cave and vegetation sampling'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.worldgen.WorldGenSmokeTest'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('worldgenCheck')
+}

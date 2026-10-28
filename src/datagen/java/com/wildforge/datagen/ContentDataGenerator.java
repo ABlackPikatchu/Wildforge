@@ -6,6 +6,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import java.io.IOException;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
+import java.util.stream.Stream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,6 +51,8 @@ public final class ContentDataGenerator {
         ContentDataGenerator generator = new ContentDataGenerator();
         generator.registerBuiltInContent();
         generator.write(Path.of(args[0]));
+        generator.writeWorldgenConfig(Path.of(args[0]));
+        generator.writeTextureManifest(Path.of(args[0]), Path.of("src/main/resources/textures"));
     }
 
     private void registerBuiltInContent() {
@@ -254,6 +259,84 @@ public final class ContentDataGenerator {
             index.add("data/" + NAMESPACE + "/" + kind + "/" + filename);
         }
         return index;
+    }
+
+
+    /** Data-generated default worldgen tuning. These parameters belong in data, not TerrainMesh. */
+    private void writeWorldgenConfig(Path destination) throws IOException {
+        Path directory = destination.resolve("data/wildforge/worldgen");
+        Files.createDirectories(directory);
+        JsonObject json = new JsonObject();
+        json.addProperty("min_y", -64);
+        json.addProperty("max_y", 191);
+        json.addProperty("sea_level", 64);
+        json.addProperty("continent_scale", 1400.0);
+        json.addProperty("hills_scale", 260.0);
+        json.addProperty("mountains_scale", 310.0);
+        json.addProperty("detail_scale", 48.0);
+        json.addProperty("climate_scale", 780.0);
+        json.addProperty("river_scale", 500.0);
+        json.addProperty("cave_scale", 43.0);
+        json.addProperty("ocean_threshold", -0.13);
+        json.addProperty("mountain_threshold", 0.12);
+        json.addProperty("cave_threshold", 0.075);
+        json.addProperty("tree_density", 0.85);
+        json.addProperty("plant_density", 0.55);
+        Files.writeString(directory.resolve("overworld.json"),
+                GSON.toJson(json) + "\n", StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Discover every source texture automatically and emit its metadata. The manifest
+     * is a *catalog*, not a gameplay registration: cross-plants, liquids and tools
+     * require render/model support before their blocks/items can be enabled.
+     */
+    private void writeTextureManifest(Path destination, Path textureDirectory) throws IOException {
+        if (!Files.isDirectory(textureDirectory)) {
+            throw new IOException("Missing source texture directory: " + textureDirectory);
+        }
+        JsonArray entries = new JsonArray();
+        List<Path> textures;
+        try (Stream<Path> files = Files.list(textureDirectory)) {
+            textures = files.filter(Files::isRegularFile)
+                    .filter(p -> p.getFileName().toString().endsWith(".png"))
+                    .sorted().toList();
+        }
+        for (Path path : textures) {
+            BufferedImage image = ImageIO.read(path.toFile());
+            if (image == null || image.getWidth() != 32
+                    || (image.getHeight() != 32 && image.getHeight() != 64)) {
+                throw new IOException("Texture has unsupported dimensions: " + path);
+            }
+            String name = path.getFileName().toString().replaceFirst("\\.png$", "");
+            JsonObject texture = new JsonObject();
+            texture.addProperty("id", id(name));
+            texture.addProperty("source", "textures/" + path.getFileName());
+            texture.addProperty("width", image.getWidth());
+            texture.addProperty("height", image.getHeight());
+            texture.addProperty("model_hint", textureModelHint(name));
+            entries.add(texture);
+        }
+        Path directory = destination.resolve("data/wildforge");
+        Files.createDirectories(directory);
+        JsonObject manifest = new JsonObject();
+        manifest.add("textures", entries);
+        Files.writeString(directory.resolve("texture_index.json"),
+                GSON.toJson(manifest) + "\n", StandardCharsets.UTF_8);
+        System.out.printf("Indexed %d source textures for future content models%n", entries.size());
+    }
+
+    private static String textureModelHint(String name) {
+        if (name.startsWith("tall_")) return "double_height_cross";
+        if (name.startsWith("flower_") || name.equals("small_grass")) return "cross";
+        if (name.endsWith("_leaves")) return "cutout_cube";
+        if (name.equals("water") || name.equals("lava")) return "fluid";
+        if (name.endsWith("_ingot") || name.startsWith("raw_")
+                || name.equals("coal") || name.equals("diamond") || name.equals("stick")
+                || name.endsWith("_axe") || name.endsWith("_hoe")
+                || name.endsWith("_shovel") || name.endsWith("_sword")
+                || name.endsWith("_pickaxe")) return "flat_item";
+        return "cube_face";
     }
 
     private static void cleanJson(Path directory) throws IOException {
