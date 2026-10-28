@@ -20,11 +20,12 @@ public final class SpawnFinder {
                 for (int z = -dist; z <= dist; z += 16) {
                     if (Math.max(Math.abs(x), Math.abs(z)) != dist) continue;
                     WorldGenerator.Surface s = generator.surface(x, z);
-                    boolean goodBiome = s.biome() == Biome.PLAINS
-                            || s.biome() == Biome.FOREST
-                            || s.biome() == Biome.MAPLE_FOREST
-                            || s.biome() == Biome.TAIGA;
-                    if (!goodBiome || s.surfaceY() < settings.seaLevel() + 5
+                    boolean goodBiome = s.biome() == Biome.SUNMEADOW_PLAINS
+                            || s.biome() == Biome.GREENHEART_FOREST
+                            || s.biome() == Biome.EMBERLEAF_WOODLAND
+                            || s.biome() == Biome.NEEDLEWOOD_TAIGA;
+                    if (!goodBiome || s.waterBody() != WorldGenerator.WaterBody.LAND
+                            || s.surfaceY() < settings.seaLevel() + 5
                             || s.surfaceY() > settings.seaLevel() + 32) continue;
 
                     int flatness = 0;
@@ -37,8 +38,8 @@ public final class SpawnFinder {
                     if (flatness > 4) continue;
 
                     boolean hasWood = false;
-                    for (int cellX = Math.floorDiv(x - 40, 13); cellX <= Math.floorDiv(x + 40, 13); cellX++) {
-                        for (int cellZ = Math.floorDiv(z - 40, 13); cellZ <= Math.floorDiv(z + 40, 13); cellZ++) {
+                    for (int cellX = Math.floorDiv(x - 40, WorldGenerator.TREE_CELL_SIZE); cellX <= Math.floorDiv(x + 40, WorldGenerator.TREE_CELL_SIZE); cellX++) {
+                        for (int cellZ = Math.floorDiv(z - 40, WorldGenerator.TREE_CELL_SIZE); cellZ <= Math.floorDiv(z + 40, WorldGenerator.TREE_CELL_SIZE); cellZ++) {
                             WorldGenerator.Tree tree = generator.treeForCell(cellX, cellZ);
                             if (tree != null && Math.abs(tree.x() - x) <= 40 && Math.abs(tree.z() - z) <= 40) {
                                 hasWood = true;

@@ -1,0 +1,17 @@
+{
+  "purpose": "Optional separate-state button sprites that match forge_ui bronze/charcoal aesthetic",
+  "ui_size": [
+    96,
+    24
+  ],
+  "states": [
+    "normal",
+    "hover",
+    "pressed",
+    "disabled",
+    "focused"
+  ],
+  "default_path": "resources/optional_ui/",
+  "compatibility": "Existing forge_ui atlas unchanged; these are new optional files and require Java renderer mapping",
+  "stretching": "Do not uniformly scale the frame; use nine-slice with four corner regions of 6x6 pixels."
+}

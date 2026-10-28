@@ -1,0 +1,508 @@
+{
+  "hanging_roots": {
+    "file": "textures/hanging_roots.png",
+    "size": [
+      32,
+      64
+    ],
+    "kind": "cutout",
+    "intended_rendering": "transparent_cutout_vertical_2_blocks",
+    "biome": "rootlace_hollows",
+    "description": "Hanging woody roots with transparent spaces, spanning up to two blocks",
+    "tileable": false
+  },
+  "root_mat": {
+    "file": "textures/root_mat.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "rootlace_hollows",
+    "description": "Tangled thin roots over dark humus",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 16.03,
+      "mean_internal_delta": 15.33,
+      "ratio": 1.05
+    }
+  },
+  "exposed_root_stone": {
+    "file": "textures/exposed_root_stone.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "rootlace_hollows",
+    "description": "Weathered stone crossed by thin brown rootlets",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 13.87,
+      "mean_internal_delta": 16.73,
+      "ratio": 0.83
+    }
+  },
+  "wet_rock": {
+    "file": "textures/wet_rock.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "seepstone_grottos",
+    "description": "Water-darkened gray stone with intermittent reflected highlights",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 9.01,
+      "mean_internal_delta": 12.34,
+      "ratio": 0.73
+    }
+  },
+  "dripping_lichen": {
+    "file": "textures/dripping_lichen.png",
+    "size": [
+      32,
+      64
+    ],
+    "kind": "cutout",
+    "intended_rendering": "transparent_cutout_vertical_2_blocks",
+    "biome": "seepstone_grottos",
+    "description": "Hanging damp lichen strings with open gaps",
+    "tileable": false
+  },
+  "waterworn_stone": {
+    "file": "textures/waterworn_stone.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "underflow_channels",
+    "description": "Smooth water-eroded gray stone with gentle mineral grains",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 10.24,
+      "mean_internal_delta": 9.71,
+      "ratio": 1.05
+    }
+  },
+  "riverbed_sediment": {
+    "file": "textures/riverbed_sediment.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "underflow_channels",
+    "description": "Fine silt, sand and small pebbles deposited in river bends",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 21.66,
+      "mean_internal_delta": 16.43,
+      "ratio": 1.32
+    }
+  },
+  "flowstone_drapery": {
+    "file": "textures/flowstone_drapery.png",
+    "size": [
+      32,
+      64
+    ],
+    "kind": "cutout",
+    "intended_rendering": "transparent_cutout_vertical_2_blocks",
+    "biome": "hollowstone_vaults",
+    "description": "Thin draped limestone deposits descending from a cave ceiling",
+    "tileable": false
+  },
+  "limestone_rubble": {
+    "file": "textures/limestone_rubble.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "hollowstone_vaults",
+    "description": "Angular pale limestone fragments and worn rock chips",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 15.39,
+      "mean_internal_delta": 13.79,
+      "ratio": 1.12
+    }
+  },
+  "fossil_shale": {
+    "file": "textures/fossil_shale.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "coalshade_galleries",
+    "description": "Dark shale containing scattered pale fossil impressions",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 8.12,
+      "mean_internal_delta": 9.39,
+      "ratio": 0.87
+    }
+  },
+  "siltstone": {
+    "file": "textures/siltstone.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "coalshade_galleries",
+    "description": "Fine-grained gray-brown sedimentary stone with fine layering",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 5.72,
+      "mean_internal_delta": 5.81,
+      "ratio": 0.98
+    }
+  },
+  "coal_dust_deposit": {
+    "file": "textures/coal_dust_deposit.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "coalshade_galleries",
+    "description": "Coal-dark powdery stone and carbon-rich dust patches",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 10.03,
+      "mean_internal_delta": 10.8,
+      "ratio": 0.93
+    }
+  },
+  "rock_salt": {
+    "file": "textures/rock_salt.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "saltveil_chambers",
+    "description": "Pale evaporite salt rock with sharp granular crystals",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 9.05,
+      "mean_internal_delta": 11.56,
+      "ratio": 0.78
+    }
+  },
+  "salt_crust": {
+    "file": "textures/salt_crust.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "saltveil_chambers",
+    "description": "White salt crust with uneven gray fractures",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 6.32,
+      "mean_internal_delta": 6.8,
+      "ratio": 0.93
+    }
+  },
+  "selenite_cluster": {
+    "file": "textures/selenite_cluster.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "cutout",
+    "intended_rendering": "transparent_cutout_floor_decor",
+    "biome": "saltveil_chambers",
+    "description": "Transparent-background group of tall pale selenite crystals",
+    "tileable": false
+  },
+  "icicle": {
+    "file": "textures/icicle.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "cutout",
+    "intended_rendering": "transparent_cutout_hanging",
+    "biome": "frostvault_crevasses",
+    "description": "Icicles hanging from a ceiling with transparent space beneath",
+    "tileable": false
+  },
+  "frosted_rock": {
+    "file": "textures/frosted_rock.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "frostvault_crevasses",
+    "description": "Rock with irregular powdery frost lodged in cracks",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 5.23,
+      "mean_internal_delta": 10.04,
+      "ratio": 0.52
+    }
+  },
+  "glacial_ice": {
+    "file": "textures/glacial_ice.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "frostvault_crevasses",
+    "description": "Dense old blue ice with sharply faceted cracks; opaque for cutout-friendly rendering",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 12.26,
+      "mean_internal_delta": 12.06,
+      "ratio": 1.02
+    }
+  },
+  "fault_breccia": {
+    "file": "textures/fault_breccia.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "ironfault_chasms",
+    "description": "Chaotic angular rock clasts in a dark fault matrix",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 19.35,
+      "mean_internal_delta": 16.84,
+      "ratio": 1.15
+    }
+  },
+  "fractured_slate": {
+    "file": "textures/fractured_slate.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "ironfault_chasms",
+    "description": "Blue-gray slate with thin tectonic fractures",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 15.06,
+      "mean_internal_delta": 12.73,
+      "ratio": 1.18
+    }
+  },
+  "quartz_vein": {
+    "file": "textures/quartz_vein.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "ironfault_chasms",
+    "description": "Gray host stone crossed by irregular pale quartz mineral veins",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 10.39,
+      "mean_internal_delta": 13.3,
+      "ratio": 0.78
+    }
+  },
+  "quartz_cluster": {
+    "file": "textures/quartz_cluster.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "cutout",
+    "intended_rendering": "transparent_cutout_floor_decor",
+    "biome": "crystal_seam_chambers",
+    "description": "White translucent faceted quartz points with transparent gaps",
+    "tileable": false
+  },
+  "fluorite_cluster": {
+    "file": "textures/fluorite_cluster.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "cutout",
+    "intended_rendering": "transparent_cutout_floor_decor",
+    "biome": "crystal_seam_chambers",
+    "description": "Blue-violet and sea-green fluorite cluster with sharply rendered facets",
+    "tileable": false
+  },
+  "mineral_matrix": {
+    "file": "textures/mineral_matrix.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "crystal_seam_chambers",
+    "description": "Host rock with small cool-toned fluorite and mineral inclusions",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 9.79,
+      "mean_internal_delta": 11.24,
+      "ratio": 0.87
+    }
+  },
+  "sporecap_fungus": {
+    "file": "textures/sporecap_fungus.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "cutout",
+    "intended_rendering": "transparent_cutout_floor_decor",
+    "biome": "sporelight_hollows",
+    "description": "Low pale fungal cap and stem, subtle bioluminescent hints",
+    "tileable": false
+  },
+  "luminous_lichen": {
+    "file": "textures/luminous_lichen.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "cutout",
+    "intended_rendering": "transparent_cutout_wall_decal",
+    "biome": "sporelight_hollows",
+    "description": "Sparse pale turquoise-green bioluminescent cave lichen",
+    "tileable": false
+  },
+  "mycelial_mat": {
+    "file": "textures/mycelial_mat.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "sporelight_hollows",
+    "description": "Dark fungal floor threaded with pale mycelial filaments",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 14.99,
+      "mean_internal_delta": 12.83,
+      "ratio": 1.17
+    }
+  },
+  "rope_lava_stone": {
+    "file": "textures/rope_lava_stone.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "cindervein_tubes",
+    "description": "Ropy cooled lava-flow ridges in dark volcanic basalt",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 7.72,
+      "mean_internal_delta": 8.04,
+      "ratio": 0.96
+    }
+  },
+  "thermal_vent": {
+    "file": "textures/thermal_vent.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_single",
+    "intended_rendering": "unique_block_top",
+    "biome": "cindervein_tubes",
+    "description": "Single basalt fumarole vent opening; special decorative block, not a wall tile",
+    "tileable": false
+  },
+  "basalt_column": {
+    "file": "textures/basalt_column.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "cindervein_tubes",
+    "description": "Longitudinal basalt column faces with narrow dark seams",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 5.07,
+      "mean_internal_delta": 15.73,
+      "ratio": 0.32
+    }
+  },
+  "submerged_scree": {
+    "file": "textures/submerged_scree.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "stillwater_abyss",
+    "description": "Water-darkened loose stone fragments and gravel",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 10.98,
+      "mean_internal_delta": 16.29,
+      "ratio": 0.67
+    }
+  },
+  "pale_algae": {
+    "file": "textures/pale_algae.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "cutout",
+    "intended_rendering": "transparent_cutout_underwater_plant",
+    "biome": "stillwater_abyss",
+    "description": "Sparse muted underwater algae fronds with transparent openings",
+    "tileable": false
+  },
+  "wet_slate": {
+    "file": "textures/wet_slate.png",
+    "size": [
+      32,
+      32
+    ],
+    "kind": "opaque_tile",
+    "intended_rendering": "block",
+    "biome": "stillwater_abyss",
+    "description": "Submerged deep slate with fine mineral banding and wet highlights",
+    "tileable": true,
+    "edge_diagnostic": {
+      "mean_edge_delta": 9.9,
+      "mean_internal_delta": 8.24,
+      "ratio": 1.2
+    }
+  }
+}

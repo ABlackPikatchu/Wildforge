@@ -100,6 +100,7 @@ tasks.named('check') {
 // and texture manifest are included automatically in its output folder.
 tasks.named('generateContent') {
     inputs.dir('src/main/resources/textures')
+    inputs.dir('src/datagen/resources')
 }
 
 tasks.register('worldgenPreview', JavaExec) {
@@ -123,4 +124,30 @@ tasks.register('worldgenCheck', JavaExec) {
 
 tasks.named('check') {
     dependsOn tasks.named('worldgenCheck')
+}
+
+// Source biome manifests are authoritative: edits trigger regeneration automatically.
+tasks.register('undergroundCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify 12 underground profiles, textures, transitions and cave sampling'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.worldgen.UndergroundWorldGenSmokeTest'
+}
+
+tasks.register('undergroundPreview', JavaExec) {
+    group = 'wildforge'
+    description = 'Render depth-slice PNG previews of generated cave biomes'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.wildforge.worldgen.UndergroundWorldGenPreview'
+    args layout.buildDirectory.dir('worldgen-preview').get().asFile.absolutePath,
+            (project.findProperty('worldSeed') ?: '20261028').toString()
+    inputs.property('worldSeed', (project.findProperty('worldSeed') ?: '20261028').toString())
+    // Shares the preview folder with worldgenPreview; do not claim its whole
+    // directory as an exclusive output of this task.
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('undergroundCheck')
 }

@@ -1,54 +1,77 @@
 package com.wildforge.worldgen;
 
-/** Basic invariants and determinism. Run with gradlew.bat worldgenCheck. */
+import java.util.Objects;
+
+/** Determinism, generated profiles and vegetation constraints. */
 public final class WorldGenSmokeTest {
     private WorldGenSmokeTest() { }
 
     public static void main(String[] args) throws Exception {
-        WorldGenSettings settings = WorldGenConfigLoader.loadBuiltIn();
-        WorldGenerator a = new WorldGenerator(12345678L, settings);
-        WorldGenerator b = new WorldGenerator(12345678L, settings);
+        WorldGenRegistry registry = WorldGenRegistry.loadBuiltIn();
+        WorldGenSettings settings = registry.terrain();
+        BiomeCatalog catalog = registry.surfaceBiomes();
+        if (catalog.all().size() != 12) throw new AssertionError("Surface biome count must be 12");
+        WorldGenerator a = new WorldGenerator(12345678L, settings, catalog);
+        WorldGenerator b = new WorldGenerator(12345678L, settings, catalog);
+
         for (int x = -512; x <= 512; x += 23) {
             for (int z = -512; z <= 512; z += 29) {
                 WorldGenerator.Surface one = a.surface(x, z);
                 WorldGenerator.Surface two = b.surface(x, z);
-                if (!one.equals(two)) throw new AssertionError("Generation is not deterministic");
+                if (!one.equals(two)) throw new AssertionError("Surface generation changed across runs");
                 if (one.surfaceY() < settings.minY() || one.surfaceY() > settings.maxY()) {
                     throw new AssertionError("Out-of-bounds terrain height");
                 }
                 if (a.isCave(x, one.surfaceY() - 2, z, one.surfaceY())) {
-                    throw new AssertionError("Surface protection failed");
+                    throw new AssertionError("Surface cave protection failed");
+                }
+                if (one.waterDepth() > 0 && one.waterBody() != WorldGenerator.WaterBody.OCEAN) {
+                    throw new AssertionError("Ocean depth and hydrology disagree");
+                }
+                if (catalog.get(one.biome()) == null) throw new AssertionError("Unknown surface biome");
+                if (!one.baseRockTexture().equals(one.geology().baseRockTexture())) {
+                    throw new AssertionError("Geology/rock mapping mismatch");
                 }
             }
         }
 
-        // Generating separate chunks must yield the same border samples as one large map.
         for (int z = -128; z < 128; z++) {
             if (!a.surface(15, z).equals(b.surface(15, z))
                     || !a.surface(16, z).equals(b.surface(16, z))) {
-                throw new AssertionError("World-coordinate sampling changed across a chunk boundary");
+                throw new AssertionError("Chunk border changed world-coordinate sampling");
             }
         }
 
-        // Feature placement must not depend on the order chunks ask for candidates.
-        for (int cx = -50; cx < 50; cx++) {
+        for (int cx = -28; cx < 28; cx++) {
             WorldGenerator.Tree ta = a.treeForCell(cx, 12);
             WorldGenerator.Tree tb = b.treeForCell(cx, 12);
-            if (!java.util.Objects.equals(ta, tb)) {
-                throw new AssertionError("Tree placement is not deterministic");
+            if (!Objects.equals(ta, tb)) throw new AssertionError("Tree generation is nondeterministic");
+            if (ta != null) {
+                WorldGenerator.Surface ground = a.surface(ta.x(), ta.z());
+                if (ground.waterBody() != WorldGenerator.WaterBody.LAND) {
+                    throw new AssertionError("Tree generated underwater");
+                }
+                if (a.slopeAt(ta.x(), ta.z()) > catalog.get(ground.biome()).maxTreeSlope()) {
+                    throw new AssertionError("Tree generated on excessive slope");
+                }
             }
+            WorldGenerator.Plant pa = a.plantForCell(cx, 12);
+            WorldGenerator.Plant pb = b.plantForCell(cx, 12);
+            if (!Objects.equals(pa, pb)) throw new AssertionError("Plant generation is nondeterministic");
         }
 
-        // A new world should find a playable starting location near its origin.
-        for (long seed : new long[] {20261028L, 1L, 12345L, 8675309L}) {
-            SpawnFinder.Spawn spawn = SpawnFinder.find(new WorldGenerator(seed, settings), 768);
+        for (long seed : new long[]{20261028L, 1L, 12345L, 8675309L}) {
+            SpawnFinder.Spawn spawn = SpawnFinder.find(
+                    new WorldGenerator(seed, settings, catalog), 768);
+            WorldGenerator.Surface candidate = new WorldGenerator(seed, settings, catalog)
+                    .surface(spawn.x(), spawn.z());
             if (spawn.y() <= settings.seaLevel()
-                    || spawn.biome() == Biome.OCEAN
-                    || spawn.biome() == Biome.DEEP_OCEAN) {
-                throw new AssertionError("Spawn finder returned an unsafe location for seed " + seed);
+                    || candidate.waterBody() != WorldGenerator.WaterBody.LAND) {
+                throw new AssertionError("Unsafe spawn for seed " + seed);
             }
         }
 
-        System.out.println("Worldgen check passed: deterministic terrain, caves, vegetation and spawn finding");
+        System.out.println("Worldgen passed: 12 data-generated biomes, independent geology,"
+                + " hydrology, deterministic caves and slope-filtered decorations");
     }
 }

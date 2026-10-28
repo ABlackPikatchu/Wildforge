@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -53,6 +54,12 @@ public final class ContentDataGenerator {
         generator.write(Path.of(args[0]));
         generator.writeWorldgenConfig(Path.of(args[0]));
         generator.writeTextureManifest(Path.of(args[0]), Path.of("src/main/resources/textures"));
+        BiomeDataGenerator.write(Path.of(args[0]), Path.of("src/main/resources/textures"));
+        UndergroundBiomeDataGenerator.write(
+                Path.of(args[0]),
+                Path.of("src/datagen/resources/wildforge/underground_biomes.source.json"),
+                Path.of("src/datagen/resources/wildforge/underground_assets.source.json"),
+                Path.of("src/main/resources/textures"));
     }
 
     private void registerBuiltInContent() {
@@ -296,6 +303,8 @@ public final class ContentDataGenerator {
             throw new IOException("Missing source texture directory: " + textureDirectory);
         }
         JsonArray entries = new JsonArray();
+        Map<String, String> undergroundHints = UndergroundBiomeDataGenerator.textureModelHints(
+                Path.of("src/datagen/resources/wildforge/underground_assets.source.json"));
         List<Path> textures;
         try (Stream<Path> files = Files.list(textureDirectory)) {
             textures = files.filter(Files::isRegularFile)
@@ -314,7 +323,7 @@ public final class ContentDataGenerator {
             texture.addProperty("source", "textures/" + path.getFileName());
             texture.addProperty("width", image.getWidth());
             texture.addProperty("height", image.getHeight());
-            texture.addProperty("model_hint", textureModelHint(name));
+            texture.addProperty("model_hint", undergroundHints.getOrDefault(name, textureModelHint(name)));
             entries.add(texture);
         }
         Path directory = destination.resolve("data/wildforge");
@@ -327,12 +336,28 @@ public final class ContentDataGenerator {
     }
 
     private static String textureModelHint(String name) {
-        if (name.startsWith("tall_")) return "double_height_cross";
-        if (name.startsWith("flower_") || name.equals("small_grass")) return "cross";
+        // Auto-categorize only the graphics. A model hint does not register
+        // a block/item until the gameplay renderer supports that model.
+        if (name.startsWith("tall_")
+                || java.util.Set.of("cattails", "marsh_reeds", "seaweed").contains(name)) {
+            return "double_height_cross";
+        }
+        if (name.startsWith("flower_") || java.util.Set.of(
+                "small_grass", "clover", "fern", "dead_bush", "desert_succulent",
+                "dry_scrub", "dune_grass", "evergreen_shrub", "forest_mushroom",
+                "snow_grass",
+                "frost_shrub", "meadow_thistle", "tundra_lichen", "wild_wheat"
+                ).contains(name)) return "cross";
         if (name.endsWith("_leaves")) return "cutout_cube";
         if (name.equals("water") || name.equals("lava")) return "fluid";
+        if (name.equals("glass") || name.equals("ice")) return "translucent_cube";
+        if (name.equals("lily_pad")) return "water_surface";
+        if (name.equals("shelf_fungus")) return "wall_attachment";
+        if (name.equals("lichen_patch")) return "ground_overlay";
+        if (name.equals("stalactite") || name.equals("stalagmite")) return "directional_formation";
         if (name.endsWith("_ingot") || name.startsWith("raw_")
-                || name.equals("coal") || name.equals("diamond") || name.equals("stick")
+                || java.util.Set.of("coal", "diamond", "stick", "pine_cone",
+                        "sea_shell", "brick").contains(name)
                 || name.endsWith("_axe") || name.endsWith("_hoe")
                 || name.endsWith("_shovel") || name.endsWith("_sword")
                 || name.endsWith("_pickaxe")) return "flat_item";

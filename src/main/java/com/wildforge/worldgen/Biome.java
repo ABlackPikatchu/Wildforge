@@ -1,7 +1,23 @@
 package com.wildforge.worldgen;
 
-/** Biomes selected from continentalness, temperature, moisture and altitude. */
+import java.util.Locale;
+
+/** The twelve surface biomes. Ocean water is a hydrology layer, not a thirteenth biome. */
 public enum Biome {
-    DEEP_OCEAN, OCEAN, BEACH, PLAINS, FOREST, MAPLE_FOREST,
-    TAIGA, DESERT, WETLAND, HIGHLANDS, MOUNTAINS, SNOWY_PEAKS
+    GREENHEART_FOREST,
+    NEEDLEWOOD_TAIGA,
+    EMBERLEAF_WOODLAND,
+    SUNMEADOW_PLAINS,
+    FROSTSPIRE_HIGHLANDS,
+    FROSTMOOR_TUNDRA,
+    REDSCAR_BADLANDS,
+    SUNCRACK_DESERT,
+    MISTFEN_WETLANDS,
+    WHITECLIFF_COAST,
+    CINDERFALL_VOLCANIC_FIELDS,
+    HOLLOWSTONE_KARST;
+
+    public String id() {
+        return "wildforge:" + name().toLowerCase(Locale.ROOT);
+    }
 }
