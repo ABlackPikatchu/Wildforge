@@ -24,6 +24,10 @@ public final class WorldGenPreview {
         BufferedImage biomes = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         BufferedImage elevations = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         BufferedImage rocks = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        BufferedImage continents = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        BufferedImage erosion = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        BufferedImage ridges = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        BufferedImage relief = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         EnumMap<Biome, Integer> counts = new EnumMap<>(Biome.class);
         EnumMap<Geology, Integer> geologicalCounts = new EnumMap<>(Geology.class);
         int waterSamples = 0;
@@ -34,6 +38,11 @@ public final class WorldGenPreview {
                 int x = (px - width / 2) * step;
                 int z = (pz - height / 2) * step;
                 WorldGenerator.Surface surface = generator.surface(x, z);
+                WorldGenerator.Geography g = generator.geographyAt(x,z);
+                continents.setRGB(px,pz,gradient(g.continentalness()).getRGB());
+                erosion.setRGB(px,pz,gradient(g.erosion()).getRGB());
+                ridges.setRGB(px,pz,gradient(g.ridges()*2.0-1.0).getRGB());
+                relief.setRGB(px,pz,reliefColor(g).getRGB());
                 int y = surface.surfaceY();
                 minY = Math.min(minY, y);
                 maxY = Math.max(maxY, y);
@@ -64,6 +73,10 @@ public final class WorldGenPreview {
         ImageIO.write(biomes, "png", biomePath.toFile());
         ImageIO.write(elevations, "png", heightPath.toFile());
         ImageIO.write(rocks, "png", rockPath.toFile());
+        ImageIO.write(continents, "png", destination.resolve("continentalness_seed_"+seed+".png").toFile());
+        ImageIO.write(erosion, "png", destination.resolve("erosion_seed_"+seed+".png").toFile());
+        ImageIO.write(ridges, "png", destination.resolve("ridges_seed_"+seed+".png").toFile());
+        ImageIO.write(relief, "png", destination.resolve("landforms_seed_"+seed+".png").toFile());
         System.out.println("Worldgen preview for seed " + seed);
         try {
             System.out.println("Suggested safe spawn: " + SpawnFinder.find(generator, 768));
@@ -78,6 +91,20 @@ public final class WorldGenPreview {
         geologicalCounts.forEach((rock, count) -> System.out.printf("  %-14s %5.1f%%%n",
                 rock.name(), count * 100.0 / (width * height)));
         System.out.println("Wrote " + biomePath + ", " + heightPath + ", " + rockPath);
+    }
+
+    private static Color gradient(double v) {
+        int gray = Math.max(0, Math.min(255, (int)Math.round(127.5+127.5*v)));
+        return new Color(gray,gray,gray);
+    }
+    private static Color reliefColor(WorldGenerator.Geography g) {
+        if (g.continentalness() < -0.23) return new Color(37,79,141);
+        if (g.continentalness() < -0.12) return new Color(96,163,184);
+        double rugged = 1.0 - Math.max(0,Math.min(1,(g.erosion()+0.35)/0.83));
+        if (g.upland() > 0.26 && rugged > 0.5) return new Color(160,158,153);
+        if (g.upland() > 0.05) return new Color(165,148,109);
+        if (rugged > 0.65) return new Color(106,137,84);
+        return new Color(103,166,90);
     }
 
     private static Color shade(Color c, double amount) {

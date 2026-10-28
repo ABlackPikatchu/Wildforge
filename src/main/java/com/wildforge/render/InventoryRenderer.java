@@ -255,8 +255,8 @@ final class InventoryRenderer {
             }
             default -> {
                 // Use the block's texture layer for other block types.
-                topLayer = blockType.getId();
-                sideLayer = blockType.getId();
+                topLayer = blockType.getTopTextureLayer();
+                sideLayer = blockType.getSideTextureLayer();
             }
         }
 

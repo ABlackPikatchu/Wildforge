@@ -298,11 +298,7 @@ public void loadFrom(Path path, TerrainMesh terrain) throws IOException {
                 || !Float.isFinite(loadedVerticalVelocity)
                 || !Float.isFinite(loadedYaw)
                 || !Float.isFinite(loadedPitch)
-                || loadedX < PLAYER_RADIUS
-                || loadedX > TerrainMesh.WORLD_SIZE - PLAYER_RADIUS
-                || loadedZ < PLAYER_RADIUS
-                || loadedZ > TerrainMesh.WORLD_SIZE - PLAYER_RADIUS
-                || loadedFeetY < 0.0f
+                                || loadedFeetY < 0.0f
                 || loadedFeetY + PLAYER_HEIGHT > TerrainMesh.WORLD_HEIGHT
                 || loadedSelectedSlot < 0
                 || loadedSelectedSlot >= HOTBAR_SLOTS) {
@@ -640,19 +636,13 @@ private void updateMovement(
 
     for (int i = 0; i < steps; i++) {
         if (stepX != 0.0f) {
-            float targetX = clamp(
-                    x + stepX,
-                    PLAYER_RADIUS,
-                    TerrainMesh.WORLD_SIZE - PLAYER_RADIUS);
+            float targetX = x + stepX;
 
             attemptHorizontalMove(terrain, targetX, z);
         }
 
         if (stepZ != 0.0f) {
-            float targetZ = clamp(
-                    z + stepZ,
-                    PLAYER_RADIUS,
-                    TerrainMesh.WORLD_SIZE - PLAYER_RADIUS);
+            float targetZ = z + stepZ;
 
             attemptHorizontalMove(terrain, x, targetZ);
         }
@@ -836,18 +826,10 @@ private float findHighestGroundUnderFootprint(
         float centerZ,
         float highestAllowedSurface) {
 
-    int minX = Math.max(
-            0,
-            (int) Math.floor(centerX - PLAYER_RADIUS + 0.001f));
-    int maxX = Math.min(
-            TerrainMesh.WORLD_SIZE - 1,
-            (int) Math.floor(centerX + PLAYER_RADIUS - 0.001f));
-    int minZ = Math.max(
-            0,
-            (int) Math.floor(centerZ - PLAYER_RADIUS + 0.001f));
-    int maxZ = Math.min(
-            TerrainMesh.WORLD_SIZE - 1,
-            (int) Math.floor(centerZ + PLAYER_RADIUS - 0.001f));
+    int minX = (int) Math.floor(centerX - PLAYER_RADIUS + 0.001f);
+    int maxX = (int) Math.floor(centerX + PLAYER_RADIUS - 0.001f);
+    int minZ = (int) Math.floor(centerZ - PLAYER_RADIUS + 0.001f);
+    int maxZ = (int) Math.floor(centerZ + PLAYER_RADIUS - 0.001f);
 
     int highestBlockToCheck = Math.min(
             TerrainMesh.WORLD_HEIGHT - 1,
@@ -887,10 +869,7 @@ private boolean canOccupy(
     int maxZ = (int) Math.floor(
             targetZ + PLAYER_RADIUS - 0.001f);
 
-    if (minX < 0 || maxX >= TerrainMesh.WORLD_SIZE
-            || minZ < 0 || maxZ >= TerrainMesh.WORLD_SIZE) {
-        return false;
-    }
+    
 
     if (targetFeetY < 0.0f
             || targetFeetY + PLAYER_HEIGHT > TerrainMesh.WORLD_HEIGHT) {
@@ -928,9 +907,5 @@ private void updateCameraPosition() {
 
 private boolean isKeyDown(long window, int key) {
     return GLFW.glfwGetKey(window, key) == GLFW.GLFW_PRESS;
-}
-
-private float clamp(float value, float min, float max) {
-    return Math.max(min, Math.min(max, value));
 }
 }

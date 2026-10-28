@@ -84,6 +84,21 @@ public final class SaveManager {
         }
     }
 
+    /** Optional display name stored separately from world and player data (legacy-safe). */
+    public void saveWorldName(int slot,String name) throws IOException {
+        requireValidSlot(slot);
+        Files.createDirectories(saveDirectory);
+        String clean=name==null?"":name.replaceAll("[\\r\\n\\t]"," ").trim();
+        if(clean.isEmpty())clean="WORLD " +(slot+1);
+        Files.writeString(namePath(slot),clean.substring(0,Math.min(clean.length(),32)));
+    }
+    public String worldName(int slot){
+        try {if(Files.isRegularFile(namePath(slot)))return Files.readString(namePath(slot)).trim();}
+        catch(IOException ignored){}
+        return "WORLD " + (slot+1);
+    }
+    private Path namePath(int slot){return saveDirectory.resolve("world_"+((long)slot+1)+".name");}
+
     public void save(int slot, TerrainMesh terrain, Player player)
             throws IOException {
         requireValidSlot(slot);
@@ -174,6 +189,7 @@ public final class SaveManager {
         // Do not touch any unrelated saves or files in the saves directory.
         Files.deleteIfExists(worldPath(slot));
         Files.deleteIfExists(playerPath(slot));
+        Files.deleteIfExists(namePath(slot));
         if (slot == 0) {
             Files.deleteIfExists(legacySavePath);
         }

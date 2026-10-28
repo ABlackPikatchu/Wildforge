@@ -14,6 +14,7 @@ public final class HudRenderer {
     public enum ScreenMode {
         MAIN_MENU,
         SAVE_SELECT,
+        WORLD_CREATE,
         OPTIONS,
         KEYBINDS,
         DELETE_CONFIRM,
@@ -45,6 +46,7 @@ public final class HudRenderer {
         RESOLUTION,
         VSYNC,
         FPS_LIMIT,
+        RENDER_DISTANCE,
         FOV,
         SHOW_FPS,
         CROSSHAIR,
@@ -126,7 +128,7 @@ public final class HudRenderer {
             boolean hasNextSavePage,
             GameSettings settings,
             String deleteWorldLabel,
-            int optionsPage) {
+            int optionsPage, String worldName, String worldSeed, boolean editingWorldName) {
 
         if (width <= 0 || height <= 0) {
             return;
@@ -210,6 +212,9 @@ public final class HudRenderer {
                     visibleSaveLabels, visibleSaveExists,
                     savePage, hasPreviousSavePage, hasNextSavePage,
                     settings, deleteWorldLabel, optionsPage);
+        } else if(screenMode==ScreenMode.WORLD_CREATE){
+            menu.drawCreateWorldScreen(data,dimData,skinData,width,height,
+                    worldName,worldSeed,editingWorldName,statusMessage);
         } else {
             menu.drawStatusScreen(data, dimData, skinData,
                     width, height, screenMode, statusMessage);
@@ -253,6 +258,8 @@ public final class HudRenderer {
         return menu.fovSliderValueClamped(mouseX, width, height, optionsPage);
     }
 
+    public int renderDistanceSliderValueAt(float x,float y,int w,int h,int page){return menu.renderDistanceSliderValueAt(x,y,w,h,page);}
+    public int renderDistanceSliderValueClamped(float x,int w,int h,int page){return menu.renderDistanceSliderValueClamped(x,w,h,page);}
     public float[] uiScaleSliderTrack(int width, int height, int optionsPage) {
         return menu.uiScaleSliderTrack(width, height, optionsPage);
     }

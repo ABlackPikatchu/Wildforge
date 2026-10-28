@@ -42,6 +42,7 @@ public final class Main implements InputController.Callbacks {
     private HudRenderer.ScreenMode optionsReturnScreen = HudRenderer.ScreenMode.MAIN_MENU;
     private int optionsPage;
     private boolean fovSliderDragging;
+    private boolean renderDistanceSliderDragging;
     private boolean uiScaleSliderDragging;
     // Physical track is held constant while the entire UI changes size.
     private float[] uiScaleDragTrack;
@@ -66,6 +67,8 @@ public final class Main implements InputController.Callbacks {
     private HudRenderer.ScreenMode screenMode = HudRenderer.ScreenMode.MAIN_MENU;
     private boolean escapeWasDown;
     private boolean loadPending;
+    private boolean preloadingWorld;
+    private int launchSplashFrames=2;
     private boolean savePending;
     private boolean quitAfterSave;
     private boolean returnToMainMenuAfterSave;
@@ -73,6 +76,27 @@ public final class Main implements InputController.Callbacks {
     private boolean worldLoaded;
     private int activeSaveSlot = -1;
     private String statusMessage = "";
+    private final StringBuilder seedEntry = new StringBuilder();
+    private Long requestedNewSeed;
+    private final StringBuilder worldNameEntry = new StringBuilder("New World");
+    private boolean editingWorldName = false;
+    private String newWorldNamePending;
+    private boolean focusRetryPending = true;
+    private static long stableSeed(String text){
+        long hash=0xcbf29ce484222325L;
+        for(int i=0;i<text.length();i++){hash^=text.charAt(i);hash*=0x100000001b3L;}
+        return hash;
+    }
+    private void updateSeedText(){statusMessage="";}
+    private void createWorldFromMenu(){
+        if (saveManager.nextAvailableSlot() < 0) { statusMessage="NO FREE WORLD SLOTS"; return; }
+        String input=seedEntry.toString().trim();
+        try{requestedNewSeed=input.isEmpty()?new java.security.SecureRandom().nextLong():Long.parseLong(input);}
+        catch(NumberFormatException ex){requestedNewSeed=stableSeed(input);}
+        newWorldNamePending=worldNameEntry.toString().trim();
+        beginLoadingSave(saveManager.nextAvailableSlot());
+    }
+
 
     public static void main(String[] args) {
         new Main().run();
@@ -147,6 +171,7 @@ public final class Main implements InputController.Callbacks {
         }
 
         terrain = new TerrainMesh();
+        terrain.setDistances(settings.renderDistance(),settings.simulationDistance());
         player = new Player(terrain, worldItems, gameContent);
         player.setKeyBindings(settings.keyBindings());
         renderer = new Renderer(terrain);
@@ -156,9 +181,18 @@ public final class Main implements InputController.Callbacks {
         renderer.setUiScale(settings.uiScale());
         player.releaseMouse(window);
         refreshSaveSlots();
+        screenMode=HudRenderer.ScreenMode.LOADING;
+        statusMessage="STARTING WILDFORGE";
 
         inputController = new InputController(window, this);
         inputController.install();
+        glfwSetCharCallback(window,(handle, codepoint) -> {
+            if(screenMode != HudRenderer.ScreenMode.WORLD_CREATE)return;
+            StringBuilder target = editingWorldName ? worldNameEntry : seedEntry;
+            if(target.length()<32 && codepoint>=32 && codepoint<127){
+                target.appendCodePoint(codepoint);updateSeedText();
+            }
+        });
 
         glfwShowWindow(window);
         glfwPollEvents();
@@ -182,6 +216,15 @@ public final class Main implements InputController.Callbacks {
 
     @Override
     public void onKey(long handle, int key, int scancode, int action, int mods) {
+        if(screenMode == HudRenderer.ScreenMode.WORLD_CREATE){
+            if(action == GLFW_PRESS || action == GLFW_REPEAT){
+                if(key==GLFW_KEY_BACKSPACE){StringBuilder entry=editingWorldName?worldNameEntry:seedEntry;if(entry.length()>0){entry.deleteCharAt(entry.length()-1);updateSeedText();}}
+                else if(key==GLFW_KEY_ESCAPE){screenMode=HudRenderer.ScreenMode.SAVE_SELECT;statusMessage="";escapeWasDown=true;}
+                else if(key==GLFW_KEY_TAB){editingWorldName=!editingWorldName;}
+                else if(key==GLFW_KEY_ENTER || key==GLFW_KEY_KP_ENTER){createWorldFromMenu();}
+            }
+            return;
+        }
         if (bindingToCapture == null || screenMode != HudRenderer.ScreenMode.KEYBINDS
                 || action != GLFW_PRESS) return;
         if (key == GLFW_KEY_ESCAPE) {
@@ -205,6 +248,7 @@ public final class Main implements InputController.Callbacks {
     public void onCursorPosition(long handle, double x, double y) {
         mouseX = x;
         mouseY = y;
+        if (renderDistanceSliderDragging && screenMode == HudRenderer.ScreenMode.OPTIONS) updateRenderDistanceSliderFromCursor(handle);
         if (fovSliderDragging && screenMode == HudRenderer.ScreenMode.OPTIONS) {
             updateFovSliderFromCursor(handle);
         }
@@ -237,8 +281,9 @@ public final class Main implements InputController.Callbacks {
                 player.releaseMouse(handle);
             }
         } else {
-            if (fovSliderDragging || uiScaleSliderDragging) {
+            if (fovSliderDragging || uiScaleSliderDragging || renderDistanceSliderDragging) {
                 fovSliderDragging = false;
+                renderDistanceSliderDragging = false;
                 uiScaleSliderDragging = false;
                 uiScaleDragTrack = null;
                 persistSettings();
@@ -273,7 +318,8 @@ public final class Main implements InputController.Callbacks {
         }
 
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE
-                && (fovSliderDragging || uiScaleSliderDragging)) {
+                && (fovSliderDragging || uiScaleSliderDragging || renderDistanceSliderDragging)) {
+            if (renderDistanceSliderDragging) updateRenderDistanceSliderFromCursor(handle);
             if (fovSliderDragging) {
                 updateFovSliderFromCursor(handle);
             }
@@ -281,12 +327,28 @@ public final class Main implements InputController.Callbacks {
                 updateUiScaleSliderFromCursor(handle);
             }
             fovSliderDragging = false;
+                renderDistanceSliderDragging = false;
             uiScaleSliderDragging = false;
             uiScaleDragTrack = null;
             persistSettings();
             return;
         }
 
+        if (screenMode == HudRenderer.ScreenMode.WORLD_CREATE && button==GLFW_MOUSE_BUTTON_LEFT && action==GLFW_PRESS) {
+            glfwGetWindowSize(handle,windowWidth,windowHeight);
+            if(windowWidth[0]>0 && windowHeight[0]>0){
+                double nx=mouseX/windowWidth[0],ny=mouseY/windowHeight[0];
+                if(nx>0.25 && nx<0.75){
+                    if(ny>0.35 && ny<0.46){editingWorldName=true;return;}
+                    if(ny>0.48 && ny<0.60){editingWorldName=false;return;}
+                    if(ny>0.68 && ny<0.82){
+                        if(nx<0.5){createWorldFromMenu();}else{screenMode=HudRenderer.ScreenMode.SAVE_SELECT;statusMessage="";}
+                        return;
+                    }
+                }
+            }
+            return;
+        }
         if (screenMode == HudRenderer.ScreenMode.PLAYING && player.isInventoryOpen()) {
             handleInventoryMouseButton(handle, button, action);
             return;
@@ -305,6 +367,9 @@ public final class Main implements InputController.Callbacks {
                     if (updateFovSliderFromCursor(handle)) {
                         fovSliderDragging = true;
                     }
+                } else if (screenMode == HudRenderer.ScreenMode.OPTIONS
+                        && clicked == HudRenderer.MenuButton.RENDER_DISTANCE) {
+                    if(updateRenderDistanceSliderFromCursor(handle))renderDistanceSliderDragging=true;
                 } else if (screenMode == HudRenderer.ScreenMode.OPTIONS
                         && clicked == HudRenderer.MenuButton.UI_SCALE) {
                     glfwGetFramebufferSize(handle, framebufferWidth, framebufferHeight);
@@ -348,6 +413,9 @@ public final class Main implements InputController.Callbacks {
                 }
             } else if (screenMode == HudRenderer.ScreenMode.PAUSED) {
                 resumeGame();
+            } else if (screenMode == HudRenderer.ScreenMode.WORLD_CREATE) {
+                screenMode = HudRenderer.ScreenMode.SAVE_SELECT;
+                statusMessage = "";
             } else if (screenMode == HudRenderer.ScreenMode.SAVE_SELECT) {
                 screenMode = HudRenderer.ScreenMode.MAIN_MENU;
                 statusMessage = "";
@@ -394,7 +462,10 @@ public final class Main implements InputController.Callbacks {
                 case DELETE_ONE -> confirmDeleteVisibleSave(0);
                 case DELETE_TWO -> confirmDeleteVisibleSave(1);
                 case DELETE_THREE -> confirmDeleteVisibleSave(2);
-                case NEW_GAME -> beginLoadingSave(saveManager.nextAvailableSlot());
+                case NEW_GAME -> {
+                    seedEntry.setLength(0);worldNameEntry.setLength(0);worldNameEntry.append("New World");editingWorldName=false;updateSeedText();
+                    screenMode=HudRenderer.ScreenMode.WORLD_CREATE;
+                }
                 case PREVIOUS_PAGE -> {
                     saveSelection.previousPage();
                 }
@@ -453,6 +524,12 @@ public final class Main implements InputController.Callbacks {
                 }
                 case FPS_LIMIT -> {
                     settings.nextFpsLimit();
+                    persistSettings();
+                }
+                case RENDER_DISTANCE -> {
+                    int next = settings.renderDistance() >= 16 ? 2 : settings.renderDistance() + 1;
+                    settings.setRenderDistance(next);
+                    terrain.setDistances(settings.renderDistance(), settings.simulationDistance());
                     persistSettings();
                 }
                 case CROSSHAIR -> {
@@ -514,8 +591,9 @@ public final class Main implements InputController.Callbacks {
     }
 
     private void closeOptions() {
-        if (fovSliderDragging || uiScaleSliderDragging) {
+        if (fovSliderDragging || uiScaleSliderDragging || renderDistanceSliderDragging) {
             fovSliderDragging = false;
+                renderDistanceSliderDragging = false;
             uiScaleSliderDragging = false;
             uiScaleDragTrack = null;
             persistSettings();
@@ -548,6 +626,22 @@ public final class Main implements InputController.Callbacks {
             renderer.setFov(settings.fov());
         }
         return value >= 0;
+    }
+
+    private boolean updateRenderDistanceSliderFromCursor(long handle){
+        glfwGetWindowSize(handle,windowWidth,windowHeight);
+        glfwGetFramebufferSize(handle,framebufferWidth,framebufferHeight);
+        if(windowWidth[0]<=0||windowHeight[0]<=0||framebufferWidth[0]<=0||framebufferHeight[0]<=0)return false;
+        float x=(float)(mouseX*framebufferWidth[0]/windowWidth[0]);
+        float y=(float)(mouseY*framebufferHeight[0]/windowHeight[0]);
+        int value=renderer.renderDistanceSliderValueAt(x,y,framebufferWidth[0],framebufferHeight[0],optionsPage);
+        if(value<0){if(!renderDistanceSliderDragging)return false;
+            value=renderer.renderDistanceSliderValueClamped(x,framebufferWidth[0],framebufferHeight[0],optionsPage);}
+        if(value>=0&&value!=settings.renderDistance()){
+            settings.setRenderDistance(value);
+            terrain.setDistances(settings.renderDistance(),settings.simulationDistance());
+        }
+        return value>=0;
     }
 
     /** Update the global scale using the track captured at mouse-down. */
@@ -688,15 +782,20 @@ public final class Main implements InputController.Callbacks {
     private void loadWorld() {
         loadPending = false;
         try {
-            saveManager.loadTerrain(activeSaveSlot, terrain);
+            if(requestedNewSeed != null){
+                terrain.newWorld(requestedNewSeed);
+                requestedNewSeed=null;
+            } else saveManager.loadTerrain(activeSaveSlot, terrain);
             worldItems.clear();
             player = new Player(terrain, worldItems, gameContent);
             player.setKeyBindings(settings.keyBindings());
             saveManager.loadPlayer(activeSaveSlot, player, terrain);
+            terrain.streamAround(player.getX(),player.getZ());
             worldLoaded = true;
-            statusMessage = "";
-            screenMode = HudRenderer.ScreenMode.PLAYING;
-            player.captureMouse(window);
+            preloadingWorld = true;
+            statusMessage = "PREPARING NEARBY CHUNKS";
+            // Keep the LOADING screen visible during initial chunk generation.
+
         } catch (IOException e) {
             System.err.println("Could not load world: " + e.getMessage());
             statusMessage = "LOAD FAILED";
@@ -716,6 +815,7 @@ public final class Main implements InputController.Callbacks {
             }
             saveManager.save(activeSaveSlot, terrain, player);
             worldLoaded = true;
+            if(newWorldNamePending!=null){saveManager.saveWorldName(activeSaveSlot,newWorldNamePending);newWorldNamePending=null;}
             refreshSaveSlots();
 
             if (quitAfterSave) {
@@ -840,9 +940,16 @@ public final class Main implements InputController.Callbacks {
             deltaTime = Math.max(0.0f, Math.min(deltaTime, MAX_FRAME_DELTA_SECONDS));
 
             glfwPollEvents();
+            if(focusRetryPending && launchSplashFrames==0){
+                focusRetryPending=false;
+                glfwShowWindow(window);glfwRestoreWindow(window);glfwFocusWindow(window);
+                bringWindowToFront();
+            }
             handleEscapeKey();
 
             if (screenMode == HudRenderer.ScreenMode.PLAYING) {
+                terrain.setDistances(settings.renderDistance(),settings.simulationDistance());
+                terrain.streamAround(player.getX(), player.getZ());
                 player.update(window, terrain, deltaTime);
                 if (screenMode == HudRenderer.ScreenMode.PLAYING) {
                     worldItems.update(deltaTime, player);
@@ -883,7 +990,8 @@ public final class Main implements InputController.Callbacks {
                     saveSelection.hasNextPage(),
                     settings,
                     pendingDeleteLabel,
-                    optionsPage
+                    optionsPage,
+                    worldNameEntry.toString(),seedEntry.toString(),editingWorldName
             );
 
             glfwSwapBuffers(window);
@@ -891,8 +999,24 @@ public final class Main implements InputController.Callbacks {
             if (latestFps >= 0) renderer.setMeasuredFps(latestFps);
             FrameTiming.limitFrameRate(frameStartNanos, settings.fpsLimit());
 
+            if(launchSplashFrames>0){
+                launchSplashFrames--;
+                if(launchSplashFrames==0 && !loadPending){
+                    screenMode=HudRenderer.ScreenMode.MAIN_MENU;statusMessage="";
+                }
+            }
             if (loadPending) {
                 loadWorld();
+            }
+            if(preloadingWorld){
+                terrain.streamAround(player.getX(),player.getZ());
+                int loaded=terrain.loadedChunkCount();
+                statusMessage="GENERATING TERRAIN " + loaded + " CHUNKS";
+                if(loaded>=25){
+                    preloadingWorld=false;statusMessage="";
+                    screenMode=HudRenderer.ScreenMode.PLAYING;
+                    player.captureMouse(window);
+                }
             }
             if (savePending
                     && System.nanoTime() - savingScreenStartedAtNanos >= MIN_SAVING_SCREEN_NANOS) {

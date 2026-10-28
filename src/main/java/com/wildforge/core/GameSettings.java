@@ -48,6 +48,8 @@ public final class GameSettings {
     private DisplayMode displayMode = DisplayMode.WINDOWED;
     private boolean showFps = false;
     private int fov = 70;
+    private int renderDistance = 8;
+    private int simulationDistance = 5;
     private int fpsLimit = 0; // 0 = unlimited (VSync may still limit FPS)
     private int resolutionWidth = 1600;
     private int resolutionHeight = 900;
@@ -89,6 +91,8 @@ public final class GameSettings {
             }
             if (json.has("show_fps")) settings.showFps = json.get("show_fps").getAsBoolean();
             if (json.has("fov")) settings.setFov(json.get("fov").getAsInt());
+            if (json.has("render_distance")) settings.setRenderDistance(json.get("render_distance").getAsInt());
+            if (json.has("simulation_distance")) settings.setSimulationDistance(json.get("simulation_distance").getAsInt());
             if (json.has("fps_limit")) settings.fpsLimit = normalizeFpsLimit(json.get("fps_limit").getAsInt());
             if (json.has("resolution_width") && json.has("resolution_height")) {
                 int w = json.get("resolution_width").getAsInt();
@@ -118,6 +122,8 @@ public final class GameSettings {
         json.addProperty("display_mode", displayMode.name().toLowerCase(java.util.Locale.ROOT));
         json.addProperty("show_fps", showFps);
         json.addProperty("fov", fov);
+        json.addProperty("render_distance", renderDistance);
+        json.addProperty("simulation_distance", simulationDistance);
         json.addProperty("fps_limit", fpsLimit);
         json.addProperty("resolution_width", resolutionWidth);
         json.addProperty("resolution_height", resolutionHeight);
@@ -163,6 +169,10 @@ public final class GameSettings {
     }
     public boolean showFps() { return showFps; }
     public int fov() { return fov; }
+    public int renderDistance() { return renderDistance; }
+    public int simulationDistance() { return simulationDistance; }
+    public void setRenderDistance(int d) { renderDistance=Math.max(2,Math.min(24,d));simulationDistance=Math.min(simulationDistance,renderDistance); }
+    public void setSimulationDistance(int d) { simulationDistance=Math.max(2,Math.min(renderDistance,d)); }
     public int fpsLimit() { return fpsLimit; }
     public int resolutionWidth() { return resolutionWidth; }
     public int resolutionHeight() { return resolutionHeight; }

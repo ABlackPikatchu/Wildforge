@@ -12,11 +12,12 @@ public final class DroppedItemEntity extends Entity {
     private static final float GRAVITY = 18.0f;
     private static final float BOUNCE_DAMPING = 0.28f;
     private static final float MIN_BOUNCE_SPEED = 0.8f;
-    private static final float BOB_AMOUNT = 0.045f;
+    private static final float GROUND_DRAG_PER_SECOND = 0.012f;
+    private static final float AIR_DRAG_PER_SECOND = 0.70f;
+    private static final float STOP_SPEED = 0.08f;
 
     private final ItemType itemType;
     private final TerrainMesh terrain;
-    private final float bobPhase;
 
     private int count;
     private boolean grounded;
@@ -43,8 +44,6 @@ public final class DroppedItemEntity extends Entity {
         this.itemType = itemType;
         this.count = count;
         this.terrain = terrain;
-        this.bobPhase = ThreadLocalRandom.current()
-                .nextFloat(0.0f, (float) (Math.PI * 2.0));
 
         ThreadLocalRandom random = ThreadLocalRandom.current();
         setVelocity(
@@ -145,11 +144,8 @@ public final class DroppedItemEntity extends Entity {
     }
 
     public float getRenderY() {
-        if (!grounded) {
-            return y;
-        }
-
-        return y + (float) Math.sin(age * 3.0f + bobPhase) * BOB_AMOUNT;
+        // Keep the rendered item stable when it is resting on a block.
+        return y;
     }
 
     @Override
@@ -160,10 +156,23 @@ public final class DroppedItemEntity extends Entity {
 
         float dt = Math.min(deltaTime, 0.05f);
         age += dt;
-        velocityY -= GRAVITY * dt;
-
         moveHorizontal(dt);
+
+        // A resting item should not fall a fraction of a block every frame
+        // and then be snapped back onto the same floor repeatedly.
+        if (grounded && velocityY == 0.0f && hasGroundSupport()) {
+            applyHorizontalDrag(dt);
+            return;
+        }
+        grounded = false;
+        velocityY -= GRAVITY * dt;
         moveVertical(dt);
+        applyHorizontalDrag(dt);
+    }
+
+    private boolean hasGroundSupport() {
+        // Probe just below the item. Once it moves off a ledge, gravity resumes.
+        return collidesAt(x, y - 0.002f, z);
     }
 
     private void moveHorizontal(float dt) {
@@ -183,11 +192,17 @@ public final class DroppedItemEntity extends Entity {
             velocityZ = 0.0f;
         }
 
-        if (grounded) {
-            // Gentle friction still allows magnet attraction to move items.
-            float friction = (float) Math.pow(0.35f, dt);
-            velocityX *= friction;
-            velocityZ *= friction;
+    }
+
+    private void applyHorizontalDrag(float dt) {
+        float drag = (float) Math.pow(
+                grounded ? GROUND_DRAG_PER_SECOND : AIR_DRAG_PER_SECOND, dt);
+        velocityX *= drag;
+        velocityZ *= drag;
+        if (grounded && velocityX * velocityX + velocityZ * velocityZ
+                < STOP_SPEED * STOP_SPEED) {
+            velocityX = 0.0f;
+            velocityZ = 0.0f;
         }
     }
 

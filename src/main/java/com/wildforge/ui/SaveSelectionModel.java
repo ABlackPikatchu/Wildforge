@@ -51,7 +51,7 @@ public final class SaveSelectionModel {
     private void rebuildVisibleEntries() {
         for (int i = 0; i < ENTRIES_PER_PAGE; i++) {
             SaveManager.SaveSlotSummary slot = visibleAt(i);
-            visibleLabels[i] = slot == null ? "EMPTY" : slot.displayName();
+            visibleLabels[i] = slot == null ? "EMPTY" : saveManager.worldName(slot.slot());
             visibleExists[i] = slot != null && slot.exists();
         }
     }

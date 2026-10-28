@@ -85,6 +85,25 @@ final class MenuRenderer {
         return sliderValue(mouseX, track, GameSettings.MIN_FOV, GameSettings.MAX_FOV, 1);
     }
 
+    /** Render distance uses the same anchored geometry as FOV. */
+    public int renderDistanceSliderValueAt(float mx,float my,int width,int height,int page){
+        if(page!=0)return -1;
+        float scale=HudRenderer.effectiveUiScale(width,height);
+        mx/=scale;my/=scale;
+        width=HudRenderer.virtualSize(width,scale);height=HudRenderer.virtualSize(height,scale);
+        float[] row=buttonBounds(9,width,height,ScreenMode.OPTIONS,page);
+        float[] track=fovSliderBounds(row,optionsMenuScale(width,height,page));
+        float margin=Math.max(6f*optionsMenuScale(width,height,page),4f);
+        if(mx<track[0]-margin||mx>track[0]+track[2]+margin||my<row[1]||my>row[1]+row[3])return -1;
+        return sliderValue(mx,track,2,24,1);
+    }
+    public int renderDistanceSliderValueClamped(float mx,int width,int height,int page){
+        if(page!=0)return -1;
+        float scale=HudRenderer.effectiveUiScale(width,height);mx/=scale;
+        width=HudRenderer.virtualSize(width,scale);height=HudRenderer.virtualSize(height,scale);
+        return sliderValue(mx,fovSliderBounds(buttonBounds(9,width,height,ScreenMode.OPTIONS,page),optionsMenuScale(width,height,page)),2,24,1);
+    }
+
     public int fovSliderValueClamped(float mouseX, int width, int height, int optionsPage) {
         if (optionsPage != 0) return -1;
         float scale = HudRenderer.effectiveUiScale(width, height);
@@ -296,13 +315,13 @@ final class MenuRenderer {
                 continue;
             }
             if (screenMode == ScreenMode.OPTIONS && settings != null
-                    && (button == MenuButton.FOV || button == MenuButton.UI_SCALE)) {
+                    && (button == MenuButton.FOV || button == MenuButton.UI_SCALE || button == MenuButton.RENDER_DISTANCE)) {
                 boolean isFov = button == MenuButton.FOV;
-                menuText(data, isFov ? "FIELD OF VIEW" : "UI SCALE", x + 120f * s,
+                menuText(data, isFov ? "FIELD OF VIEW" : button == MenuButton.RENDER_DISTANCE ? "RENDER DISTANCE" : "UI SCALE", x + 120f * s,
                         y + 17f * s, 2.0f * s,
                         0.96f, 0.92f, 0.85f, 1f);
                 float[] track = fovSliderBounds(bounds, s);
-                float ratio = isFov
+                float ratio = button == MenuButton.RENDER_DISTANCE ? (settings.renderDistance()-2)/22f : isFov
                         ? (settings.fov() - GameSettings.MIN_FOV)
                                 / (float) (GameSettings.MAX_FOV - GameSettings.MIN_FOV)
                         : (settings.uiScalePercent() - GameSettings.MIN_UI_SCALE)
@@ -310,7 +329,7 @@ final class MenuRenderer {
                 ratio = Math.max(0f, Math.min(1f, ratio));
                 uiSkin.menuSlider(skinData, track[0], track[1],
                         track[2], track[3], ratio, s);
-                menuText(data, isFov ? settings.fov() + " DEG"
+                menuText(data, button == MenuButton.RENDER_DISTANCE ? settings.renderDistance() + " CH" : isFov ? settings.fov() + " DEG"
                                 : settings.uiScalePercent() + " PCT", x + 519f * s,
                         y + 15f * s, 1.9f * s,
                         0.99f, 0.87f, 0.66f, 1f);
@@ -359,6 +378,11 @@ final class MenuRenderer {
             }
         }
 
+        if (screenMode == ScreenMode.WORLD_CREATE) {
+            drawText(data,"TYPE SEED  |  ENTER TO CREATE  |  ESC TO CANCEL",
+                    width / 2.0f,height / 2.0f + 61.0f,1.35f,
+                    0.86f,0.9f,0.93f,1.0f);
+        }
         if (statusMessage != null && !statusMessage.isBlank()) {
             menuText(data, statusMessage.toUpperCase(), width / 2f,
                     height * 0.96f, 1.9f, 1f, 0.55f, 0.43f, 1f);
@@ -375,6 +399,7 @@ final class MenuRenderer {
                     : "RESOLUTION  AUTO";
             case FPS_LIMIT -> "MAX FPS " + settings.fpsLimitLabel();
             case SHOW_FPS -> "SHOW FPS " + (settings.showFps() ? "ON" : "OFF");
+            case RENDER_DISTANCE -> "RENDER DISTANCE  " + settings.renderDistance() + " CHUNKS";
             case VIDEO_TAB -> "VIDEO";
             case CONTROLS_TAB -> "CONTROLS";
             case CROSSHAIR -> "CROSSHAIR " + (settings.crosshair() ? "ON" : "OFF");
@@ -435,6 +460,38 @@ final class MenuRenderer {
         return menuPanelGeometry(width, height, ScreenMode.OPTIONS, optionsPage)[4];
     }
 
+    void drawCreateWorldScreen(List<Float> data,List<Float> dimData,List<Float> skinData,
+            int width,int height,String name,String seed,boolean editingName,String message){
+        rect(dimData,0,0,width,height,0.025f,0.035f,0.055f,0.84f);
+        float left=width*0.23f, panelWidth=width*0.54f;
+        uiSkin.menuPanel(skinData,left,height*0.17f,panelWidth,height*0.68f);
+        menuText(data,"CREATE A NEW WORLD",width*0.5f,height*0.215f,3.1f,
+                0.98f,0.83f,0.57f,1f);
+        menuText(data,"CHOOSE YOUR WORLD'S BEGINNING",width*0.5f,height*0.282f,1.45f,
+                0.76f,0.81f,0.83f,1f);
+        // Input fields are deliberately large and clickable; the selected field gets a gold border.
+        float x=width*0.28f,w=width*0.44f;
+        rect(data,x,height*0.35f,w,height*0.105f,editingName?0.28f:0.12f,
+                editingName?0.25f:0.15f,0.18f,1f);
+        rect(data,x+2,height*0.35f+2,w-4,height*0.105f-4,0.075f,0.09f,0.11f,1f);
+        menuText(data,"WORLD NAME",width*0.5f,height*0.325f,1.4f,0.9f,0.85f,0.72f,1f);
+        menuText(data,(name==null||name.isEmpty()?"NEW WORLD":name)+(editingName?"_":""),
+                width*0.5f,height*0.385f,1.7f,0.96f,0.96f,0.96f,1f);
+        rect(data,x,height*0.48f,w,height*0.105f,!editingName?0.28f:0.12f,
+                !editingName?0.25f:0.15f,0.18f,1f);
+        rect(data,x+2,height*0.48f+2,w-4,height*0.105f-4,0.075f,0.09f,0.11f,1f);
+        menuText(data,"WORLD SEED  -  OPTIONAL",width*0.5f,height*0.463f,1.4f,0.9f,0.85f,0.72f,1f);
+        menuText(data,(seed==null||seed.isEmpty()?"RANDOM SEED":seed)+(!editingName?"_":""),
+                width*0.5f,height*0.515f,1.7f,0.96f,0.96f,0.96f,1f);
+        menuText(data,"CLICK A FIELD TO EDIT  |  TAB TO SWITCH",width*0.5f,height*0.623f,1.2f,0.72f,0.76f,0.8f,1f);
+        float by=height*0.695f,bh=height*0.115f;
+        rect(data,width*0.27f,by,width*0.225f,bh,0.19f,0.30f,0.24f,1f);
+        rect(data,width*0.505f,by,width*0.225f,bh,0.23f,0.22f,0.24f,1f);
+        menuText(data,"CREATE WORLD",width*0.3825f,by+bh*0.36f,1.8f,0.94f,0.98f,0.87f,1f);
+        menuText(data,"BACK",width*0.6175f,by+bh*0.36f,1.8f,0.94f,0.93f,0.92f,1f);
+        if(message!=null&&!message.isBlank())menuText(data,message,width*0.5f,height*0.84f,1.4f,1f,0.56f,0.43f,1f);
+    }
+
     void drawStatusScreen(
             List<Float> data,
             List<Float> dimData,
@@ -449,8 +506,8 @@ final class MenuRenderer {
         uiSkin.menuPanel(skinData, width / 2f - 240f,
                 height / 2f - 95f, 480f, 190f);
 
-        String title = screenMode == ScreenMode.LOADING
-                ? "LOADING WORLD" : "SAVING WORLD";
+        String title = screenMode == ScreenMode.WORLD_CREATE ? "CREATE WORLD"
+                : screenMode == ScreenMode.LOADING ? "GENERATING / LOADING WORLD" : "SAVING WORLD";
         drawText(
                 data, title,
                 width / 2.0f,
@@ -474,7 +531,7 @@ final class MenuRenderer {
     private int buttonCount(ScreenMode screenMode, int optionsPage) {
         return switch (screenMode) {
             case SAVE_SELECT -> 10;
-            case OPTIONS -> optionsPage == 0 ? 10 : 5;
+            case OPTIONS -> optionsPage == 0 ? 11 : 5;
             case KEYBINDS -> 10;
             case DELETE_CONFIRM -> 2;
             default -> 3;
@@ -532,12 +589,12 @@ final class MenuRenderer {
                         y + 99f * s, 272f * s, 44f * s};
             }
             if (optionsPage == 0) {
-                if (index == 9) {
+                if (index == 10) {
                     return new float[] {x + 46f * s, y + 602f * s,
                             568f * s, 51f * s};
                 }
                 return new float[] {x + 46f * s,
-                        y + (157f + (index - 2) * 58f) * s,
+                        y + (157f + (index - 2) * 49f) * s,
                         568f * s, 49f * s};
             }
             // Controls only has two settings; do not reuse the tall video panel.
@@ -609,7 +666,8 @@ final class MenuRenderer {
                     case 6 -> MenuButton.FOV;
                     case 7 -> MenuButton.SHOW_FPS;
                     case 8 -> MenuButton.UI_SCALE;
-                    case 9 -> MenuButton.BACK;
+                    case 9 -> MenuButton.RENDER_DISTANCE;
+                    case 10 -> MenuButton.BACK;
                     default -> MenuButton.NONE;
                 };
             }
@@ -674,6 +732,7 @@ final class MenuRenderer {
             case RESOLUTION -> "RESOLUTION";
             case VSYNC -> "VSYNC";
             case FPS_LIMIT -> "MAX FPS";
+            case RENDER_DISTANCE -> "RENDER DISTANCE";
             case SHOW_FPS -> "SHOW FPS";
             case FOV -> "FIELD OF VIEW";
             case CROSSHAIR -> "CROSSHAIR";

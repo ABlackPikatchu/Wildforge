@@ -1,0 +1,1873 @@
+{
+  "schema": "wildforge-worldgen-biome-weights-v1",
+  "status": "proposed design weights, NOT an installed Java config or measured spawn frequencies",
+  "source": "Existing Wildforge surface/underground biome designs and resources.zip texture names",
+  "units": {
+    "surface_share": "approx percent of overworld LAND biome coverage after climate/shore/geology eligibility constraints (not all-world uniform random choice)",
+    "surface_top": "percentage of eligible exposed SOLID land columns in a biome; coherent weighted patches; percent sums to 100",
+    "soil_under": "percentage composition over chosen soil_depth_min_max blocks beneath land surface; patch-based; sums to 100",
+    "rock_bias": "advisory shallow geology texture distribution only; deep host rocks follow regional geology, independent of climate",
+    "trees": "attempts or mature trees per eligible 16x16 surface area; tree geometry and species crowns separate",
+    "plants": "target plants/clumps per eligible 16x16 surface area; respect slope/light/water filters",
+    "cave_share": "approx percent of assigned CAVE volumes among 12 cave types, after depth and geology eligibility; cannot be guaranteed globally",
+    "cave_wall": "percentage of naturally exposed cave-wall/ceiling SOLID blocks, excluding ore veins and separately placed hanging decorations",
+    "cave_floor": "percentage of exposed, traversable cave-floor SOLID blocks, excluding water/standalone decorations",
+    "water": "percentage of cave-floor columns beneath water (ranges by layout), NOT percentage of exposed rock walls",
+    "ceiling_and_ground": "percent of eligible exposed ceiling/floor attachment positions; placed in coherent patches, not independent noisy pixels",
+    "depth_fraction": "(surfaceY-y)/(surfaceY-bedrockY) clamped 0..1"
+  },
+  "surface_biomes": [
+    {
+      "id": "greenheart_forest",
+      "name": "Greenheart Forest",
+      "temperature": [
+        -0.1,
+        0.68
+      ],
+      "moisture": [
+        0.48,
+        0.92
+      ],
+      "elevation": [
+        0.12,
+        0.67
+      ],
+      "terrain": "Rolling deciduous woods, streams, leaf litter and decomposing wood",
+      "canopy": "oak, maple",
+      "surface": [
+        "forest_loam",
+        "leaf_litter",
+        "moss_block"
+      ],
+      "vegetation": [
+        "fern",
+        "forest_mushroom"
+      ],
+      "subsurface": "Dirt over mixed stone; damp mossy pockets",
+      "generation": "Place clumped trees on fertile slopes, clear narrow stream corridors, scatter fallen logs in old stands",
+      "share": 18,
+      "top": {
+        "grass_top": 50,
+        "forest_loam": 25,
+        "leaf_litter": 15,
+        "moss_block": 7,
+        "gravel": 3
+      },
+      "soil": [
+        3,
+        6
+      ],
+      "under": {
+        "dirt": 50,
+        "forest_loam": 30,
+        "rich_humus": 10,
+        "clay": 10
+      },
+      "rock": {
+        "stone": 45,
+        "granite": 20,
+        "andesite": 15,
+        "limestone": 15,
+        "gravel": 5
+      },
+      "trees": {
+        "oak": [
+          6,
+          11
+        ],
+        "maple": [
+          3,
+          6
+        ]
+      },
+      "plants": {
+        "fern": [
+          5,
+          14
+        ],
+        "small_grass": [
+          8,
+          20
+        ],
+        "forest_mushroom": [
+          1,
+          5
+        ]
+      },
+      "feature": "Leaf-litter patches beneath tree crowns; moss on shaded slopes; fallen logs 0\u20132/chunk; streams in valleys.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "needlewood_taiga",
+      "name": "Needlewood Taiga",
+      "temperature": [
+        -0.48,
+        0.18
+      ],
+      "moisture": [
+        0.36,
+        0.82
+      ],
+      "elevation": [
+        0.35,
+        0.86
+      ],
+      "terrain": "Evergreen forest on cold uplands, rock and needle litter",
+      "canopy": "pine",
+      "surface": [
+        "pine_needle_litter",
+        "lichen_stone"
+      ],
+      "vegetation": [
+        "evergreen_shrub",
+        "lichen_patch"
+      ],
+      "subsurface": "Stone, gravel, local slate veins",
+      "generation": "Dense conifer clusters; thinning at treeline, fallen pine cones and boulder clearings",
+      "share": 12,
+      "top": {
+        "grass_top": 25,
+        "pine_needle_litter": 43,
+        "forest_loam": 12,
+        "lichen_stone": 12,
+        "gravel": 8
+      },
+      "soil": [
+        2,
+        4
+      ],
+      "under": {
+        "dirt": 50,
+        "gravel": 25,
+        "forest_loam": 20,
+        "clay": 5
+      },
+      "rock": {
+        "stone": 35,
+        "granite": 25,
+        "slate": 20,
+        "gabbro": 10,
+        "gravel": 10
+      },
+      "trees": {
+        "pine": [
+          8,
+          15
+        ]
+      },
+      "plants": {
+        "evergreen_shrub": [
+          4,
+          10
+        ],
+        "lichen_patch": [
+          3,
+          8
+        ],
+        "fern": [
+          1,
+          5
+        ]
+      },
+      "feature": "Needle mats under conifers; stones on exposed ridges; canopy thins with altitude.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "emberleaf_woodland",
+      "name": "Emberleaf Woodland",
+      "temperature": [
+        -0.12,
+        0.65
+      ],
+      "moisture": [
+        0.45,
+        0.8
+      ],
+      "elevation": [
+        0.15,
+        0.65
+      ],
+      "terrain": "Seasonally golden deciduous hills",
+      "canopy": "maple, oak",
+      "surface": [
+        "autumn_leaf_litter",
+        "rich_humus"
+      ],
+      "vegetation": [
+        "shelf_fungus"
+      ],
+      "subsurface": "Loam and stone with occasional clay pockets",
+      "generation": "Use red or gold leaf variants by local climate/season; short slopes and uneven canopy patches",
+      "share": 9,
+      "top": {
+        "grass_top": 35,
+        "autumn_leaf_litter": 40,
+        "rich_humus": 17,
+        "moss_block": 5,
+        "gravel": 3
+      },
+      "soil": [
+        3,
+        5
+      ],
+      "under": {
+        "dirt": 50,
+        "rich_humus": 35,
+        "clay": 15
+      },
+      "rock": {
+        "stone": 40,
+        "granite": 25,
+        "limestone": 20,
+        "shale": 15
+      },
+      "trees": {
+        "maple": [
+          6,
+          11
+        ],
+        "oak": [
+          1,
+          3
+        ]
+      },
+      "plants": {
+        "shelf_fungus": [
+          1,
+          3
+        ],
+        "fern": [
+          3,
+          8
+        ],
+        "small_grass": [
+          5,
+          12
+        ]
+      },
+      "feature": "Orange/red/gold canopy localized by tree/season; leaf litter near tree clusters.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "sunmeadow_plains",
+      "name": "Sunmeadow Plains",
+      "temperature": [
+        0.08,
+        0.76
+      ],
+      "moisture": [
+        0.32,
+        0.7
+      ],
+      "elevation": [
+        0.08,
+        0.52
+      ],
+      "terrain": "Open grasslands, gentle knolls, meadow pockets",
+      "canopy": "sparse oak, maple",
+      "surface": [
+        "fertile_loam",
+        "dry_grass_top",
+        "dry_grass_side"
+      ],
+      "vegetation": [
+        "clover",
+        "wild_wheat",
+        "meadow_thistle"
+      ],
+      "subsurface": "Deep productive soil then mixed sediment",
+      "generation": "Keep sightlines; cluster flowers and grain on fertile patches, isolated trees by stream",
+      "share": 17,
+      "top": {
+        "grass_top": 78,
+        "fertile_loam": 14,
+        "dry_grass_top": 5,
+        "gravel": 3
+      },
+      "soil": [
+        4,
+        7
+      ],
+      "under": {
+        "dirt": 55,
+        "fertile_loam": 30,
+        "clay": 10,
+        "gravel": 5
+      },
+      "rock": {
+        "stone": 50,
+        "limestone": 20,
+        "sandstone": 15,
+        "granite": 10,
+        "gravel": 5
+      },
+      "trees": {
+        "oak": [
+          0,
+          2
+        ],
+        "maple": [
+          0,
+          1
+        ]
+      },
+      "plants": {
+        "small_grass": [
+          20,
+          40
+        ],
+        "tall_grass": [
+          2,
+          7
+        ],
+        "clover": [
+          4,
+          10
+        ],
+        "wild_wheat": [
+          2,
+          8
+        ],
+        "flower_daisy": [
+          1,
+          4
+        ],
+        "flower_poppy": [
+          1,
+          3
+        ],
+        "meadow_thistle": [
+          0,
+          3
+        ]
+      },
+      "feature": "Most ground stays visible grass; flowers occur in coherent meadow patches; trees near waterways.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "frostspire_highlands",
+      "name": "Frostspire Highlands",
+      "temperature": [
+        -1.0,
+        -0.33
+      ],
+      "moisture": [
+        0.15,
+        0.85
+      ],
+      "elevation": [
+        0.68,
+        1.0
+      ],
+      "terrain": "Windy alpine ridges, cliff faces, snowfields and scree",
+      "canopy": "only dwarfed pine below treeline",
+      "surface": [
+        "slate",
+        "shale",
+        "scree",
+        "packed_snow",
+        "alpine_moss"
+      ],
+      "vegetation": [
+        "snow_grass"
+      ],
+      "subsurface": "Slate in uplifted belts; mountain rock and sparse ores",
+      "generation": "Altitude/latitude-driven snow, scree below cliffs, overhangs and alpine patches on sheltered slopes",
+      "share": 8,
+      "top": {
+        "slate": 30,
+        "scree": 25,
+        "packed_snow": 25,
+        "shale": 12,
+        "alpine_moss": 8
+      },
+      "soil": [
+        0,
+        2
+      ],
+      "under": {
+        "stone": 40,
+        "slate": 25,
+        "shale": 20,
+        "scree": 15
+      },
+      "rock": {
+        "slate": 40,
+        "stone": 25,
+        "granite": 20,
+        "gabbro": 10,
+        "shale": 5
+      },
+      "trees": {
+        "pine": [
+          0,
+          1
+        ]
+      },
+      "plants": {
+        "snow_grass": [
+          0,
+          4
+        ],
+        "alpine_moss": [
+          1,
+          5
+        ]
+      },
+      "feature": "Snow overlays: exposed cold surfaces 20\u201380% by altitude; scree below cliffs; vegetation only protected ledges.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "frostmoor_tundra",
+      "name": "Frostmoor Tundra",
+      "temperature": [
+        -1.0,
+        -0.48
+      ],
+      "moisture": [
+        0.15,
+        0.62
+      ],
+      "elevation": [
+        0.08,
+        0.63
+      ],
+      "terrain": "Open frozen plains with frost-crusted soils",
+      "canopy": "almost treeless",
+      "surface": [
+        "permafrost",
+        "frozen_peat",
+        "snow_crust",
+        "tundra_lichen"
+      ],
+      "vegetation": [
+        "frost_shrub",
+        "tundra_grass"
+      ],
+      "subsurface": "Frozen peat above coarse sediment and stone",
+      "generation": "Low plants, permafrost bands, shallow ice pockets with sparse sheltering shrubs",
+      "share": 5,
+      "top": {
+        "permafrost": 45,
+        "snow_crust": 30,
+        "frozen_peat": 15,
+        "gravel": 7,
+        "tundra_lichen": 3
+      },
+      "soil": [
+        2,
+        5
+      ],
+      "under": {
+        "permafrost": 65,
+        "frozen_peat": 20,
+        "dirt": 10,
+        "gravel": 5
+      },
+      "rock": {
+        "stone": 40,
+        "shale": 30,
+        "slate": 20,
+        "gravel": 10
+      },
+      "trees": {},
+      "plants": {
+        "tundra_grass": [
+          2,
+          8
+        ],
+        "frost_shrub": [
+          1,
+          4
+        ]
+      },
+      "feature": "Patchy snow and exposed frozen peat, small ice ponds only in depressions.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "redscar_badlands",
+      "name": "Redscar Badlands",
+      "temperature": [
+        0.35,
+        1.0
+      ],
+      "moisture": [
+        0,
+        0.31
+      ],
+      "elevation": [
+        0.24,
+        0.88
+      ],
+      "terrain": "Eroded red mesas, cliffs, canyons and dry washes",
+      "canopy": "minimal",
+      "surface": [
+        "red_sand",
+        "red_sandstone",
+        "red_clay",
+        "compacted_sediment",
+        "red_sandstone_layered"
+      ],
+      "vegetation": [],
+      "subsurface": "Red sedimentary layers and iron-stained stone",
+      "generation": "Stratified formations, canyon walls, exposed iron veins and flat-topped mesas",
+      "share": 6,
+      "top": {
+        "red_sand": 25,
+        "red_sandstone": 23,
+        "red_sandstone_layered": 30,
+        "compacted_sediment": 14,
+        "red_clay": 8
+      },
+      "soil": [
+        2,
+        6
+      ],
+      "under": {
+        "red_sandstone": 35,
+        "compacted_sediment": 35,
+        "red_clay": 20,
+        "red_sand": 10
+      },
+      "rock": {
+        "red_sandstone": 45,
+        "red_sandstone_layered": 25,
+        "sandstone": 15,
+        "shale": 10,
+        "iron_stained_stone": 5
+      },
+      "trees": {},
+      "plants": {
+        "dead_bush": [
+          0,
+          3
+        ],
+        "dry_scrub": [
+          0,
+          2
+        ]
+      },
+      "feature": "Mesa and canyon strata use continuous elevation bands, NOT random red-sandstone checkerboards; iron seams localized.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "suncrack_desert",
+      "name": "Suncrack Desert",
+      "temperature": [
+        0.48,
+        1.0
+      ],
+      "moisture": [
+        0,
+        0.22
+      ],
+      "elevation": [
+        0.06,
+        0.62
+      ],
+      "terrain": "Dry dunes, hardpan patches, rocky outcrops and rare oases",
+      "canopy": "very sparse",
+      "surface": [
+        "cracked_earth",
+        "gypsum",
+        "sandstone_rubble"
+      ],
+      "vegetation": [
+        "desert_succulent",
+        "dry_scrub",
+        "dune_grass"
+      ],
+      "subsurface": "Sand, sandstone, gypsum deposits and dry stone",
+      "generation": "Dune fields downwind of ridges; hardpan in low basins; rare water-access vegetation",
+      "share": 8,
+      "top": {
+        "sand": 65,
+        "cracked_earth": 14,
+        "sandstone": 11,
+        "sandstone_rubble": 7,
+        "gypsum": 3
+      },
+      "soil": [
+        3,
+        8
+      ],
+      "under": {
+        "sand": 55,
+        "sandstone": 25,
+        "cracked_earth": 10,
+        "gypsum": 10
+      },
+      "rock": {
+        "sandstone": 55,
+        "limestone": 15,
+        "stone": 10,
+        "gypsum": 10,
+        "red_sandstone": 10
+      },
+      "trees": {},
+      "plants": {
+        "cactus_side": [
+          0,
+          2
+        ],
+        "dead_bush": [
+          1,
+          4
+        ],
+        "dry_scrub": [
+          1,
+          4
+        ],
+        "desert_succulent": [
+          0,
+          3
+        ],
+        "dune_grass": [
+          0,
+          4
+        ]
+      },
+      "feature": "Dunes from directional height noise; hardpan in basins; cactus clusters sparse, oasis-specific green patches.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "mistfen_wetlands",
+      "name": "Mistfen Wetlands",
+      "temperature": [
+        0.05,
+        0.74
+      ],
+      "moisture": [
+        0.78,
+        1.0
+      ],
+      "elevation": [
+        0,
+        0.28
+      ],
+      "terrain": "Floodplains, marsh channels, peat bogs and shallow pools",
+      "canopy": "willow and cypress",
+      "surface": [
+        "mud",
+        "wet_mud",
+        "peat",
+        "silt"
+      ],
+      "vegetation": [
+        "cattails",
+        "marsh_reeds",
+        "lily_pad"
+      ],
+      "subsurface": "Peat over silt and clay",
+      "generation": "Low relief, braided shallow water, shore-dependent reeds, trees on dry hummocks",
+      "share": 6,
+      "top": {
+        "mud": 25,
+        "wet_mud": 27,
+        "peat": 22,
+        "silt": 18,
+        "grass_top": 8
+      },
+      "soil": [
+        3,
+        8
+      ],
+      "under": {
+        "peat": 35,
+        "silt": 35,
+        "clay": 20,
+        "wet_mud": 10
+      },
+      "rock": {
+        "stone": 25,
+        "limestone": 30,
+        "sandstone": 20,
+        "siltstone": 20,
+        "gravel": 5
+      },
+      "trees": {
+        "willow": [
+          1,
+          4
+        ],
+        "cypress": [
+          1,
+          3
+        ]
+      },
+      "plants": {
+        "cattails": [
+          3,
+          10
+        ],
+        "marsh_reeds": [
+          4,
+          15
+        ],
+        "lily_pad": [
+          0,
+          5
+        ],
+        "fern": [
+          1,
+          5
+        ]
+      },
+      "feature": "Water covers 25\u201345% of lowland columns; reeds by water and lily pads on still water; peat in raised bog patches.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "whitecliff_coast",
+      "name": "Whitecliff Coast",
+      "temperature": [
+        -0.2,
+        0.75
+      ],
+      "moisture": [
+        0.3,
+        0.88
+      ],
+      "elevation": [
+        0,
+        0.58
+      ],
+      "terrain": "White limestone cliffs, pebbly beaches and tidal coves",
+      "canopy": "coastal scrub inland",
+      "surface": [
+        "limestone",
+        "chalk",
+        "beach_pebbles",
+        "wet_sand",
+        "shell_sand"
+      ],
+      "vegetation": [
+        "seaweed"
+      ],
+      "subsurface": "Limestone lenses and chalk strata, seawater caves",
+      "generation": "Slope-dependent cliffs, beaches at tide level; seaweed underwater, pebble bars near rough coast",
+      "share": 4,
+      "top": {
+        "limestone": 32,
+        "chalk": 22,
+        "beach_pebbles": 19,
+        "wet_sand": 12,
+        "shell_sand": 10,
+        "grass_top": 5
+      },
+      "soil": [
+        1,
+        4
+      ],
+      "under": {
+        "limestone": 40,
+        "chalk": 25,
+        "wet_sand": 20,
+        "gravel": 15
+      },
+      "rock": {
+        "limestone": 60,
+        "chalk": 20,
+        "weathered_limestone": 10,
+        "sandstone": 10
+      },
+      "trees": {
+        "oak": [
+          0,
+          1
+        ]
+      },
+      "plants": {
+        "seaweed": [
+          2,
+          8
+        ],
+        "sea_shell": [
+          1,
+          5
+        ],
+        "dry_scrub": [
+          0,
+          2
+        ]
+      },
+      "feature": "Cliffs have limestone/chalk; beaches use sand/pebbles ONLY below slope and near water; seaweed in shallow water.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "cinderfall_volcanic_fields",
+      "name": "Cinderfall Volcanic Fields",
+      "temperature": [
+        0.22,
+        1.0
+      ],
+      "moisture": [
+        0,
+        0.73
+      ],
+      "elevation": [
+        0.32,
+        0.96
+      ],
+      "terrain": "Rugged basalt, ash, cooled lava beds and hot vents",
+      "canopy": "none near active vents",
+      "surface": [
+        "obsidian",
+        "volcanic_ash",
+        "pumice",
+        "scoria",
+        "sulfur_rock",
+        "cracked_basalt",
+        "magma_crust"
+      ],
+      "vegetation": [],
+      "subsurface": "Basalt flows and magma chambers, vents are rare",
+      "generation": "Volcanic geological province controls this biome; hot pockets isolated from starting regions",
+      "share": 3,
+      "top": {
+        "basalt": 30,
+        "cracked_basalt": 20,
+        "volcanic_ash": 20,
+        "scoria": 15,
+        "pumice": 10,
+        "obsidian": 5
+      },
+      "soil": [
+        1,
+        3
+      ],
+      "under": {
+        "volcanic_ash": 40,
+        "scoria": 25,
+        "basalt": 25,
+        "pumice": 10
+      },
+      "rock": {
+        "basalt": 55,
+        "gabbro": 20,
+        "obsidian": 10,
+        "scoria": 10,
+        "granite": 5
+      },
+      "trees": {},
+      "plants": {},
+      "feature": "Cooled basalt dominates; obsidian confined to old lava contact; hot vents 0\u20131 per 3\u20135 chunks and lava 0\u20133% near active vents.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "hollowstone_karst",
+      "name": "Hollowstone Karst",
+      "temperature": [
+        -0.12,
+        0.81
+      ],
+      "moisture": [
+        0.28,
+        0.95
+      ],
+      "elevation": [
+        0.12,
+        0.9
+      ],
+      "terrain": "Limestone plateaus, sinkholes, towers and caves",
+      "canopy": "varies with surface climate",
+      "surface": [
+        "weathered_limestone",
+        "calcite",
+        "cave_clay",
+        "flowstone"
+      ],
+      "vegetation": [
+        "stalactite",
+        "stalagmite",
+        "cave_moss"
+      ],
+      "subsurface": "Limestone caverns, calcite veins and underground streams",
+      "generation": "Geology-conditioned overlay: can underlie forest, meadow or coast rather than replacing all surface biomes",
+      "share": 4,
+      "top": {
+        "grass_top": 30,
+        "weathered_limestone": 27,
+        "limestone": 23,
+        "gravel": 10,
+        "calcite": 6,
+        "moss_block": 4
+      },
+      "soil": [
+        2,
+        4
+      ],
+      "under": {
+        "dirt": 45,
+        "limestone": 25,
+        "cave_clay": 20,
+        "gravel": 10
+      },
+      "rock": {
+        "limestone": 55,
+        "weathered_limestone": 20,
+        "calcite": 10,
+        "stone": 15
+      },
+      "trees": {
+        "oak": [
+          0,
+          4
+        ],
+        "maple": [
+          0,
+          2
+        ]
+      },
+      "plants": {
+        "small_grass": [
+          2,
+          7
+        ],
+        "fern": [
+          1,
+          5
+        ]
+      },
+      "feature": "Frequent sinkholes and rock exposures; tree density adapted to climate; calcite in seams rather than vast surface carpets.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    }
+  ],
+  "underground_biomes": [
+    {
+      "id": "rootlace_hollows",
+      "name": "Rootlace Hollows",
+      "depth_fraction": [
+        0.0,
+        0.23
+      ],
+      "rarity": "common",
+      "host_rocks": [
+        "soil",
+        "stone",
+        "weathered_limestone"
+      ],
+      "placement": "Shallow below mature forests and old wooded hills; avoid desert and bare alpine summits",
+      "geometry": "Short branching pockets beneath soil and tree trunks, low ceilings with root curtains",
+      "features": [
+        "root clusters",
+        "damp soil shelves",
+        "small organic debris pockets"
+      ],
+      "resources": [
+        "wood fragments",
+        "mushrooms",
+        "small iron traces"
+      ],
+      "hazards": [
+        "occasional unstable dirt pockets"
+      ],
+      "transitions": [
+        "seepstone_grottos",
+        "underflow_channels"
+      ],
+      "share": 17,
+      "wall": {
+        "stone": 45,
+        "exposed_root_stone": 18,
+        "dirt": 15,
+        "forest_loam": 12,
+        "moss_block": 10
+      },
+      "floor": {
+        "dirt": 35,
+        "forest_loam": 30,
+        "root_mat": 15,
+        "moss_block": 10,
+        "stone": 10
+      },
+      "water": [
+        0,
+        5
+      ],
+      "ceiling": {
+        "hanging_roots": [
+          8,
+          18
+        ]
+      },
+      "ground": {
+        "forest_mushroom": [
+          2,
+          6
+        ],
+        "fern": [
+          2,
+          6
+        ]
+      },
+      "notes": "Root mats only beneath forested land within 6\u201318 blocks of surface; organic floor pockets and 0\u20132 fallen branch clusters/room."
+    },
+    {
+      "id": "seepstone_grottos",
+      "name": "Seepstone Grottos",
+      "depth_fraction": [
+        0.08,
+        0.49
+      ],
+      "rarity": "common",
+      "host_rocks": [
+        "stone",
+        "limestone",
+        "andesite"
+      ],
+      "placement": "High groundwater zones, moist hillsides, river valleys and below wetlands",
+      "geometry": "Moderate round chambers, narrow connecting passages, water dripping from ceilings",
+      "features": [
+        "seepage streaks",
+        "small pools",
+        "hanging moss"
+      ],
+      "resources": [
+        "clay",
+        "iron traces",
+        "fresh water"
+      ],
+      "hazards": [
+        "slick edges and occasional flooded dead ends"
+      ],
+      "transitions": [
+        "rootlace_hollows",
+        "underflow_channels",
+        "hollowstone_vaults"
+      ],
+      "share": 18,
+      "wall": {
+        "stone": 36,
+        "wet_rock": 25,
+        "limestone": 19,
+        "calcite": 12,
+        "cave_moss": 8
+      },
+      "floor": {
+        "wet_rock": 30,
+        "stone": 25,
+        "cave_moss": 20,
+        "limestone": 15,
+        "cave_clay": 10
+      },
+      "water": [
+        5,
+        20
+      ],
+      "ceiling": {
+        "dripping_lichen": [
+          4,
+          10
+        ],
+        "stalactite": [
+          1,
+          5
+        ]
+      },
+      "ground": {
+        "cave_moss": [
+          8,
+          18
+        ],
+        "lichen_patch": [
+          3,
+          8
+        ]
+      },
+      "notes": "Wet stone along seep paths and ceilings, calcite in veins, small water pools in low basins."
+    },
+    {
+      "id": "underflow_channels",
+      "name": "Underflow Channels",
+      "depth_fraction": [
+        0.08,
+        0.63
+      ],
+      "rarity": "common",
+      "host_rocks": [
+        "limestone",
+        "sandstone",
+        "gravel",
+        "mixed sediment"
+      ],
+      "placement": "Near river networks, low valleys, aquifers and floodplains; underground flow follows low hydraulic head",
+      "geometry": "Meandering tunnels with rounded erosion profiles, occasional high-roofed river rooms",
+      "features": [
+        "underground streams",
+        "silt bars",
+        "flooded junctions"
+      ],
+      "resources": [
+        "clay",
+        "gravel",
+        "placer gold rarely",
+        "fish in connected waters"
+      ],
+      "hazards": [
+        "water currents and dark flooded stretches"
+      ],
+      "transitions": [
+        "seepstone_grottos",
+        "stillwater_abyss",
+        "hollowstone_vaults"
+      ],
+      "share": 15,
+      "wall": {
+        "limestone": 30,
+        "waterworn_stone": 28,
+        "stone": 22,
+        "sandstone": 12,
+        "gravel": 8
+      },
+      "floor": {
+        "gravel": 30,
+        "riverbed_sediment": 25,
+        "silt": 20,
+        "sand": 15,
+        "cave_clay": 10
+      },
+      "water": [
+        25,
+        60
+      ],
+      "ceiling": {
+        "dripping_lichen": [
+          0,
+          3
+        ]
+      },
+      "ground": {
+        "riverbed_sediment": [
+          4,
+          10
+        ],
+        "pale_algae": [
+          0,
+          3
+        ]
+      },
+      "notes": "Water occupies channel floor paths; sediment on inside river bends and low-velocity banks, not all walls."
+    },
+    {
+      "id": "hollowstone_vaults",
+      "name": "Hollowstone Vaults",
+      "depth_fraction": [
+        0.13,
+        0.7
+      ],
+      "rarity": "uncommon",
+      "host_rocks": [
+        "limestone",
+        "chalk",
+        "calcite"
+      ],
+      "placement": "Limestone provinces below Hollowstone Karst and Whitecliff Coast, regardless of surface vegetation",
+      "geometry": "Wide vaulted limestone chambers, drop shafts, shelves and vertical erosion chimneys",
+      "features": [
+        "sinkhole shafts",
+        "columns formed by joining dripstones",
+        "calcite terraces"
+      ],
+      "resources": [
+        "limestone",
+        "calcite",
+        "small mineral pockets"
+      ],
+      "hazards": [
+        "steep drops and narrow shafts"
+      ],
+      "transitions": [
+        "seepstone_grottos",
+        "underflow_channels",
+        "stillwater_abyss"
+      ],
+      "share": 10,
+      "wall": {
+        "limestone": 48,
+        "weathered_limestone": 23,
+        "calcite": 17,
+        "flowstone": 8,
+        "cave_clay": 4
+      },
+      "floor": {
+        "limestone": 30,
+        "limestone_rubble": 25,
+        "cave_clay": 20,
+        "calcite": 15,
+        "flowstone": 10
+      },
+      "water": [
+        0,
+        15
+      ],
+      "ceiling": {
+        "stalactite": [
+          4,
+          12
+        ],
+        "flowstone_drapery": [
+          1,
+          5
+        ]
+      },
+      "ground": {
+        "stalagmite": [
+          3,
+          8
+        ],
+        "cave_moss": [
+          0,
+          3
+        ]
+      },
+      "notes": "Large chambers 12\u201340 radius uncommon; columns form at paired ceiling/floor positions; calcite concentrated around flowstone."
+    },
+    {
+      "id": "coalshade_galleries",
+      "name": "Coalshade Galleries",
+      "depth_fraction": [
+        0.11,
+        0.58
+      ],
+      "rarity": "uncommon",
+      "host_rocks": [
+        "shale",
+        "sandstone",
+        "coal-bearing sedimentary strata"
+      ],
+      "placement": "Ancient sedimentary basins and beneath badland or plains rock formations",
+      "geometry": "Broad but low-ceilinged horizontal rooms, banded walls and layered passageways",
+      "features": [
+        "stratified ceilings",
+        "small fossil lenses",
+        "coal seams"
+      ],
+      "resources": [
+        "coal",
+        "iron in associated deposits",
+        "fossils"
+      ],
+      "hazards": [
+        "loose shale roof sections"
+      ],
+      "transitions": [
+        "rootlace_hollows",
+        "underflow_channels",
+        "ironfault_chasms"
+      ],
+      "share": 10,
+      "wall": {
+        "shale": 36,
+        "sandstone": 24,
+        "siltstone": 22,
+        "fossil_shale": 10,
+        "coal_dust_deposit": 8
+      },
+      "floor": {
+        "shale": 35,
+        "siltstone": 25,
+        "compacted_sediment": 20,
+        "coal_dust_deposit": 10,
+        "sandstone": 10
+      },
+      "water": [
+        0,
+        10
+      ],
+      "ceiling": {},
+      "ground": {
+        "coal_dust_deposit": [
+          2,
+          7
+        ]
+      },
+      "notes": "Coal ore forms veins in host shale and sandstone; fossil shale appears in horizontal strata, not arbitrary speckles."
+    },
+    {
+      "id": "saltveil_chambers",
+      "name": "Saltveil Chambers",
+      "depth_fraction": [
+        0.13,
+        0.53
+      ],
+      "rarity": "rare",
+      "host_rocks": [
+        "gypsum",
+        "sandstone",
+        "evaporite deposits"
+      ],
+      "placement": "Arid sedimentary basins, deserts and former dried lakebeds only; not below ordinary granite mountains",
+      "geometry": "Dry rounded chambers with short side pockets, white crystalline crusts and compact passage networks",
+      "features": [
+        "salt crusts",
+        "fragile mineral columns",
+        "dry basin deposits"
+      ],
+      "resources": [
+        "salt",
+        "gypsum",
+        "selenite"
+      ],
+      "hazards": [
+        "brittle ceiling sections and scarce water"
+      ],
+      "transitions": [
+        "coalshade_galleries",
+        "underflow_channels"
+      ],
+      "share": 3,
+      "wall": {
+        "gypsum": 35,
+        "sandstone": 25,
+        "rock_salt": 22,
+        "chalk": 10,
+        "salt_crust": 8
+      },
+      "floor": {
+        "gypsum": 30,
+        "rock_salt": 25,
+        "sandstone_rubble": 20,
+        "salt_crust": 15,
+        "sand": 10
+      },
+      "water": [
+        0,
+        2
+      ],
+      "ceiling": {
+        "selenite_cluster": [
+          2,
+          6
+        ]
+      },
+      "ground": {
+        "salt_crust": [
+          3,
+          9
+        ],
+        "selenite_cluster": [
+          1,
+          4
+        ]
+      },
+      "notes": "Rock salt in coherent veins; selenite crystals at rare chamber corners; dry and nearly plant-free."
+    },
+    {
+      "id": "frostvault_crevasses",
+      "name": "Frostvault Crevasses",
+      "depth_fraction": [
+        0.0,
+        0.28
+      ],
+      "rarity": "uncommon",
+      "host_rocks": [
+        "ice",
+        "slate",
+        "shale",
+        "stone"
+      ],
+      "placement": "Only shallow beneath frozen tundra, snowfields or glaciers; geothermal warmth makes deep frost caves uncommon",
+      "geometry": "Narrow blue crevasses, shallow ice tunnels, snow-covered vents and a few ice domes",
+      "features": [
+        "icicle clusters",
+        "snow drifts",
+        "glacial drainage slots"
+      ],
+      "resources": [
+        "ice",
+        "water",
+        "rare exposed stone"
+      ],
+      "hazards": [
+        "slippery surfaces and narrow crevasses"
+      ],
+      "transitions": [
+        "seepstone_grottos",
+        "ironfault_chasms"
+      ],
+      "share": 7,
+      "wall": {
+        "ice": 30,
+        "glacial_ice": 24,
+        "slate": 20,
+        "frosted_rock": 16,
+        "packed_snow": 10
+      },
+      "floor": {
+        "ice": 30,
+        "packed_snow": 27,
+        "glacial_ice": 20,
+        "slate": 13,
+        "snow": 10
+      },
+      "water": [
+        0,
+        4
+      ],
+      "ceiling": {
+        "icicle": [
+          5,
+          15
+        ]
+      },
+      "ground": {
+        "snow": [
+          3,
+          8
+        ]
+      },
+      "notes": "Ice bodies attached to glaciers, not deep caves under hot regions; icicles grow on ceilings that are cold and exposed."
+    },
+    {
+      "id": "ironfault_chasms",
+      "name": "Ironfault Chasms",
+      "depth_fraction": [
+        0.28,
+        0.9
+      ],
+      "rarity": "uncommon",
+      "host_rocks": [
+        "granite",
+        "gabbro",
+        "slate",
+        "andesite"
+      ],
+      "placement": "Fault zones and uplifted mountain roots; intersect several deeper rock provinces",
+      "geometry": "Tall fractured rifts, sloping fault ledges and diagonal seams with cross-cutting tunnels",
+      "features": [
+        "fault ledges",
+        "shear surfaces",
+        "broken boulder floors"
+      ],
+      "resources": [
+        "iron fairly common",
+        "silver in selected veins",
+        "gold rarely along faults"
+      ],
+      "hazards": [
+        "vertical drops and narrow traverses"
+      ],
+      "transitions": [
+        "coalshade_galleries",
+        "crystal_seam_chambers",
+        "cindervein_tubes"
+      ],
+      "share": 9,
+      "wall": {
+        "granite": 30,
+        "gabbro": 25,
+        "fractured_slate": 20,
+        "fault_breccia": 15,
+        "iron_stained_stone": 10
+      },
+      "floor": {
+        "fault_breccia": 35,
+        "fractured_slate": 25,
+        "granite": 20,
+        "scree": 15,
+        "gravel": 5
+      },
+      "water": [
+        0,
+        8
+      ],
+      "ceiling": {
+        "quartz_vein": [
+          1,
+          4
+        ]
+      },
+      "ground": {
+        "fault_breccia": [
+          3,
+          10
+        ]
+      },
+      "notes": "Narrow vertical fissures; ore probabilities follow fault corridors via a multiplier (do not paint ore as 10% of wall)."
+    },
+    {
+      "id": "crystal_seam_chambers",
+      "name": "Crystal Seam Chambers",
+      "depth_fraction": [
+        0.45,
+        0.96
+      ],
+      "rarity": "rare",
+      "host_rocks": [
+        "granite",
+        "gabbro",
+        "metamorphic host stone"
+      ],
+      "placement": "Small mineralized pockets near deep intrusive rock and old fault systems; not every deep cave",
+      "geometry": "Small geode-like pockets and irregular branching vein caverns, never huge uniform crystal halls",
+      "features": [
+        "crystal veins",
+        "small cavity clusters",
+        "mineral-lined fissures"
+      ],
+      "resources": [
+        "quartz",
+        "fluorite",
+        "rare diamond-bearing country rock nearby, not guaranteed"
+      ],
+      "hazards": [
+        "sharp drops and fragile crystal ledges"
+      ],
+      "transitions": [
+        "ironfault_chasms",
+        "stillwater_abyss"
+      ],
+      "share": 2,
+      "wall": {
+        "granite": 25,
+        "gabbro": 25,
+        "mineral_matrix": 22,
+        "calcite": 18,
+        "diorite": 10
+      },
+      "floor": {
+        "granite": 30,
+        "mineral_matrix": 30,
+        "calcite": 25,
+        "gabbro": 15
+      },
+      "water": [
+        0,
+        5
+      ],
+      "ceiling": {
+        "quartz_cluster": [
+          1,
+          5
+        ],
+        "fluorite_cluster": [
+          0,
+          3
+        ]
+      },
+      "ground": {
+        "quartz_cluster": [
+          1,
+          5
+        ],
+        "fluorite_cluster": [
+          0,
+          3
+        ]
+      },
+      "notes": "Only a few crystal-lined pockets per large region, clusters grow from mineral host rock; avoid full fluorescent walls."
+    },
+    {
+      "id": "sporelight_hollows",
+      "name": "Sporelight Hollows",
+      "depth_fraction": [
+        0.35,
+        0.78
+      ],
+      "rarity": "rare",
+      "host_rocks": [
+        "stone",
+        "limestone",
+        "moist fractured rock"
+      ],
+      "placement": "Stable, humid chambers with nutrient-bearing seepage and no active lava, preferably below wet forests and marsh basins",
+      "geometry": "Sheltered round caves with low terraces, spongy floors, dripping ceilings and sheltered mushroom groves",
+      "features": [
+        "hanging fungal clusters",
+        "pale spores",
+        "moist moss shelves"
+      ],
+      "resources": [
+        "fungal reagents",
+        "mushrooms",
+        "clean seepage water"
+      ],
+      "hazards": [
+        "dense spore clouds in selected pockets"
+      ],
+      "transitions": [
+        "seepstone_grottos",
+        "stillwater_abyss"
+      ],
+      "share": 3,
+      "wall": {
+        "stone": 30,
+        "wet_rock": 23,
+        "cave_moss": 20,
+        "mycelial_mat": 17,
+        "calcite": 10
+      },
+      "floor": {
+        "mycelial_mat": 35,
+        "cave_moss": 25,
+        "wet_mud": 20,
+        "wet_rock": 10,
+        "stone": 10
+      },
+      "water": [
+        8,
+        20
+      ],
+      "ceiling": {
+        "luminous_lichen": [
+          5,
+          12
+        ],
+        "dripping_lichen": [
+          3,
+          7
+        ]
+      },
+      "ground": {
+        "sporecap_fungus": [
+          4,
+          10
+        ],
+        "forest_mushroom": [
+          3,
+          8
+        ]
+      },
+      "notes": "Low-light, humid chambers; glowing growths small and scattered, most surfaces remain dark."
+    },
+    {
+      "id": "cindervein_tubes",
+      "name": "Cindervein Tubes",
+      "depth_fraction": [
+        0.35,
+        0.95
+      ],
+      "rarity": "rare",
+      "host_rocks": [
+        "basalt",
+        "gabbro",
+        "obsidian",
+        "volcanic layers"
+      ],
+      "placement": "Volcanic provinces or ancient buried lava pathways; inactive tubes much more frequent than exposed magma",
+      "geometry": "Long tube-like tunnels, stacked flow terraces and rare branching vent chambers",
+      "features": [
+        "collapsed tube ceilings",
+        "small steam vents",
+        "rippled lava floors"
+      ],
+      "resources": [
+        "basalt",
+        "sulfur near vents",
+        "rare metal mineralization"
+      ],
+      "hazards": [
+        "local heat zones, rare exposed lava"
+      ],
+      "transitions": [
+        "ironfault_chasms",
+        "stillwater_abyss"
+      ],
+      "share": 3,
+      "wall": {
+        "basalt": 37,
+        "rope_lava_stone": 23,
+        "cracked_basalt": 18,
+        "scoria": 12,
+        "obsidian": 10
+      },
+      "floor": {
+        "rope_lava_stone": 35,
+        "basalt": 25,
+        "scoria": 20,
+        "cracked_basalt": 15,
+        "obsidian": 5
+      },
+      "water": [
+        0,
+        2
+      ],
+      "ceiling": {
+        "basalt_column": [
+          2,
+          5
+        ]
+      },
+      "ground": {
+        "thermal_vent": [
+          1,
+          3
+        ],
+        "sulfur_rock": [
+          1,
+          4
+        ]
+      },
+      "notes": "Lava pockets 0\u20134% only near active systems, vents 0\u20132 per large cave; most tubes are cooled."
+    },
+    {
+      "id": "stillwater_abyss",
+      "name": "Stillwater Abyss",
+      "depth_fraction": [
+        0.48,
+        0.98
+      ],
+      "rarity": "rare",
+      "host_rocks": [
+        "limestone",
+        "granite",
+        "gabbro",
+        "deep mixed stone"
+      ],
+      "placement": "Only where deep groundwater basins or large interconnected cave systems make a stable water body plausible",
+      "geometry": "Broad low flooded basins, deep dark subterranean lakes and side beaches; no ubiquitous full-depth subterranean ocean",
+      "features": [
+        "underground lakes",
+        "submerged passages",
+        "shoreline boulder banks"
+      ],
+      "resources": [
+        "fresh water",
+        "small mineral outcrops",
+        "special cave fish later"
+      ],
+      "hazards": [
+        "deep water and poor visibility"
+      ],
+      "transitions": [
+        "underflow_channels",
+        "hollowstone_vaults",
+        "sporelight_hollows",
+        "crystal_seam_chambers"
+      ],
+      "share": 3,
+      "wall": {
+        "limestone": 25,
+        "wet_slate": 25,
+        "waterworn_stone": 20,
+        "stone": 20,
+        "calcite": 10
+      },
+      "floor": {
+        "submerged_scree": 35,
+        "riverbed_sediment": 25,
+        "gravel": 20,
+        "silt": 15,
+        "pale_algae": 5
+      },
+      "water": [
+        45,
+        80
+      ],
+      "ceiling": {
+        "stalactite": [
+          0,
+          3
+        ]
+      },
+      "ground": {
+        "pale_algae": [
+          2,
+          8
+        ]
+      },
+      "notes": "Large lake chambers, high water fill (2\u201312 blocks deep typical), dry rim path around some portions, underwater ledges."
+    }
+  ],
+  "resource_rules": {
+    "separate_ores_from_biome_paint": true,
+    "recommended_vein_starts_per_16x16_column_over_full_world_height": {
+      "coal_ore": [
+        3,
+        6
+      ],
+      "iron_ore": [
+        2,
+        5
+      ],
+      "silver_ore": [
+        0.5,
+        1.3
+      ],
+      "gold_ore": [
+        0.3,
+        0.9
+      ],
+      "diamond_ore": [
+        0.07,
+        0.2
+      ]
+    },
+    "recommended_vein_size_blocks": {
+      "coal_ore": [
+        4,
+        14
+      ],
+      "iron_ore": [
+        3,
+        9
+      ],
+      "silver_ore": [
+        2,
+        6
+      ],
+      "gold_ore": [
+        2,
+        5
+      ],
+      "diamond_ore": [
+        1,
+        3
+      ]
+    },
+    "depth_biases": {
+      "coal_ore": "shallow to mid; in sedimentary rock",
+      "iron_ore": "broad; shallow to deep",
+      "silver_ore": "middle/deep; fractured igneous rock",
+      "gold_ore": "mid/deep, locally sedimentary placer",
+      "diamond_ore": "rare deep crystalline rock"
+    },
+    "note": "Illustrative balance targets only; calibrate to world height, mining speed, chunk size and inventory progression."
+  },
+  "implementation_notes": [
+    "Place dominant blocks using global-coordinate coherent noise patches (about 4-18 block diameters), not independent per-block weighted rolls.",
+    "Generate broad geology and surface shape before cave volumes; cave biome weights are applied only to host-rock/depth eligible regions.",
+    "Blend biomes by gradually shifting block weights over ~16-48 horizontal blocks, preserving clear location identity.",
+    "For grass_top assign grass_side for vertical block sides; dry_grass_top uses dry_grass_side; log tops and sides use matching species textures.",
+    "Avoid a grass block side directly on cave stone surfaces or ceiling tops unless soil exists there.",
+    "Aquifers and streams occupy already-carved geometry; do not include water in wall palette.",
+    "Tall flowers, tall grass, icicles and hanging roots must use their dedicated sprite geometry/texture aspect ratios; never treat as full 32x32 cubes.",
+    "Performance: chunk seeds/global world coords, precomputed climate/geology, staged cave carver, chunk boundary halo and deterministic random seeds."
+  ]
+}

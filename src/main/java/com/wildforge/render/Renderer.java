@@ -14,6 +14,10 @@ import org.lwjgl.system.MemoryStack;
 
 import java.nio.FloatBuffer;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.HashSet;
+import org.joml.FrustumIntersection;
 
 import static org.lwjgl.opengl.GL11.GL_BACK;
 import static org.lwjgl.opengl.GL11.GL_CCW;
@@ -116,14 +120,23 @@ public final class Renderer {
         return hud.fovSliderValueClamped(x, width, height, optionsPage);
     }
 
+    public int renderDistanceSliderValueAt(float x, float y, int width, int height, int optionsPage) {
+        return hud.renderDistanceSliderValueAt(x, y, width, height, optionsPage);
+    }
+
+    public int renderDistanceSliderValueClamped(float x, int width, int height, int optionsPage) {
+        return hud.renderDistanceSliderValueClamped(x, width, height, optionsPage);
+    }
+
     private int shaderProgram;
     private int terrainMvpLocation = -1;
     private int textureSamplerLocation = -1;
 
-    private int vao;
-    private int vbo;
-    private int vertexCount;
+    private record GpuChunk(int vao, int vbo, int vertices, int revision) {}
+    private final Map<Long, GpuChunk> gpuChunks = new HashMap<>();
     private int terrainVersion = -1;
+    private int fogNearLocation, fogFarLocation, fogColorLocation;
+    private static long chunkKey(int x,int z){ return ((long)x << 32) | (z & 0xffffffffL); }
 
     private int outlineProgram;
     private int outlineMvpLocation = -1;
@@ -156,9 +169,12 @@ public final class Renderer {
                 "uniform mat4 uMvp;\n" +
                 "out vec3 vTexCoord;\n" +
                 "out float vShade;\n" +
+                "out float vDistance;\n" +
+                "uniform vec3 uCamera;\n" +
                 "void main(){\n" +
                 "  vTexCoord = vec3(aTexCoord, aTextureLayer);\n" +
                 "  vShade = aShade;\n" +
+                "  vDistance = distance(aPosition, uCamera);\n" +
                 "  gl_Position = uMvp * vec4(aPosition, 1.0);\n" +
                 "}\n";
 
@@ -166,11 +182,17 @@ public final class Renderer {
                 "#version 330 core\n" +
                 "in vec3 vTexCoord;\n" +
                 "in float vShade;\n" +
+                "in float vDistance;\n" +
+                "uniform float uFogNear;\n" +
+                "uniform float uFogFar;\n" +
+                "uniform vec3 uFogColor;\n" +
                 "uniform sampler2DArray uBlockTextures;\n" +
                 "out vec4 fragColor;\n" +
                 "void main(){\n" +
                 "  vec4 texel = texture(uBlockTextures, vTexCoord);\n" +
-                "  fragColor = vec4(texel.rgb * vShade, texel.a);\n" +
+                "  if(texel.a < 0.5) discard;\n" +
+                "  float fog = smoothstep(uFogNear, uFogFar, vDistance);\n" +
+                "  fragColor = vec4(mix(texel.rgb * vShade, uFogColor, fog), texel.a);\n" +
                 "}\n";
 
         int vertexShader = compileShader(GL_VERTEX_SHADER, vertexSource);
@@ -192,6 +214,9 @@ public final class Renderer {
 
         terrainMvpLocation = glGetUniformLocation(shaderProgram, "uMvp");
         textureSamplerLocation = glGetUniformLocation(shaderProgram, "uBlockTextures");
+        fogNearLocation=glGetUniformLocation(shaderProgram,"uFogNear");
+        fogFarLocation=glGetUniformLocation(shaderProgram,"uFogFar");
+        fogColorLocation=glGetUniformLocation(shaderProgram,"uFogColor");
 
         requireUniform(terrainMvpLocation, "uMvp", "terrain");
         requireUniform(textureSamplerLocation, "uBlockTextures", "terrain");
@@ -224,40 +249,22 @@ public final class Renderer {
         return shader;
     }
 
+    private GpuChunk uploadChunk(TerrainMesh.ChunkMesh mesh) {
+        int chunkVao=glGenVertexArrays(), chunkVbo=glGenBuffers();
+        glBindVertexArray(chunkVao);
+        glBindBuffer(GL_ARRAY_BUFFER,chunkVbo);
+        glBufferData(GL_ARRAY_BUFFER,mesh.vertices(),GL_DYNAMIC_DRAW);
+        int stride=TerrainMesh.FLOATS_PER_VERTEX*Float.BYTES;
+        glVertexAttribPointer(0,3,GL_FLOAT,false,stride,0L);glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1,2,GL_FLOAT,false,stride,3L*Float.BYTES);glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2,1,GL_FLOAT,false,stride,5L*Float.BYTES);glEnableVertexAttribArray(2);
+        glVertexAttribPointer(3,1,GL_FLOAT,false,stride,6L*Float.BYTES);glEnableVertexAttribArray(3);
+        glBindVertexArray(0);glBindBuffer(GL_ARRAY_BUFFER,0);
+        return new GpuChunk(chunkVao,chunkVbo,mesh.vertices().length/TerrainMesh.FLOATS_PER_VERTEX,mesh.revision());
+    }
+    private void discard(GpuChunk c){glDeleteBuffers(c.vbo());glDeleteVertexArrays(c.vao());}
     private void initializeTerrain() {
-        float[] vertices = terrain.getVertices();
-        vertexCount = terrain.getVertexCount();
-
-        vao = glGenVertexArrays();
-        vbo = glGenBuffers();
-
-        glBindVertexArray(vao);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, vertices, GL_DYNAMIC_DRAW);
-
-        int stride = TerrainMesh.FLOATS_PER_VERTEX * Float.BYTES;
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, false, stride, 0L);
-        glEnableVertexAttribArray(0);
-
-        glVertexAttribPointer(1, 2, GL_FLOAT, false, stride, 3L * Float.BYTES);
-        glEnableVertexAttribArray(1);
-
-        glVertexAttribPointer(2, 1, GL_FLOAT, false, stride, 5L * Float.BYTES);
-        glEnableVertexAttribArray(2);
-
-        glVertexAttribPointer(3, 1, GL_FLOAT, false, stride, 6L * Float.BYTES);
-        glEnableVertexAttribArray(3);
-
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-        glFrontFace(GL_CCW);
-
-        terrainVersion = terrain.getVersion();
+        glEnable(GL_DEPTH_TEST);glEnable(GL_CULL_FACE);glCullFace(GL_BACK);glFrontFace(GL_CCW);
     }
 
     private void initializeOutline() {
@@ -340,19 +347,24 @@ public final class Renderer {
         glBindVertexArray(0);
     }
 
-    private void updateTerrainIfNeeded() {
-        if (terrainVersion == terrain.getVersion()) {
-            return;
+    private void updateTerrainIfNeeded(){
+        if(terrainVersion==terrain.getVersion())return;
+        List<TerrainMesh.ChunkMesh> source=terrain.chunkMeshes();
+        HashSet<Long> live=new HashSet<>();
+        int uploads=0;
+        boolean pending=false;
+        for(var c:source){
+            long key=chunkKey(c.x(),c.z());live.add(key);
+            GpuChunk existing=gpuChunks.get(key);
+            if(existing!=null && existing.revision()==c.revision())continue;
+            if(uploads>=2){pending=true;continue;}
+            if(existing!=null)discard(existing);
+            gpuChunks.put(key,uploadChunk(c));
+            uploads++;
         }
-
-        float[] vertices = terrain.getVertices();
-        vertexCount = terrain.getVertexCount();
-
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, vertices, GL_DYNAMIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        terrainVersion = terrain.getVersion();
+        var it=gpuChunks.entrySet().iterator();
+        while(it.hasNext()){var entry=it.next();if(!live.contains(entry.getKey())){discard(entry.getValue());it.remove();}}
+        if(!pending)terrainVersion=terrain.getVersion();
     }
 
     private void renderWorldItems(Matrix4f mvp, WorldItemManager manager) {
@@ -606,6 +618,7 @@ public final class Renderer {
 
         if (screenMode == HudRenderer.ScreenMode.MAIN_MENU
                 || screenMode == HudRenderer.ScreenMode.SAVE_SELECT
+                || screenMode == HudRenderer.ScreenMode.WORLD_CREATE
                 || screenMode == HudRenderer.ScreenMode.DELETE_CONFIRM
                 || ((screenMode == HudRenderer.ScreenMode.OPTIONS
                         || screenMode == HudRenderer.ScreenMode.KEYBINDS) && useMenuBackground)) {
@@ -619,7 +632,7 @@ public final class Renderer {
                 (float) Math.toRadians(fov),
                 (float) width / (float) height,
                 0.1f,
-                200.0f
+                Math.max(120f, (terrain.renderDistance()+1)*TerrainMesh.CHUNK_SIZE*1.6f)
         );
 
         Matrix4f view = camera.getViewMatrix();
@@ -633,10 +646,21 @@ public final class Renderer {
             glUniformMatrix4fv(terrainMvpLocation, false, matrixBuffer);
         }
 
+        float far=(terrain.renderDistance()+0.35f)*TerrainMesh.CHUNK_SIZE;
+        org.lwjgl.opengl.GL20.glUniform1f(fogNearLocation,far*0.67f);
+        org.lwjgl.opengl.GL20.glUniform1f(fogFarLocation,far);
+        glUniform3f(fogColorLocation,0.48f,0.68f,0.88f);
+        glUniform3f(glGetUniformLocation(shaderProgram,"uCamera"),camera.getPosition().x,camera.getPosition().y,camera.getPosition().z);
         blockTextures.bind(0);
-
-        glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+        FrustumIntersection frustum=new FrustumIntersection(mvp);
+        for(var entry:gpuChunks.entrySet()){
+            long key=entry.getKey();int cx=(int)(key>>32),cz=(int)(long)key;
+            float x=cx*TerrainMesh.CHUNK_SIZE,z=cz*TerrainMesh.CHUNK_SIZE;
+            if(!frustum.testAab(x,0,z,x+TerrainMesh.CHUNK_SIZE,TerrainMesh.WORLD_HEIGHT,z+TerrainMesh.CHUNK_SIZE))continue;
+            GpuChunk chunk=entry.getValue();
+            if(chunk.vertices()==0)continue;
+            glBindVertexArray(chunk.vao());glDrawArrays(GL_TRIANGLES,0,chunk.vertices());
+        }
         glBindVertexArray(0);
 
         renderWorldItems(mvp, player == null ? null : player.getWorldItems());
@@ -756,14 +780,14 @@ public final class Renderer {
             boolean hasNextSavePage,
             com.wildforge.core.GameSettings settings,
             String deleteWorldLabel,
-            int optionsPage
+            int optionsPage, String worldName, String worldSeed, boolean editingWorldName
     ) {
         hud.render(
                 width, height, player, mouseX, mouseY,
                 screenMode, statusMessage,
                 visibleSaveLabels, visibleSaveExists,
                 savePage, hasPreviousSavePage, hasNextSavePage,
-                settings, deleteWorldLabel, optionsPage
+                settings, deleteWorldLabel, optionsPage,worldName,worldSeed,editingWorldName
         );
     }
 
@@ -772,8 +796,8 @@ public final class Renderer {
         titleScreen.close();
         blockTextures.close();
 
-        if (vao != 0) glDeleteVertexArrays(vao);
-        if (vbo != 0) glDeleteBuffers(vbo);
+        for(GpuChunk chunk:gpuChunks.values())discard(chunk);
+        gpuChunks.clear();
         if (shaderProgram != 0) glDeleteProgram(shaderProgram);
 
         if (outlineVao != 0) glDeleteVertexArrays(outlineVao);
