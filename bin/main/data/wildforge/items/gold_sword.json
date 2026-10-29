@@ -3,5 +3,10 @@
   "numeric_id": 138,
   "max_stack_size": 1,
   "texture": "wildforge:gold_sword",
-  "model": "wildforge:item/generated"
+  "model": "wildforge:item/generated",
+  "tool": {
+    "kind": "sword",
+    "tier": 1,
+    "speed": 12
+  }
 }

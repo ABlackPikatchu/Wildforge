@@ -76,9 +76,54 @@ public final class BlockModels {
         return models;
     }
 
+    private static volatile java.util.Map<com.wildforge.content.ResourceId, Model> registryModels = java.util.Map.of();
+
+    /** Runtime metadata is taken from validated generated block definitions. */
+    public static void install(com.wildforge.content.BlockRegistry definitions) {
+        BlockStateRegistry.GLOBAL.install(definitions);
+        java.util.Map<com.wildforge.content.ResourceId, Model> next = new java.util.HashMap<>();
+        for (var definition : definitions.getAll()) {
+            Model legacy = definition.getNumericId() < MODELS.length
+                    ? MODELS[definition.getNumericId()] : SOLID_CUBE;
+            var modelId = definition.getModel();
+            if (modelId != null) {
+                String path = modelId.getPath();
+                Shape shape = switch(path) {
+                    case "block/cube", "block/leaves" -> Shape.CUBE;
+                    case "block/fluid" -> Shape.FLUID;
+                    case "block/cross_plant" -> Shape.CROSS_PLANT;
+                    case "block/tall_cross_plant" -> Shape.TALL_CROSS_PLANT;
+                    case "block/ceiling_plant" -> Shape.CEILING_ATTACHMENT;
+                    case "block/spike" -> Shape.SPIKE;
+                    case "block/crystal" -> Shape.CRYSTAL;
+                    default -> throw new IllegalArgumentException("Unknown block model: "+modelId);
+                };
+                Pass pass = shape==Shape.FLUID ? Pass.TRANSLUCENT
+                        : shape!=Shape.CUBE || path.equals("block/leaves") ? Pass.CUTOUT
+                        : legacy.pass();
+                legacy = new Model(shape, pass, shape==Shape.CUBE && definition.isSolid()
+                        && pass==Pass.OPAQUE && legacy.fullCubeOcclusion());
+            }
+            next.put(definition.getId(), legacy);
+        }
+        registryModels = java.util.Map.copyOf(next);
+    }
+
+    public static Model modelFor(com.wildforge.content.ResourceId id) {
+        Model model = registryModels.get(Objects.requireNonNull(id));
+        if (model != null) return model;
+        try {
+            return modelFor(BlockState.fromLegacy(BlockType.valueOf(
+                    id.getPath().toUpperCase(java.util.Locale.ROOT))));
+        } catch (IllegalArgumentException ignored) {
+            return SOLID_CUBE;
+        }
+    }
+
     public static Model modelFor(BlockState state) {
         Objects.requireNonNull(state, "state");
-        return MODELS[Byte.toUnsignedInt(state.toLegacyId())];
+        Model configured = registryModels.get(state.resourceId());
+        return configured != null ? configured : MODELS[Byte.toUnsignedInt(state.toLegacyId())];
     }
 
     public static int textureForAxis(BlockState state, int faceAxis) {

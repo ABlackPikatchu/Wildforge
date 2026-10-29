@@ -128,6 +128,9 @@ public final class Renderer {
     public void setDebugStreaming(int loaded,int pending,int distance){
         hud.setDebugStreaming(loaded,pending,distance);
     }
+    public void setDebugLighting(int columns,long hits,long fullBakes,long localRelights){
+        hud.setDebugLighting(columns,hits,fullBakes,localRelights);
+    }
     public void setDebugWorkload(int meshes,int lodJobs,int lodReady,long blockBytes){
         hud.setDebugWorkload(meshes,terrain.pendingMeshSectionCount(),lodJobs,lodReady,blockBytes,gpuChunks.size(),lastTerrainUploads,lastTerrainUploadMicros);
     }
@@ -490,12 +493,17 @@ public final class Renderer {
                 continue;
             }
 
-            BlockType blockType = getItemBlockType(item.getItemType());
-            int itemLayer = item.getItemType().getPlacedBlock()==null
-                    ? BlockTextures.itemTextureLayer(item.getItemType())
-                    : (com.wildforge.world.BlockModels.modelFor(
-                            com.wildforge.world.BlockState.fromLegacy(blockType)).shape()
-                        == com.wildforge.world.BlockModels.Shape.CUBE ? -1 : blockType.getSideTextureLayer());
+            var definition=item.definition();
+            var blockId=definition.getPlacesBlock();
+            var blockDefinition=blockId==null ? null : com.wildforge.content.BlockCatalog.byId(blockId);
+            BlockType blockType = com.wildforge.content.BlockCatalog.legacy(blockId);
+            int itemLayer = blockDefinition==null
+                    ? BlockTextures.itemTextureLayer(definition)
+                    : (com.wildforge.world.BlockModels.modelFor(blockId).shape()
+                        == com.wildforge.world.BlockModels.Shape.CUBE && blockType!=null
+                            ? -1 : BlockTextures.textureLayer(blockDefinition.getSideTexture()));
+            if(blockType==null)blockType=BlockType.DIRT;
+            if(itemLayer<0 && blockDefinition==null) itemLayer=BlockTextures.itemTextureLayer(item.getItemType());
             offset = itemLayer>=0 ? appendItemSprite(vertices,offset,item,itemLayer)
                 : appendItemCube(vertices, offset, item, blockType);
         }
@@ -984,7 +992,7 @@ public final class Renderer {
     }
 
     public void setCreativeInventoryState(String query,int page,int category){hud.setCreativeInventoryState(query,page,category);}
-    public void setCreativeDragItem(com.wildforge.item.ItemType item,int count){hud.setCreativeDragItem(item,count);}
+    public void setCreativeDragItem(com.wildforge.content.ItemDefinition item,int count){hud.setCreativeDragItem(item,count);}
     public void setConsoleSuggestions(java.util.List<String> options){hud.setConsoleSuggestions(options);}
 
     public int creativeInventoryHit(float x,float y,int w,int h){return hud.creativeInventoryHit(x,y,w,h);}

@@ -22,32 +22,41 @@ public final class BlockInteraction {
     private final WorldItemManager worldItems;
     private final RegistryContentAdapter content;
     private int mineX,mineY,mineZ;
-    private BlockType miningType;
-    private ItemType miningTool;
+    private BlockState miningType;
+    private ItemDefinition miningTool;
     private double miningSeconds;
     /** Target progress in [0,1], for future crack-overlay rendering. */
     public double miningProgress() {
         if(miningType==null)return 0;
-        return Math.min(1.0, miningSeconds / MiningRules.seconds(miningType,hardness(miningType),miningTool));
+        return Math.min(1.0, miningSeconds / MiningRules.seconds(
+                content == null ? null : content.block(miningType),
+                miningType.toLegacyBlock(), hardness(miningType), miningTool));
     }
     public void stopMining() { miningType=null;miningTool=null;miningSeconds=0; }
-    private float hardness(BlockType block) {
-        BlockDefinition definition=content==null?null:content.block(block);
-        return definition==null ? (MiningRules.preferred(block)==MiningRules.Tool.HAND?.35f:2f) : definition.getHardness();
+    private float hardness(BlockState state) {
+        BlockType fallback=state.toLegacyBlock();
+        BlockDefinition definition=content==null?null:content.block(state);
+        return definition==null ? (MiningRules.preferred(fallback)==MiningRules.Tool.HAND?.35f:2f)
+                : definition.getHardness();
     }
     /** Starts or continues mining the same block; does not instantly break in Survival. */
+    /** Enum compatibility for older tools/tests; the active player passes definitions. */
     public void tickMining(TerrainMesh terrain,Camera camera,ItemType held,float dt) {
+        tickMining(terrain,camera,held==null?null:com.wildforge.content.ItemCatalog.legacy(held),dt);
+    }
+    public void tickMining(TerrainMesh terrain,Camera camera,ItemDefinition held,float dt) {
         if(terrain==null||camera==null||dt<=0) {stopMining();return;}
         RayHit hit=raycastFromCamera(terrain,camera);
         if(hit==null||hit.block==BlockType.AIR){stopMining();return;}
-        BlockDefinition definition=content==null?null:content.block(hit.block);
+        BlockDefinition definition=content==null?null:content.block(hit.state);
         if(definition==null?!hit.block.isBreakable():!definition.isBreakable()){stopMining();return;}
-        if(miningType!=hit.block||mineX!=hit.x||mineY!=hit.y||mineZ!=hit.z||miningTool!=held){
-            mineX=hit.x;mineY=hit.y;mineZ=hit.z;miningType=hit.block;miningTool=held;miningSeconds=0;
+        if(!hit.state.equals(miningType)||mineX!=hit.x||mineY!=hit.y||mineZ!=hit.z||!java.util.Objects.equals(miningTool==null?null:miningTool.getId(),
+                    held==null?null:held.getId())){
+            mineX=hit.x;mineY=hit.y;mineZ=hit.z;miningType=hit.state;miningTool=held;miningSeconds=0;
         }
         miningSeconds+=dt;
         if(miningProgress()>=1.0){
-            boolean canHarvest=MiningRules.drops(hit.block,held);
+            boolean canHarvest=MiningRules.drops(definition, hit.block, held);
             stopMining();
             breakHit(terrain,hit,definition,false,canHarvest);
         }
@@ -86,7 +95,7 @@ public final class BlockInteraction {
 
         // JSON drives breakability and drops in the live game; enum fallback
         // remains available for standalone legacy tests and tools.
-        BlockDefinition block = content == null ? null : content.block(hit.block);
+        BlockDefinition block = content == null ? null : content.block(hit.state);
         if (block == null ? !hit.block.isBreakable() : !block.isBreakable()) return;
 
         if (!creative) {
@@ -99,7 +108,7 @@ public final class BlockInteraction {
 
     private void breakHit(TerrainMesh terrain, RayHit hit, BlockDefinition block,
                           boolean creative, boolean harvest) {
-        if(!terrain.setBlock(hit.x,hit.y,hit.z,BlockType.AIR))return;
+        if(!terrain.setBlockState(hit.x,hit.y,hit.z,BlockState.fromLegacy(BlockType.AIR)))return;
         if(creative || !harvest)return;
         if (block == null) {
             ItemType drop = hit.block.getDropItem();
@@ -109,10 +118,7 @@ public final class BlockInteraction {
             }
         } else {
             for (BlockDefinition.Drop drop : block.getDrops()) {
-                ItemType item = content.itemType(drop.item());
-                // The current world-item system supports enum-backed items only.
-                if (item == null) throw new IllegalStateException(
-                        "Drop item is not supported by the legacy inventory: " + drop.item());
+                ItemDefinition item = com.wildforge.content.ItemCatalog.require(drop.item());
                 worldItems.spawn(item, drop.count(), hit.x + 0.5f,
                         hit.y + 0.35f, hit.z + 0.5f, terrain);
             }
@@ -155,49 +161,41 @@ public final class BlockInteraction {
         int by = hit.placeY;
         int bz = hit.placeZ;
 
-        if (terrain.getBlockAt(bx, by, bz) != BlockType.AIR) {
+        if (terrain.getBlockStateAt(bx, by, bz).toLegacyBlock() != BlockType.AIR) {
             return;
         }
 
         ItemType itemType = selected.getItemType();
-        BlockType blockToPlace;
-        if (content == null) {
-            blockToPlace = itemType.getPlacedBlock();
+        ItemDefinition item = selected.definition();
+        BlockState stateToPlace;
+        if(content==null) {
+            BlockType fallback=itemType==null?null:itemType.getPlacedBlock();
+            stateToPlace=fallback==null?null:BlockState.fromLegacy(fallback);
         } else {
-            ItemDefinition item = content.item(itemType);
-            blockToPlace = item.getPlacesBlock() == null ? null
-                    : content.blockType(item.getPlacesBlock());
+            var id=item.getPlacesBlock();
+            if(id==null)return;
+            stateToPlace=com.wildforge.world.BlockStateRegistry.GLOBAL.baseState(id);
         }
-        if (blockToPlace == null || blockToPlace == BlockType.AIR) {
-            return;
-        }
-        // Non-colliding foliage and sprites can be placed close to the player.
-        // Ground and ceiling attachments require a support block.
-        com.wildforge.world.BlockModels.Shape shape =
-                com.wildforge.world.BlockModels.modelFor(BlockState.fromLegacy(blockToPlace)).shape();
-        if (shape == com.wildforge.world.BlockModels.Shape.CROSS_PLANT ||
-                shape == com.wildforge.world.BlockModels.Shape.SPIKE ||
-                shape == com.wildforge.world.BlockModels.Shape.CEILING_ATTACHMENT) {
-            boolean hangs=shape == com.wildforge.world.BlockModels.Shape.CEILING_ATTACHMENT
-                    || blockToPlace == BlockType.STALACTITE;
-            if (!terrain.getBlockAt(bx, by+(hangs?1:-1), bz).isSolid()) return;
-        }
+        if(stateToPlace==null || stateToPlace.toLegacyBlock()==BlockType.AIR)return;
+        // Use the registered block's geometry/support, not its legacy numeric alias.
+        var behavior=com.wildforge.world.BlockBehaviors.forBlock(stateToPlace.resourceId());
+        if(behavior==null)behavior=com.wildforge.world.BlockBehaviors.forBlock(stateToPlace.toLegacyBlock());
+        if(behavior!=null && !behavior.canPlace(terrain,new com.wildforge.world.BlockPos(bx,by,bz)))return;
 
-        if(blockToPlace.isSolid()
+        if((behavior==null?stateToPlace.toLegacyBlock().isSolid():behavior.solid())
                 && bx + 1 > playerX - playerRadius && bx < playerX + playerRadius
                 && by + 1 > playerFeetY && by < playerFeetY + playerHeight
                 && bz + 1 > playerZ - playerRadius && bz < playerZ + playerRadius) return;
 
         // The axis follows the face clicked: east/west X, north/south Z,
         // floor/ceiling Y. Horizontal logs drop the original log item.
-        if(blockToPlace.isLog()) {
+        if(stateToPlace.isLog()) {
             int axis=(hit.placeX!=hit.x)?0:(hit.placeZ!=hit.z)?2:1;
-            blockToPlace=BlockState.fromLegacy(blockToPlace)
-                    .withAxis(BlockState.Axis.fromFaceAxis(axis)).toLegacyBlock();
+            stateToPlace=stateToPlace.withAxis(BlockState.Axis.fromFaceAxis(axis));
         }
-        if (terrain.setBlock(bx, by, bz, blockToPlace)) {
+        if (terrain.setBlockState(bx, by, bz, stateToPlace)) {
             worldItems.onBlockPlaced(bx, by, bz);
-            if (!creative) inventory.removeItem(itemType, 1);
+            if (!creative) inventory.removeItem(item, 1);
         }
     }
 

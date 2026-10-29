@@ -6,7 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-/** Registry indexed by both stable resource ID and legacy byte-sized numeric ID. */
+/** Registry indexed by both stable resource ID and integer content ID (legacy IDs are retained for compatibility). */
 public final class BlockRegistry {
     private final Map<ResourceId, BlockDefinition> byId = new LinkedHashMap<>();
     private final Map<Integer, BlockDefinition> byNumericId = new LinkedHashMap<>();

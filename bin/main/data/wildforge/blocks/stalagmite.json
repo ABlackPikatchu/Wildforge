@@ -4,6 +4,8 @@
   "solid": false,
   "breakable": true,
   "hardness": 0.3,
+  "mining_tool": "hand",
+  "harvest_tier": 0,
   "model": "wildforge:block/spike",
   "textures": {
     "top": "wildforge:stalagmite",

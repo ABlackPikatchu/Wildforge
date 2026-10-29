@@ -3,6 +3,7 @@ package com.wildforge.player;
 import com.wildforge.content.ContentLoader;
 import com.wildforge.core.KeyBindings;
 import com.wildforge.item.ItemStack;
+import com.wildforge.item.ItemStackCodec;
 import com.wildforge.inventory.Inventory;
 import com.wildforge.item.ItemType;
 import com.wildforge.world.BlockType;
@@ -30,7 +31,7 @@ public static final int MAIN_INVENTORY_SLOTS = Inventory.MAIN_INVENTORY_SLOTS;
 public static final int TOTAL_INVENTORY_SLOTS = Inventory.TOTAL_SLOTS;
 
 private static final int PLAYER_SAVE_MAGIC = 0x5746504C;
-private static final int PLAYER_SAVE_VERSION = 2;
+private static final int PLAYER_SAVE_VERSION = 3;
 
 private static final float WALK_SPEED = 5.0f;
 private static final float JUMP_SPEED = 7.0f;
@@ -107,6 +108,12 @@ private boolean grounded = false;
 private boolean jumpWasPressed = false;
 private boolean flightJumpWasDown = false;
 private long lastCreativeJumpTapNanos = 0;
+public void creativeSelect(com.wildforge.content.ItemDefinition definition, int count) {
+    if(gameMode != GameMode.CREATIVE || definition==null) return;
+    inventory.setStack(HOTBAR_START_INDEX + inventory.getSelectedHotbarSlot(),
+        new ItemStack(definition, Math.min(definition.getMaxStackSize(), Math.max(1,count))));
+}
+
 /** Places a creative catalog item in the currently selected hotbar slot. */
 public void creativeSelect(com.wildforge.item.ItemType type, int count) {
     if (gameMode != GameMode.CREATIVE || type == null) return;
@@ -271,16 +278,7 @@ public void saveTo(Path path) throws IOException {
             output.writeInt(inventory.getSelectedHotbarSlot());
 
             for (int slot = 0; slot < TOTAL_INVENTORY_SLOTS; slot++) {
-                ItemStack stack = inventory.getStack(slot);
-                if (stack == null || stack.isEmpty()) {
-                    // ID zero remains the empty-slot marker, matching
-                    // existing player saves.
-                    output.writeByte(0);
-                    output.writeInt(0);
-                } else {
-                    output.writeByte(stack.getItemType().getId());
-                    output.writeInt(stack.getCount());
-                }
+                ItemStackCodec.write(output, inventory.getStack(slot));
             }
             output.writeByte(gameMode.ordinal());
             output.writeBoolean(flying);
@@ -330,7 +328,7 @@ public void loadFrom(Path path, TerrainMesh terrain) throws IOException {
         }
 
         int saveVersion = input.readInt();
-        if (saveVersion != 1 && saveVersion != PLAYER_SAVE_VERSION) {
+        if (saveVersion != 1 && saveVersion != 2 && saveVersion != PLAYER_SAVE_VERSION) {
             throw new IOException(
                     "Unsupported player save version: " + saveVersion);
         }
@@ -357,26 +355,8 @@ public void loadFrom(Path path, TerrainMesh terrain) throws IOException {
         }
 
         for (int slot = 0; slot < TOTAL_INVENTORY_SLOTS; slot++) {
-            int typeId = input.readUnsignedByte();
-            int count = input.readInt();
-
-            if (typeId == 0) {
-                if (count != 0) {
-                    throw new IOException(
-                            "Empty player slot has a nonzero count");
-                }
-                loadedInventory[slot] = null;
-            } else {
-                ItemType itemType = ItemType.fromId(typeId);
-                if (itemType == null
-                        || count < 1
-                        || count > itemType.getMaxStackSize()) {
-                    throw new IOException(
-                            "Player save contains an invalid item stack");
-                }
-                loadedInventory[slot] =
-                        new ItemStack(itemType, count);
-            }
+            loadedInventory[slot] = saveVersion >= 3
+                    ? ItemStackCodec.read(input) : ItemStackCodec.readLegacy(input);
         }
 
         if (saveVersion >= 2) {
@@ -538,6 +518,13 @@ public void clickInventorySlot(int slot, int mouseButton) {
     inventory.clickSlot(slot, mouseButton);
 }
 
+public boolean addItem(com.wildforge.content.ItemDefinition item, int amount) {
+    return inventory.addItem(item, amount);
+}
+public boolean canAddItem(com.wildforge.content.ItemDefinition item, int amount) {
+    return inventory.canAddItem(item, amount);
+}
+
 public boolean addItem(ItemType itemType, int amount) {
     return inventory.addItem(itemType, amount);
 }
@@ -601,7 +588,7 @@ public void update(
     }
     if(gameMode==GameMode.SURVIVAL && GLFW.glfwGetMouseButton(window,GLFW.GLFW_MOUSE_BUTTON_LEFT)==GLFW.GLFW_PRESS) {
         ItemStack held=inventory.getSelectedStack();
-        blockInteraction.tickMining(terrain,camera,held==null?null:held.getItemType(),deltaTime);
+        blockInteraction.tickMining(terrain,camera,held==null?null:held.definition(),deltaTime);
     } else blockInteraction.stopMining();
 
     updateMovement(window, terrain, deltaTime);
@@ -965,9 +952,9 @@ private float findHighestGroundUnderFootprint(
     for (int bx = minX; bx <= maxX; bx++) {
         for (int bz = minZ; bz <= maxZ; bz++) {
             for (int by = highestBlockToCheck; by >= 0; by--) {
-                BlockType floor=terrain.getBlockAt(bx,by,bz);
-                if (floor.isSolid() && by+floor.collisionHeight() <= highestAllowedSurface+0.001f) {
-                    highestGround = Math.max(highestGround, by+floor.collisionHeight());
+                float surfaceHeight=terrain.collisionHeightAt(bx,by,bz);
+                if (surfaceHeight>0 && by+surfaceHeight <= highestAllowedSurface+0.001f) {
+                    highestGround = Math.max(highestGround, by+surfaceHeight);
                     break;
                 }
             }
@@ -1015,8 +1002,8 @@ private boolean canOccupy(
             // through the streaming frontier until collision data is ready.
             if (!terrain.isColumnLoaded(bx, bz)) return false;
             for (int by = minY; by <= maxY; by++) {
-                BlockType obstacle = terrain.getBlockAt(bx, by, bz);
-                if (obstacle.isSolid() && targetFeetY < by + obstacle.collisionHeight() - 0.0001f
+                float collisionHeight=terrain.collisionHeightAt(bx,by,bz);
+                if (collisionHeight>0 && targetFeetY < by + collisionHeight - 0.0001f
                         && targetFeetY + PLAYER_HEIGHT > by + 0.0001f) {
                     return false;
                 }

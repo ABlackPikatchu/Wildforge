@@ -4,6 +4,8 @@
   "solid": true,
   "breakable": true,
   "hardness": 3.0,
+  "mining_tool": "pickaxe",
+  "harvest_tier": 3,
   "model": "wildforge:block/cube",
   "textures": {
     "top": "wildforge:diamond_ore",

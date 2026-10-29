@@ -6,6 +6,8 @@ import com.wildforge.core.save.DroppedItemStorage;
 import com.wildforge.entity.Entity;
 import com.wildforge.entity.EntityManager;
 import com.wildforge.item.ItemType;
+import com.wildforge.content.ItemDefinition;
+import com.wildforge.content.ItemCatalog;
 import com.wildforge.player.Player;
 
 import java.util.ArrayList;
@@ -24,8 +26,12 @@ public final class WorldItemManager {
 
     private final EntityManager entityManager = new EntityManager();
 
+    public void spawn(ItemType type,int count,float x,float y,float z,TerrainMesh terrain) {
+        if(type!=null)spawn(ItemCatalog.legacy(type),count,x,y,z,terrain);
+    }
+
     public void spawn(
-            ItemType itemType,
+            ItemDefinition itemType,
             int count,
             float x,
             float y,
@@ -62,7 +68,7 @@ public final class WorldItemManager {
 
     /** Used only by validated save decoding; spawn() remains randomized for gameplay. */
     public void restore(DroppedItemStorage.Stack stack, TerrainMesh terrain) {
-        ItemType type = ItemType.fromId(stack.id());
+        ItemDefinition type = ItemCatalog.require(stack.id());
         DroppedItemEntity entity = new DroppedItemEntity(type,stack.count(),
                 stack.x(),stack.y(),stack.z(),terrain);
         entity.restoreMotion(stack.vx(),stack.vy(),stack.vz(),stack.age());
@@ -147,7 +153,7 @@ public final class WorldItemManager {
             if(terrain!=null && !terrain.isWithinSimulationDistance(first.getX(),first.getZ()))continue;
 
             if (first.isRemoved()
-                    || first.getCount() >= first.getItemType().getMaxStackSize()) {
+                    || first.getCount() >= first.maxStackSize()) {
                 continue;
             }
 
@@ -156,7 +162,7 @@ public final class WorldItemManager {
                 if(terrain!=null && !terrain.isWithinSimulationDistance(second.getX(),second.getZ()))continue;
 
                 if (second.isRemoved()
-                        || first.getItemType() != second.getItemType()) {
+                        || !first.itemId().equals(second.itemId())) {
                     continue;
                 }
 
@@ -178,7 +184,7 @@ public final class WorldItemManager {
                 }
 
                 if (first.getCount()
-                        >= first.getItemType().getMaxStackSize()) {
+                        >= first.maxStackSize()) {
                     break;
                 }
             }
@@ -204,8 +210,8 @@ public final class WorldItemManager {
                 continue;
             }
 
-            if (player.canAddItem(item.getItemType(), item.getCount())
-                    && player.addItem(item.getItemType(), item.getCount())) {
+            if (player.canAddItem(item.definition(), item.getCount())
+                    && player.addItem(item.definition(), item.getCount())) {
                 item.remove();
             }
         }

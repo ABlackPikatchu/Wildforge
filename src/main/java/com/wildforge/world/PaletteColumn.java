@@ -25,23 +25,46 @@ final class PaletteColumn {
         }
     }
 
-    byte get(int index) {
+    int getStateId(int index) {
         int y = index % HEIGHT;
-        return sections[y / SECTION_HEIGHT].get(
+        return sections[y / SECTION_HEIGHT].stateIdAt(
                 (index / HEIGHT) * SECTION_HEIGHT + (y % SECTION_HEIGHT));
     }
 
-    void set(int index, byte value) {
+    void setStateId(int index, int stateId) {
         int y = index % HEIGHT;
         int section = y / SECTION_HEIGHT;
         int localIndex = (index / HEIGHT) * SECTION_HEIGHT + y % SECTION_HEIGHT;
-        sections[section] = sections[section].with(localIndex, value);
+        sections[section] = sections[section].withStateId(localIndex, stateId);
+    }
+
+    byte get(int index) {
+        return BlockStateRegistry.GLOBAL.legacyRenderId(getStateId(index));
+    }
+
+    void set(int index, byte value) {
+        setStateId(index, Byte.toUnsignedInt(value));
+    }
+
+    int[] copyStateIds() {
+        int[] raw = new int[WIDTH * WIDTH * HEIGHT];
+        for (int sy = 0; sy < sections.length; sy++) {
+            int[] values = sections[sy].decodeStateIds();
+            for (int x = 0; x < WIDTH; x++) for (int z = 0; z < WIDTH; z++) {
+                System.arraycopy(values, (x * WIDTH + z) * SECTION_HEIGHT, raw,
+                    (x * WIDTH + z) * HEIGHT + sy * SECTION_HEIGHT, SECTION_HEIGHT);
+            }
+        }
+        return raw;
     }
 
     byte[] copyRaw() {
         byte[] raw = new byte[WIDTH * WIDTH * HEIGHT];
         for (int sy = 0; sy < sections.length; sy++) {
-            byte[] values = sections[sy].decode();
+            int[] ids = sections[sy].decodeStateIds();
+            byte[] values = new byte[ChunkSection.VOLUME];
+            for (int i = 0; i < values.length; i++)
+                values[i] = BlockStateRegistry.GLOBAL.legacyRenderId(ids[i]);
             for (int x = 0; x < WIDTH; x++) for (int z = 0; z < WIDTH; z++) {
                 System.arraycopy(values, (x * WIDTH + z) * SECTION_HEIGHT, raw,
                     (x * WIDTH + z) * HEIGHT + sy * SECTION_HEIGHT, SECTION_HEIGHT);

@@ -3,5 +3,10 @@
   "numeric_id": 119,
   "max_stack_size": 1,
   "texture": "wildforge:wooden_axe",
-  "model": "wildforge:item/generated"
+  "model": "wildforge:item/generated",
+  "tool": {
+    "kind": "axe",
+    "tier": 1,
+    "speed": 2
+  }
 }

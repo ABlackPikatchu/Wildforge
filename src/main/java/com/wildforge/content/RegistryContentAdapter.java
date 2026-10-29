@@ -23,6 +23,12 @@ public final class RegistryContentAdapter {
         return definition;
     }
 
+    /** Full registry-state lookup, including data-only blocks above 255. */
+    public BlockDefinition block(com.wildforge.world.BlockState state) {
+        Objects.requireNonNull(state, "state");
+        return blocks.get(state.resourceId());
+    }
+
     public ItemDefinition item(ItemType type) {
         Objects.requireNonNull(type, "type");
         ItemDefinition definition = items.getByNumericId(type.getId());

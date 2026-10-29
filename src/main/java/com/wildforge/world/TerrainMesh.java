@@ -24,13 +24,13 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /** Bounded, player-centered chunk cache with persistent sparse edits and fresh-world generation. */
-public final class TerrainMesh implements AutoCloseable {
+public final class TerrainMesh implements AutoCloseable, MutableBlockAccess {
     public static final int CHUNK_SIZE=16, WORLD_HEIGHT=512, SECTION_HEIGHT=16, SECTION_COUNT=WORLD_HEIGHT/SECTION_HEIGHT;
     public static final int FLOATS_PER_VERTEX=7;
     // Fluid sections use a separate mesh stream (section + FLUID_SECTION_OFFSET).
     // No block IDs or save indexes change.
     public static final int FLUID_SECTION_OFFSET=SECTION_COUNT;
-    private static final int MAGIC=0x57464F52, SAVE_VERSION=5;
+    private static final int MAGIC=0x57464F52, SAVE_VERSION=6;
     private static final long DEFAULT_SEED=0x57494C44464F5247L;
     /** Generator revision is independent of the binary save format. Never change an
      * old revision's semantics silently; reject incompatible future saves. */
@@ -38,7 +38,7 @@ public final class TerrainMesh implements AutoCloseable {
     private int worldgenRevision=WORLDGEN_REVISION;
     public int worldgenRevision(){return worldgenRevision;}
     private final ChunkSource chunkSource = new ChunkSource();
-    private final HashMap<Long,HashMap<Integer,Byte>> edits = new HashMap<>();
+    private final HashMap<Long,HashMap<Integer,Integer>> edits = new HashMap<>();
     private WorldGenerator generator;
     private SpawnFinder.Spawn initialSpawn;
     private BiomeDistribution distribution;
@@ -72,14 +72,20 @@ public final class TerrainMesh implements AutoCloseable {
     // Raw world generation is owned by ChunkSource. Section/LOD worker lifecycle,
     // revisions and stale result handling are owned by ChunkMeshScheduler.
     private final ChunkMeshScheduler meshScheduler = new ChunkMeshScheduler();
+    /** Bounded, session-local lighting; mesh jobs share previously computed volumes. */
+    private final com.wildforge.world.light.ColumnLightCache lightCache =
+            new com.wildforge.world.light.ColumnLightCache(64);
+    public com.wildforge.world.light.ColumnLightCache.Stats lightCacheStats(){return lightCache.stats();}
     @Override public void close() {
         chunkSource.close();
         meshScheduler.close();
+        lightCache.reset();
     }
     private void cancelGeneration() {
         fluids.reset();
         chunkSource.reset();
         meshScheduler.reset();
+        lightCache.reset();
     }
     private void generateSpawnChunk(int x, int z) {
         int cx = Math.floorDiv(x, CHUNK_SIZE), cz = Math.floorDiv(z, CHUNK_SIZE);
@@ -93,14 +99,19 @@ public final class TerrainMesh implements AutoCloseable {
         version++;
     }
     private void applySavedEdits(ChunkColumn c) {
-        HashMap<Integer, Byte> changes = edits.get(key(c.cx, c.cz));
-        if (changes != null) for (var entry : changes.entrySet()) c.set(entry.getKey(), entry.getValue());
+        HashMap<Integer, Integer> changes = edits.get(key(c.cx, c.cz));
+        if (changes != null) for (var entry : changes.entrySet()) c.setStateId(entry.getKey(), entry.getValue());
     }
     public static final class RayHit {
         public final int x,y,z,placeX,placeY,placeZ;
         public final BlockType block;
+        public final BlockState state;
         RayHit(int x,int y,int z,int px,int py,int pz,BlockType block){
-            this.x=x;this.y=y;this.z=z;placeX=px;placeY=py;placeZ=pz;this.block=block;
+            this(x,y,z,px,py,pz,BlockState.fromLegacy(block));
+        }
+        RayHit(int x,int y,int z,int px,int py,int pz,BlockState state){
+            this.x=x;this.y=y;this.z=z;placeX=px;placeY=py;placeZ=pz;
+            this.state=java.util.Objects.requireNonNull(state);this.block=state.toLegacyBlock();
         }
     }
     private static long key(int x,int z){return ChunkCoordinates.pack(x,z);}
@@ -177,6 +188,7 @@ public final class TerrainMesh implements AutoCloseable {
         boolean changed = chunkSource.evictOutside(cx, cz, renderDistance, c -> {
             long removed = key(c.cx, c.cz);
             meshScheduler.evict(removed);
+            lightCache.evict(c.cx,c.cz);
             fluids.discardColumn(removed);
             // Neighbors must expose their newly visible outer faces after eviction.
             markMeshDirty(c.cx - 1, c.cz);
@@ -209,7 +221,8 @@ public final class TerrainMesh implements AutoCloseable {
         if(meshScheduler.installSections(chunkSource,1)>0)changed=true;
         meshScheduler.scheduleSections(chunkSource,cx,cz,(target,sections)->{
             SectionMeshBuilder.Snapshot snapshot=snapshot(target);
-            return ()->SectionMeshBuilder.buildSelectedMeshes(snapshot,sections);
+            int lightGeneration=lightCache.generation();
+            return ()->SectionMeshBuilder.buildSelectedMeshes(snapshot,sections,lightCache,lightGeneration);
         });
         if(changed)version++;
     }
@@ -242,7 +255,23 @@ public final class TerrainMesh implements AutoCloseable {
         return new SectionMeshBuilder.Snapshot(c.cx,c.cz,c.copyBlocks(),
             edge(w,CHUNK_SIZE-1,true),edge(e,0,true),edge(n,CHUNK_SIZE-1,false),edge(so,0,false),
             flowSnapshot(c.cx,c.cz),flowSnapshot(c.cx-1,c.cz),flowSnapshot(c.cx+1,c.cz),
-            flowSnapshot(c.cx,c.cz-1),flowSnapshot(c.cx,c.cz+1),generator);
+            flowSnapshot(c.cx,c.cz-1),flowSnapshot(c.cx,c.cz+1),generator,
+            null, new SectionMeshBuilder.StateOverrides(c.extendedSnapshot(),
+                stateEdgeOverrides(w,CHUNK_SIZE-1,true),stateEdgeOverrides(e,0,true),
+                stateEdgeOverrides(n,CHUNK_SIZE-1,false),stateEdgeOverrides(so,0,false)));
+    }
+    /** Tiny native-state sidecars; built-in terrain never allocates int[] snapshots. */
+    private static Map<Integer,Integer> stateEdgeOverrides(ChunkColumn column,int axis,boolean fixedX) {
+        if(column==null)return Map.of();
+        HashMap<Integer,Integer> result=new HashMap<>();
+        for(var entry:column.extendedSnapshot().entrySet()) {
+            int index=entry.getKey(),y=index%WORLD_HEIGHT;
+            int horizontal=index/WORLD_HEIGHT;
+            int x=horizontal/CHUNK_SIZE,z=horizontal%CHUNK_SIZE;
+            if(fixedX && x==axis)result.put(z*WORLD_HEIGHT+y,entry.getValue());
+            if(!fixedX && z==axis)result.put(x*WORLD_HEIGHT+y,entry.getValue());
+        }
+        return result;
     }
     /** Only copy the 16x512 boundary of adjacent chunks. Formerly every mesh
      * job copied five entire 16x512x16 columns (~640 KiB per request). */
@@ -456,7 +485,7 @@ public final class TerrainMesh implements AutoCloseable {
         if(b!=BlockType.FLOWING_WATER&&b!=BlockType.FLOWING_LAVA)return false;
         if(getFluidLevelAt(x,y,z)==level)return false;
         storeFlowLevel(key(cx,cz),i,b,level);
-        edits.computeIfAbsent(key(cx,cz),k->new HashMap<>()).put(i,b.id);
+        edits.computeIfAbsent(key(cx,cz),k->new HashMap<>()).put(i,Byte.toUnsignedInt(b.id));
         scheduleFluid(x,y,z);markFluidMeshDirty(x,y,z);version++;
         return true;
     }
@@ -500,10 +529,10 @@ public final class TerrainMesh implements AutoCloseable {
     }
     private void resumeEditedFlows(ChunkColumn c) {
         // Only edited flowing cells resume; naturally generated oceans and pools stay inert.
-        Map<Integer,Byte> changed=edits.get(key(c.cx,c.cz));
+        Map<Integer,Integer> changed=edits.get(key(c.cx,c.cz));
         if(changed==null)return;
         for(var change:changed.entrySet()) {
-            byte type=change.getValue();
+            byte type=BlockStateRegistry.GLOBAL.legacyRenderId(change.getValue());
             if(type!=BlockType.FLOWING_WATER.id&&type!=BlockType.FLOWING_LAVA.id)continue;
             int i=change.getKey(),y=i%WORLD_HEIGHT;
             int column=i/WORLD_HEIGHT,lx=column/CHUNK_SIZE,lz=column%CHUNK_SIZE;
@@ -614,7 +643,7 @@ public final class TerrainMesh implements AutoCloseable {
             BlockType rock=(old==BlockType.LAVA||flow==BlockType.LAVA)?BlockType.OBSIDIAN:BlockType.COBBLESTONE;
             c.set(pos,rock.id);
             storeFlowLevel(chunkKey,pos,rock,0);
-            edits.computeIfAbsent(chunkKey,k->new HashMap<>()).put(pos,rock.id);
+            edits.computeIfAbsent(chunkKey,k->new HashMap<>()).put(pos,Byte.toUnsignedInt(rock.id));
             markFluidMeshDirty(x,y,z);version++;return true;
         }
         if(old.isFluid()) {
@@ -622,10 +651,10 @@ public final class TerrainMesh implements AutoCloseable {
             if(getFluidLevelAt(x,y,z)>=strength)return false;
             // Refresh a weaker existing flow without changing its block ID.
             storeFlowLevel(chunkKey,pos,old,strength);
-            edits.computeIfAbsent(chunkKey,k->new HashMap<>()).put(pos,old.id);
+            edits.computeIfAbsent(chunkKey,k->new HashMap<>()).put(pos,Byte.toUnsignedInt(old.id));
         } else if(old==BlockType.AIR) {
             c.set(pos,flow.id);
-            edits.computeIfAbsent(chunkKey,k->new HashMap<>()).put(pos,flow.id);
+            edits.computeIfAbsent(chunkKey,k->new HashMap<>()).put(pos,Byte.toUnsignedInt(flow.id));
             storeFlowLevel(chunkKey,pos,flow,strength);
         } else return false;
         scheduleFluid(x,y,z);
@@ -644,7 +673,7 @@ public final class TerrainMesh implements AutoCloseable {
         if(existing!=BlockType.FLOWING_WATER && existing!=BlockType.FLOWING_LAVA)return;
         if(getFluidLevelAt(x,y,z)==level)return;
         storeFlowLevel(k,i,existing,level);
-        edits.computeIfAbsent(k,unused->new HashMap<>()).put(i,existing.id);
+        edits.computeIfAbsent(k,unused->new HashMap<>()).put(i,Byte.toUnsignedInt(existing.id));
         markFluidMeshDirty(x,y,z);
         version++;
     }
@@ -872,23 +901,50 @@ public final class TerrainMesh implements AutoCloseable {
         if(c==null)return BlockType.AIR;
         return BlockType.fromId(c.get(index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE))));
     }
-    /** Logical-state API; compact byte IDs remain the current chunk encoding. */
+    /** Authoritative typed state API; legacy block calls adapt into this path. */
+    @Override public boolean isLoaded(BlockPos pos) {
+        return pos.withinWorldHeight() && isColumnLoaded(pos.x(), pos.z());
+    }
+    @Override public BlockState getBlockState(BlockPos pos) {
+        return getBlockStateAt(pos.x(), pos.y(), pos.z());
+    }
+    @Override public boolean setBlockState(BlockPos pos, BlockState state) {
+        return setBlockState(pos.x(), pos.y(), pos.z(), state);
+    }
+
     public BlockState getBlockStateAt(int x,int y,int z) {
-        return BlockState.fromLegacy(getBlockAt(x,y,z));
+        if (y < 0 || y >= WORLD_HEIGHT) return BlockState.fromLegacy(BlockType.AIR);
+        ChunkColumn c = chunkSource.get(key(Math.floorDiv(x,CHUNK_SIZE),Math.floorDiv(z,CHUNK_SIZE)));
+        if (c == null) return BlockState.fromLegacy(BlockType.AIR);
+        int i = index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE));
+        return BlockStateRegistry.GLOBAL.byId(c.getStateId(i));
+    }
+
+    /** Authoritative collision properties for both built-ins and registry-only blocks. */
+    public boolean isSolidAt(int x,int y,int z) {
+        BlockState state=getBlockStateAt(x,y,z);
+        var definition=com.wildforge.content.BlockCatalog.byId(state.resourceId());
+        return definition==null?state.toLegacyBlock().isSolid():definition.isSolid();
+    }
+    public float collisionHeightAt(int x,int y,int z) {
+        BlockState state=getBlockStateAt(x,y,z);
+        return isSolidAt(x,y,z) ? state.toLegacyBlock().collisionHeight() : 0f;
+    }
+
+    public boolean setBlock(int x,int y,int z,BlockType type) {
+        return type != null && setBlockState(x,y,z,BlockState.fromLegacy(type));
     }
 
     public boolean setBlockState(int x,int y,int z,BlockState state) {
-        return setBlock(x,y,z,java.util.Objects.requireNonNull(state).toLegacyBlock());
-    }
-
-    public boolean setBlock(int x,int y,int z,BlockType type){
-        if(type==null||y<0||y>=WORLD_HEIGHT)return false;
-        int cx=Math.floorDiv(x,CHUNK_SIZE),cz=Math.floorDiv(z,CHUNK_SIZE);
-        ChunkColumn c=chunkSource.get(key(cx,cz));if(c==null)return false;
-        int i=index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE));
-        if(c.get(i)==type.id)return false;
-        BlockType previous=BlockType.fromId(c.get(i));
-        c.set(i,type.id);
+        if (state == null || y < 0 || y >= WORLD_HEIGHT) return false;
+        int cx = Math.floorDiv(x,CHUNK_SIZE), cz = Math.floorDiv(z,CHUNK_SIZE);
+        ChunkColumn c = chunkSource.get(key(cx,cz)); if (c == null) return false;
+        int i = index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE));
+        int newStateId = BlockStateRegistry.GLOBAL.idFor(state);
+        if (c.getStateId(i) == newStateId) return false;
+        BlockType previous = BlockType.fromId(c.get(i));
+        BlockType type = state.toLegacyBlock();
+        c.setStateId(i,newStateId);
         storeFlowLevel(key(cx,cz),i,type,1);
         if(previous.isFluid()||type==BlockType.AIR||type.isFluid()) {
             scheduleFluid(x+1,y,z);scheduleFluid(x-1,y,z);
@@ -896,20 +952,42 @@ public final class TerrainMesh implements AutoCloseable {
             scheduleFluid(x,y+1,z);scheduleFluid(x,y-1,z);
             scheduleFluid(x,y,z);
         }
-        edits.computeIfAbsent(key(cx,cz),k->new HashMap<>()).put(i,type.id);
-        markMeshDirty(cx,cz,y);
-        if(Math.floorMod(x,CHUNK_SIZE)==0)markMeshDirty(cx-1,cz,y);
-        if(Math.floorMod(x,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx+1,cz,y);
-        if(Math.floorMod(z,CHUNK_SIZE)==0)markMeshDirty(cx,cz-1,y);
-        if(Math.floorMod(z,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx,cz+1,y);
+        edits.computeIfAbsent(key(cx,cz),k->new HashMap<>()).put(i,newStateId);
+        boolean transmission=!com.wildforge.world.light.LightEngine.sameTransmission(previous.id,type.id);
+        boolean emissive=com.wildforge.world.light.LightEmissionCatalog.emission(previous.id)
+                !=com.wildforge.world.light.LightEmissionCatalog.emission(type.id);
+        if(transmission||emissive){
+            // A changed skylight shaft can reach bedrock; light emission is bounded
+            // to a 15-block sphere. Invalidate touched vertical render sections,
+            // including neighbors illuminated across chunk boundaries.
+            BitSet affected=affectedLightSections(y,transmission);
+            markMeshDirty(cx,cz,affected);
+            markMeshDirty(cx-1,cz,affected);
+            markMeshDirty(cx+1,cz,affected);
+            markMeshDirty(cx,cz-1,affected);
+            markMeshDirty(cx,cz+1,affected);
+        }else{
+            markMeshDirty(cx,cz,y);
+            if(Math.floorMod(x,CHUNK_SIZE)==0)markMeshDirty(cx-1,cz,y);
+            if(Math.floorMod(x,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx+1,cz,y);
+            if(Math.floorMod(z,CHUNK_SIZE)==0)markMeshDirty(cx,cz-1,y);
+            if(Math.floorMod(z,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx,cz+1,y);
+        }
         version++;return true;
+    }
+    /** Conservative skylight dirtiness below edited roofs; local glow stays bounded. */
+    static BitSet affectedLightSections(int y,boolean changedTransmission){
+        BitSet touched=new BitSet(SECTION_COUNT);
+        int lower=changedTransmission?0:Math.max(0,y-15);
+        int upper=Math.min(WORLD_HEIGHT-1,y+15);
+        touched.set(lower/SECTION_HEIGHT,upper/SECTION_HEIGHT+1);
+        return touched;
     }
     public float getHeightAt(float x,float z){
         int bx=(int)Math.floor(x),bz=(int)Math.floor(z);
         // Spawn queries may precede streaming into a new area.
         for(int y=WORLD_HEIGHT-1;y>=0;y--){
-            BlockType b=getBlockAt(bx,y,bz);
-            if(b.isSolid())return y+b.collisionHeight();
+            if(isSolidAt(bx,y,bz))return y+collisionHeightAt(bx,y,bz);
         }
         return Math.max(1,Math.min(WORLD_HEIGHT-2,generator.surface(bx,bz).surfaceY()+1));
     }
@@ -1014,16 +1092,13 @@ public final class TerrainMesh implements AutoCloseable {
         return all;
     }
     public int getVertexCount(){int n=0;for(ChunkColumn c:chunkSource.columns())n+=c.render.floatCount();return n/FLOATS_PER_VERTEX;}
-    /** v4 stores sparse block edits plus persistent flowing-fluid strengths. */
+    /** v6 stores stable state-name palettes, sparse typed edits, and fluid strengths. */
     public void saveTo(Path path)throws IOException{
         Path p=path.toAbsolutePath();Files.createDirectories(p.getParent());Path temp=p.resolveSibling(p.getFileName()+".tmp");
         try{
             try(DataOutputStream out=new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(temp)))){
-                out.writeInt(MAGIC);out.writeInt(SAVE_VERSION);out.writeLong(seed);out.writeInt(WORLD_HEIGHT);out.writeInt(worldgenRevision);out.writeInt(edits.size());
-                for(var entry:edits.entrySet()){
-                    out.writeLong(entry.getKey());out.writeInt(entry.getValue().size());
-                    for(var change:entry.getValue().entrySet()){out.writeInt(change.getKey());out.writeByte(change.getValue());}
-                }
+                out.writeInt(MAGIC);out.writeInt(SAVE_VERSION);out.writeLong(seed);out.writeInt(WORLD_HEIGHT);out.writeInt(worldgenRevision);
+                StateEditCodec.write(out,edits,BlockStateRegistry.GLOBAL);
                 out.writeInt(fluidLevels.size());
                 for(var entry:fluidLevels.entrySet()) {
                     out.writeLong(entry.getKey());out.writeInt(entry.getValue().size());
@@ -1041,13 +1116,13 @@ public final class TerrainMesh implements AutoCloseable {
      * Back up old saves and start a new world when switching generator revisions.
      */
     public void loadFrom(Path path)throws IOException{
-        HashMap<Long,HashMap<Integer,Byte>> incoming=new HashMap<>();
+        HashMap<Long,HashMap<Integer,Integer>> incoming=new HashMap<>();
         HashMap<Long,HashMap<Integer,Byte>> levels=new HashMap<>();
         long newSeed;
         try(DataInputStream in=new DataInputStream(new BufferedInputStream(Files.newInputStream(path)))){
             if(in.readInt()!=MAGIC)throw new IOException("Not a Wildforge world save");
             int version=in.readInt();
-            if(version!=SAVE_VERSION)throw new IOException("Old save format version "+version+
+            if(version!=SAVE_VERSION && version!=5)throw new IOException("Old save format version "+version+
                     " is not supported by fresh-world generation; back up the old save and create a new world");
             newSeed=in.readLong();
             int height=in.readInt(),revision=in.readInt();
@@ -1055,19 +1130,27 @@ public final class TerrainMesh implements AutoCloseable {
                 throw new IOException("This world uses generator revision "+revision+
                         "; fresh Wildforge requires revision "+WORLDGEN_REVISION+
                         ". Create a new world; old terrain will not be reinterpreted");
-            int chunks=in.readInt();
-            if(chunks<0||chunks>1000000)throw new IOException("Invalid chunk count");
-            for(int n=0;n<chunks;n++){
-                long k=in.readLong();int count=in.readInt();
-                if(count<0||count>CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT)
-                    throw new IOException("Invalid edit count");
-                HashMap<Integer,Byte> editsAt=new HashMap<>();
-                for(int i=0;i<count;i++){
-                    int at=in.readInt();byte id=in.readByte();
-                    if(at<0||at>=CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT||!BlockType.isValidId(id)
-                            ||editsAt.putIfAbsent(at,id)!=null)throw new IOException("Invalid or duplicate edit");
+            if (version == SAVE_VERSION) {
+                incoming = StateEditCodec.read(in, BlockStateRegistry.GLOBAL);
+            } else {
+                // Version-5 edits are byte IDs. They migrate losslessly to typed
+                // runtime IDs when the world is next saved in version 6.
+                int chunks = in.readInt();
+                if (chunks < 0 || chunks > 1_000_000) throw new IOException("Invalid chunk count");
+                for (int n = 0; n < chunks; n++) {
+                    long k = in.readLong(); int count = in.readInt();
+                    if (count < 0 || count > CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT)
+                        throw new IOException("Invalid edit count");
+                    HashMap<Integer,Integer> changes = new HashMap<>();
+                    for (int i = 0; i < count; i++) {
+                        int index = in.readInt(); byte id = in.readByte();
+                        if (index < 0 || index >= CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT ||
+                            !BlockType.isValidId(id) ||
+                            changes.putIfAbsent(index, Byte.toUnsignedInt(id)) != null)
+                            throw new IOException("Invalid or duplicate legacy edit");
+                    }
+                    if (incoming.putIfAbsent(k, changes) != null) throw new IOException("Duplicate chunk");
                 }
-                if(incoming.putIfAbsent(k,editsAt)!=null)throw new IOException("Duplicate chunk record");
             }
             int regions=in.readInt();
             if(regions<0||regions>1000000)throw new IOException("Invalid fluid region count");
@@ -1075,10 +1158,11 @@ public final class TerrainMesh implements AutoCloseable {
                 long k=in.readLong();int size=in.readInt();
                 if(size<0||size>CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT)throw new IOException("Invalid fluid count");
                 HashMap<Integer,Byte> values=new HashMap<>();
-                Map<Integer,Byte> editsAt=incoming.get(k);
+                Map<Integer,Integer> editsAt=incoming.get(k);
                 for(int i=0;i<size;i++){
                     int index=in.readInt(),level=in.readUnsignedByte();
-                    byte id=editsAt==null?-1:editsAt.getOrDefault(index,(byte)-1);
+                    int stateId=editsAt==null?-1:editsAt.getOrDefault(index,-1);
+                    byte id=stateId<0?(byte)-1:BlockStateRegistry.GLOBAL.legacyRenderId(stateId);
                     if(index<0||index>=CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT||level<1||level>7||
                        (id!=BlockType.FLOWING_WATER.id&&id!=BlockType.FLOWING_LAVA.id)||
                         values.putIfAbsent(index,(byte)level)!=null)
@@ -1161,12 +1245,13 @@ public final class TerrainMesh implements AutoCloseable {
         int y = (int) Math.floor(oy);
         int z = (int) Math.floor(oz);
 
-        BlockType startingBlock = getBlockAt(x, y, z);
+        BlockState startingState = getBlockStateAt(x, y, z);
+        BlockType startingBlock = startingState.toLegacyBlock();
         if (startingBlock != BlockType.AIR && !startingBlock.isFluid()) {
             return new RayHit(
                     x, y, z,
                     x, y, z,
-                    startingBlock
+                    startingState
             );
         }
 
@@ -1226,12 +1311,13 @@ public final class TerrainMesh implements AutoCloseable {
                 return null;
             }
 
-            BlockType block = getBlockAt(x, y, z);
+            BlockState currentState = getBlockStateAt(x, y, z);
+            BlockType block = currentState.toLegacyBlock();
             if (block != BlockType.AIR && !block.isFluid()) {
                 return new RayHit(
                         x, y, z,
                         previousX, previousY, previousZ,
-                        block
+                        currentState
                 );
             }
         }

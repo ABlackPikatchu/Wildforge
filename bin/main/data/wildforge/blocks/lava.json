@@ -4,7 +4,9 @@
   "solid": false,
   "breakable": false,
   "hardness": 0.0,
-  "model": "wildforge:block/cube",
+  "mining_tool": "hand",
+  "harvest_tier": 0,
+  "model": "wildforge:block/fluid",
   "textures": {
     "top": "wildforge:lava",
     "side": "wildforge:lava",

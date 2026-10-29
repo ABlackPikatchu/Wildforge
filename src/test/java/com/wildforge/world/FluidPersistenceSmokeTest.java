@@ -32,7 +32,7 @@ public final class FluidPersistenceSmokeTest {
             check(terrain.setBlock(x+3,y,z,BlockType.FLOWING_WATER),"Restore flow");
             check(terrain.getFluidLevelAt(x+3,y,z)==1,"Replaced flow reset to level 1");
 
-            Path save=dir.resolve("world-v5.wfs");terrain.saveTo(save);
+            Path save=dir.resolve("world-v6.wfs");terrain.saveTo(save);
             TerrainMesh loaded=new TerrainMesh();loaded.loadFrom(save);
             check(loaded.getFluidLevelAt(x,y,z)==6,"Water level survives reload");
             check(loaded.getFluidLevelAt(x+1,y,z)==7,"Source level survives reload");
@@ -56,10 +56,10 @@ public final class FluidPersistenceSmokeTest {
 
             // Corrupt fluid metadata must fail without replacing the current world.
             byte[] corrupt=Files.readAllBytes(save);corrupt[corrupt.length-1]=0;
-            Path bad=dir.resolve("corrupt-v5.wfs");Files.write(bad,corrupt);
+            Path bad=dir.resolve("corrupt-v6.wfs");Files.write(bad,corrupt);
             try {loaded.loadFrom(bad);throw new AssertionError("Invalid levels must be rejected");}
             catch(IOException expected) {check(loaded.getFluidLevelAt(x,y,z)==6,"Failed load must not alter live world");}
-            System.out.println("Fluid persistence checks passed: v5 levels, old-format rejection, edits, corruption");
+            System.out.println("Fluid persistence checks passed: v6 levels, old-format rejection, edits, corruption");
         } finally {
             try(var paths=Files.walk(dir)) {
                 for(Path f:paths.sorted(java.util.Comparator.reverseOrder()).toList())Files.deleteIfExists(f);

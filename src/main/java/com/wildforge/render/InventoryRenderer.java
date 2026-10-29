@@ -86,7 +86,7 @@ final class InventoryRenderer {
 
             if (stack != null) {
                 drawItemIcon(
-                        data, iconData, x, y, stack.getItemType());
+                        data, iconData, x, y, stack.definition());
                 drawNumber(countData, x, y, stack.getCount());
             }
 
@@ -173,7 +173,7 @@ final class InventoryRenderer {
             List<Float> iconData,List<Float> countData,List<Float> tooltipData,List<Float> tooltipSkin,
             int width,int height,float mouseX,float mouseY,Player player,
             String search,int page,int category) {
-        var all=com.wildforge.ui.CreativeCatalog.items(search,category);
+        var all=com.wildforge.ui.CreativeCatalog.definitions(search,category);
         int pages=Math.max(1,(all.size()+35)/36);
         page=Math.max(0,Math.min(page,pages-1));
         float left=(width-568f)/2f,top=(height-456f)/2f;
@@ -236,13 +236,47 @@ final class InventoryRenderer {
             return;
         }
 
-        drawItemIcon(data, iconData, x, y, stack.getItemType());
+        drawItemIcon(data, iconData, x, y, stack.definition());
         drawNumber(countData, x, y, stack.getCount());
     }
 
     private void drawSlot(
             List<Float> skinData, float x, float y, boolean selected) {
         uiSkin.slot(skinData, x, y, selected);
+    }
+
+    void drawItemIcon(List<Float> data, List<Float> iconData, float x, float y,
+                      com.wildforge.content.ItemDefinition item) {
+        if(item==null)return;
+        var placed=item.getPlacesBlock();
+        if(placed!=null) {
+            var block=com.wildforge.content.BlockCatalog.byId(placed);
+            if(block!=null) {
+                com.wildforge.world.BlockType legacy = com.wildforge.content.BlockCatalog.legacy(placed);
+                var legacyItem=com.wildforge.content.ItemCatalog.legacyAdapter(item.getId());
+                if(legacy!=null && legacyItem!=null) {
+                    drawItemIcon(data,iconData,x,y,legacyItem);
+                    return;
+                }
+                int layer=BlockTextures.textureLayer(block.getSideTexture());
+                if(layer>=0) {
+                    float ix=x+8,iy=y+8;
+                    appendTexturedQuad(iconData,ix,iy,0f,0f,ix+32,iy,1f,0f,
+                            ix+32,iy+32,1f,1f,ix,iy+32,0f,1f,layer,1f);
+                    return;
+                }
+            }
+        }
+        int layer=BlockTextures.itemTextureLayer(item);
+        if(layer>=0){
+            float ix=x+8,iy=y+8;
+            appendTexturedQuad(iconData,ix,iy,0f,0f,ix+32,iy,1f,0f,
+                    ix+32,iy+32,1f,1f,ix,iy+32,0f,1f,layer,1f);
+        }else{
+            var legacy=com.wildforge.content.ItemCatalog.legacyAdapter(item.getId());
+            if(legacy!=null)drawItemIcon(data,iconData,x,y,legacy);
+            else rect(data,x+13,y+13,22,22,.4f,.3f,.2f,1f);
+        }
     }
 
     void drawItemIcon(

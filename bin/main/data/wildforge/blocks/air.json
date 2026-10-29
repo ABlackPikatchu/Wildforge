@@ -4,5 +4,7 @@
   "solid": false,
   "breakable": false,
   "hardness": 0.0,
+  "mining_tool": "hand",
+  "harvest_tier": 0,
   "drops": []
 }

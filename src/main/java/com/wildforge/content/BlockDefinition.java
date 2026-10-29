@@ -15,6 +15,9 @@ public final class BlockDefinition {
         }
     }
 
+    /** Content-defined mining category and minimum tool tier. */
+    private final String miningTool;
+    private final int harvestTier;
     private final ResourceId id;
     private final int numericId;
     private final boolean solid;
@@ -32,9 +35,24 @@ public final class BlockDefinition {
                            ResourceId model, ResourceId topTexture,
                            ResourceId sideTexture, ResourceId bottomTexture,
                            List<Drop> drops) {
+        this(id, numericId, solid, breakable, hardness, blockItem, model, topTexture,
+                sideTexture, bottomTexture, drops, null, 0);
+    }
+
+    public BlockDefinition(ResourceId id, int numericId, boolean solid,
+                           boolean breakable, float hardness, ResourceId blockItem,
+                           ResourceId model, ResourceId topTexture,
+                           ResourceId sideTexture, ResourceId bottomTexture,
+                           List<Drop> drops, String miningTool, int harvestTier) {
+        if (miningTool != null && !java.util.Set.of("pickaxe", "axe", "shovel", "hoe", "hand").contains(miningTool))
+            throw new IllegalArgumentException("Invalid mining tool for " + id);
+        if (harvestTier < 0 || harvestTier > 16)
+            throw new IllegalArgumentException("Invalid harvest tier for " + id);
+        this.miningTool = miningTool;
+        this.harvestTier = harvestTier;
         this.id = Objects.requireNonNull(id, "id");
-        if (numericId < 0 || numericId > 255) {
-            throw new IllegalArgumentException("Block numeric_id must be 0..255: " + id);
+        if (numericId < 0 || numericId > 65535) {
+            throw new IllegalArgumentException("Block numeric_id must be 0..65535: " + id);
         }
         if (!Float.isFinite(hardness) || hardness < 0) {
             throw new IllegalArgumentException("Invalid hardness for " + id);
@@ -67,4 +85,6 @@ public final class BlockDefinition {
     public ResourceId getSideTexture() { return sideTexture; }
     public ResourceId getBottomTexture() { return bottomTexture; }
     public List<Drop> getDrops() { return drops; }
+    public String getMiningTool() { return miningTool; }
+    public int getHarvestTier() { return harvestTier; }
 }

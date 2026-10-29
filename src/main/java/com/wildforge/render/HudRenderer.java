@@ -87,12 +87,12 @@ public final class HudRenderer {
     private boolean consoleOpen;
     private String consoleInput="",consoleFeedback="";
     private java.util.List<String> consoleSuggestions=java.util.List.of();
-    private com.wildforge.item.ItemType creativeDragItem;
+    private com.wildforge.content.ItemDefinition creativeDragItem;
     private int creativeDragCount;
     public void setConsoleSuggestions(java.util.List<String> suggestions) {
         consoleSuggestions=suggestions==null?java.util.List.of():suggestions;
     }
-    public void setCreativeDragItem(com.wildforge.item.ItemType item,int count){
+    public void setCreativeDragItem(com.wildforge.content.ItemDefinition item,int count){
         creativeDragItem=item;creativeDragCount=count;
     }
     private String debugBiome="",debugMode="",debugFacing="";
@@ -125,6 +125,8 @@ public final class HudRenderer {
     private int debugLoaded, debugPending, debugDistance;
     private int debugMeshes,debugMeshSections,debugLodJobs,debugLodReady,debugGpu,debugUploads;
     private long debugStorageBytes,debugUploadMicros;
+    private int debugLightColumns;
+    private long debugLightHits,debugLightBakes,debugLightRelights;
     private int debugAverageFps;
     private float debugAverageMs, debugP95Ms, debugWorstMs;
     // One global scale for menus, dialogs, inventory, icons, text and the HUD.
@@ -168,6 +170,11 @@ public final class HudRenderer {
 
     public void setDebugWorkload(int meshes,int sections,int lodJobs,int lodReady,long bytes,int gpu,int uploads,long micros){
         debugMeshSections=sections;debugMeshes=meshes;debugLodJobs=lodJobs;debugLodReady=lodReady;debugStorageBytes=bytes;debugGpu=gpu;debugUploads=uploads;debugUploadMicros=micros;
+    }
+
+    public void setDebugLighting(int columns,long hits,long fullBakes,long localRelights){
+        debugLightColumns=columns;debugLightHits=hits;
+        debugLightBakes=fullBakes;debugLightRelights=localRelights;
     }
 
     public HudRenderer(BlockTextures blockTextures) {
@@ -247,7 +254,7 @@ public final class HudRenderer {
             }
             if (debugOverlay) {
                 float y0=showFps?58f:15f;
-                rect(data,5f,y0,390f,284f,0.04f,0.05f,0.06f,0.72f);
+                rect(data,5f,y0,390f,306f,0.04f,0.05f,0.06f,0.72f);
                 float px=198f;
                 menuText(data,"WILDFORGE 0.1 / DEBUG [F3]",px,y0+7f,1.5f,.94f,.94f,.78f,1f);
                 menuText(data,"FPS " + measuredFps + " AVG " + debugAverageFps + " P95 " + formatMs(debugP95Ms) + "MS",px,y0+29f,1.18f,.94f,.94f,.78f,1f);
@@ -262,6 +269,9 @@ public final class HudRenderer {
                 menuText(data,"UPLOAD CPU " + formatMs(debugUploadMicros/1000f) + " MS  BLOCK DATA " + (debugStorageBytes/1048576) + " MIB",px,y0+202f,0.98f,.94f,.94f,.78f,1f);
                 menuText(data,"FLUID " + debugFluidQueue + " SLEEP " + debugFluidSleeping + " MEM " + (debugHeapUsed/1048576) + " / " + (debugHeapMax/1048576) + " MIB",px,y0+221f,1.08f,.94f,.94f,.78f,1f);
                 menuText(data,"SEED " + debugSeed,px,y0+241f,.95f,.94f,.94f,.78f,1f);
+                menuText(data,"LIGHT " + debugLightColumns + " COL  HITS " + debugLightHits
+                        + " FULL " + debugLightBakes + " LOCAL " + debugLightRelights,
+                        px,y0+260f,.94f,.94f,.94f,.78f,1f);
             }
             if(consoleOpen || !consoleFeedback.isBlank()) {
                 // A left-aligned chat-style input bar. Slash is a supported pixel glyph.
@@ -303,7 +313,7 @@ public final class HudRenderer {
 
                     inventory.drawItemIcon(
                             data, iconData, x, y,
-                            cursorStack.getItemType());
+                            cursorStack.definition());
                     drawNumber(countData, x, y, cursorStack.getCount());
                 }
 

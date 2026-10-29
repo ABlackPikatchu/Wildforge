@@ -3,5 +3,10 @@
   "numeric_id": 121,
   "max_stack_size": 1,
   "texture": "wildforge:wooden_pickaxe",
-  "model": "wildforge:item/generated"
+  "model": "wildforge:item/generated",
+  "tool": {
+    "kind": "pickaxe",
+    "tier": 1,
+    "speed": 2
+  }
 }

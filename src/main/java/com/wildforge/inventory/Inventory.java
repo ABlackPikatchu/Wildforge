@@ -2,6 +2,12 @@ package com.wildforge.inventory;
 
 import com.wildforge.item.ItemStack;
 import com.wildforge.item.ItemType;
+import com.wildforge.content.ItemCatalog;
+import com.wildforge.content.ItemDefinition;
+import com.wildforge.content.ResourceId;
+import com.wildforge.content.ItemCatalog;
+import com.wildforge.content.ItemDefinition;
+import com.wildforge.content.ResourceId;
 import org.lwjgl.glfw.GLFW;
 
 /** Owns item slots, cursor stack, hotbar selection, and inventory operations. */
@@ -65,23 +71,31 @@ public final class Inventory {
     }
 
     public int getItemCount(ItemType itemType) {
+        return itemType == null ? 0 : getItemCount(ItemCatalog.legacy(itemType));
+    }
+
+    public int getItemCount(ItemDefinition itemType) {
         if (itemType == null) return 0;
         int total = 0;
         for (ItemStack stack : slots) {
-            if (stack != null && !stack.isEmpty() && stack.getItemType() == itemType) total += stack.getCount();
+            if (stack != null && !stack.isEmpty() && stack.itemId().equals(itemType.getId())) total += stack.getCount();
         }
         return total;
     }
 
     public boolean canAddItem(ItemType itemType) { return canAddItem(itemType, 1); }
+    public boolean canAddItem(ItemDefinition itemType) { return canAddItem(itemType, 1); }
 
     public boolean canAddItem(ItemType itemType, int amount) {
+        return itemType != null && canAddItem(ItemCatalog.legacy(itemType), amount);
+    }
+    public boolean canAddItem(ItemDefinition itemType, int amount) {
         if (itemType == null || amount <= 0) return false;
         int availableSpace = 0;
         int maxStackSize = itemType.getMaxStackSize();
         for (ItemStack stack : slots) {
             if (stack == null || stack.isEmpty()) availableSpace += maxStackSize;
-            else if (stack.getItemType() == itemType) availableSpace += maxStackSize - stack.getCount();
+            else if (stack.itemId().equals(itemType.getId())) availableSpace += maxStackSize - stack.getCount();
             if (availableSpace >= amount) return true;
         }
         return false;
@@ -89,11 +103,14 @@ public final class Inventory {
 
     /** All-or-nothing insertion prevents callers from duplicating partial stacks. */
     public boolean addItem(ItemType itemType, int amount) {
+        return itemType != null && addItem(ItemCatalog.legacy(itemType), amount);
+    }
+    public boolean addItem(ItemDefinition itemType, int amount) {
         if (!canAddItem(itemType, amount)) return false;
         int remaining = amount;
         int maxStackSize = itemType.getMaxStackSize();
         for (ItemStack stack : slots) {
-            if (stack == null || stack.isEmpty() || stack.getItemType() != itemType || stack.getCount() >= maxStackSize) continue;
+            if (stack == null || stack.isEmpty() || !stack.itemId().equals(itemType.getId()) || stack.getCount() >= maxStackSize) continue;
             int moved = Math.min(remaining, maxStackSize - stack.getCount());
             stack.setCount(stack.getCount() + moved);
             remaining -= moved;
@@ -110,6 +127,9 @@ public final class Inventory {
     }
 
     public boolean removeItem(ItemType itemType, int amount) {
+        return itemType != null && removeItem(ItemCatalog.legacy(itemType), amount);
+    }
+    public boolean removeItem(ItemDefinition itemType, int amount) {
         if (itemType == null || amount <= 0 || getItemCount(itemType) < amount) return false;
         int remaining = amount;
         int selectedIndex = HOTBAR_START_INDEX + selectedHotbarSlot;
@@ -121,9 +141,9 @@ public final class Inventory {
         return remaining == 0;
     }
 
-    private int removeFromSlot(int slot, ItemType itemType, int amount) {
+    private int removeFromSlot(int slot, ItemDefinition itemType, int amount) {
         ItemStack stack = slots[slot];
-        if (stack == null || stack.isEmpty() || stack.getItemType() != itemType || amount <= 0) return amount;
+        if (stack == null || stack.isEmpty() || !stack.itemId().equals(itemType.getId()) || amount <= 0) return amount;
         int removed = Math.min(amount, stack.getCount());
         stack.setCount(stack.getCount() - removed);
         if (stack.isEmpty()) slots[slot] = null;
@@ -132,7 +152,7 @@ public final class Inventory {
 
     public void returnCursorStackToInventory() {
         if (cursorStack == null || cursorStack.isEmpty()) { cursorStack = null; return; }
-        if (addItem(cursorStack.getItemType(), cursorStack.getCount())) cursorStack = null;
+        if (addItem(cursorStack.definition(), cursorStack.getCount())) cursorStack = null;
     }
 
     public void clickSlot(int slot, boolean rightClick) {
@@ -149,7 +169,7 @@ public final class Inventory {
             if (target == null) return;
             if (rightClick) {
                 int take = (target.getCount() + 1) / 2;
-                cursorStack = new ItemStack(target.getItemType(), take);
+                cursorStack = new ItemStack(target.definition(), take);
                 target.setCount(target.getCount() - take);
             } else {
                 cursorStack = target;
@@ -161,7 +181,7 @@ public final class Inventory {
 
         if (target == null) {
             if (rightClick) {
-                slots[slot] = new ItemStack(cursorStack.getItemType(), 1);
+                slots[slot] = new ItemStack(cursorStack.definition(), 1);
                 cursorStack.setCount(cursorStack.getCount() - 1);
             } else {
                 slots[slot] = cursorStack;
@@ -171,8 +191,8 @@ public final class Inventory {
             return;
         }
 
-        if (target.getItemType() == cursorStack.getItemType()) {
-            int space = target.getItemType().getMaxStackSize() - target.getCount();
+        if (target.sameItem(cursorStack)) {
+            int space = target.maxStackSize() - target.getCount();
             if (space <= 0) return;
             int moved = rightClick ? 1 : Math.min(space, cursorStack.getCount());
             moved = Math.min(moved, space);

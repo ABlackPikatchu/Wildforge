@@ -8,7 +8,7 @@ import java.util.Objects;
  */
 public final class WorldGenerator {
     /** New-world generation format; increment when terrain rules change incompatibly. */
-    public static final int CURRENT_REVISION = 9;
+    public static final int CURRENT_REVISION = 10;
     private static final long HILLS = 0x20beefL;
     private static final long DETAIL = 0x40f00dL;
     private static final long TREES = 0xa0abcdL;
@@ -317,7 +317,7 @@ public final class WorldGenerator {
         return caveShapes.carved(x,y,z,surfaceY);
     }
 
-    /** One tree candidate per 8x8 world-cell, independent of chunk-loading order. */
+    /** One jittered tree candidate per 7x7 world-cell, independent of chunk-loading order. */
     public Tree treeForCell(int cellX, int cellZ) {
         int x = cellX * TREE_CELL_SIZE + (int)(noise.unit(cellX, 0, cellZ, TREES) * TREE_CELL_SIZE);
         int z = cellZ * TREE_CELL_SIZE + (int)(noise.unit(cellX, 1, cellZ, TREES) * TREE_CELL_SIZE);
@@ -331,6 +331,21 @@ public final class WorldGenerator {
         double cluster = noise.fbm2(x/placements.treePatchScale(),z/placements.treePatchScale(),3,TREES ^ 0x771aL);
         double chance=placements.treeChance(profile,settings.treeDensity(),local,cluster);
         if (noise.unit(cellX, 2, cellZ, TREES) >= chance) return null;
+        // Deterministic competing-candidate suppression: nearby trees cannot
+        // occupy the same 2-3-block gap even when separate cells place anchors
+        // at their touching edges. Higher-priority anchors win across seams.
+        int spacing=placements.treeMinSpacing();
+        double priority=noise.unit(cellX,8,cellZ,TREES);
+        for(int ox=-1;ox<=1;ox++)for(int oz=-1;oz<=1;oz++){
+            if(ox==0&&oz==0)continue;
+            int nx=cellX+ox,nz=cellZ+oz;
+            int ax=nx*TREE_CELL_SIZE+(int)(noise.unit(nx,0,nz,TREES)*TREE_CELL_SIZE);
+            int az=nz*TREE_CELL_SIZE+(int)(noise.unit(nx,1,nz,TREES)*TREE_CELL_SIZE);
+            int dx=ax-x,dz=az-z;
+            if(dx*dx+dz*dz>=spacing*spacing)continue;
+            double other=noise.unit(nx,8,nz,TREES);
+            if(other>priority||(other==priority&&(nx<cellX||(nx==cellX&&nz<cellZ))))return null;
+        }
         String tree = BiomeProfile.chooseFeature(profile.trees(), noise.unit(cellX, 3, cellZ, TREES));
         if (tree == null) return null;
         TreeType type = TreeType.valueOf(tree.toUpperCase(java.util.Locale.ROOT));

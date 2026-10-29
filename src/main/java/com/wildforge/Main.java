@@ -106,7 +106,7 @@ public final class Main implements InputController.Callbacks {
     private final StringBuilder creativeSearch = new StringBuilder();
     private int creativePage = 0;
     private int creativeCategory = 0;
-    private com.wildforge.item.ItemType creativeDragging;
+    private com.wildforge.content.ItemDefinition creativeDragging;
     private int creativeDraggingCount=64;
     private String newWorldNamePending;
     private boolean focusRetryPending = true;
@@ -132,6 +132,9 @@ public final class Main implements InputController.Callbacks {
         try {
             ContentLoader.Content content = ContentLoader.loadBuiltIn();
             ContentLoader.validateLegacyIds(content);
+            com.wildforge.content.ItemCatalog.install(content.items());
+            com.wildforge.content.BlockCatalog.install(content.blocks());
+            com.wildforge.world.BlockModels.install(content.blocks());
             gameContent = content;
             LanguageManager.install(LanguageManager.loadBuiltIn());
             System.out.println("Content loaded: " + content.blocks().size()
@@ -957,7 +960,7 @@ public final class Main implements InputController.Callbacks {
     }
 
     private int creativeMaxPage() {
-        return Math.max(0,(com.wildforge.ui.CreativeCatalog.items(creativeSearch.toString(),creativeCategory).size()-1)/36);
+        return Math.max(0,(com.wildforge.ui.CreativeCatalog.definitions(creativeSearch.toString(),creativeCategory).size()-1)/36);
     }
     private void handleCreativeMouseButton(long handle, int button, int action) {
         glfwGetWindowSize(handle,windowWidth,windowHeight);
@@ -983,7 +986,7 @@ public final class Main implements InputController.Callbacks {
         } else if(hit<=-100 && hit>=-108){
             player.selectHotbarSlot(-100-hit);
         } else if(hit>=0){
-            var items=com.wildforge.ui.CreativeCatalog.items(creativeSearch.toString(),creativeCategory);
+            var items=com.wildforge.ui.CreativeCatalog.definitions(creativeSearch.toString(),creativeCategory);
             creativePage=Math.min(creativePage,Math.max(0,(items.size()-1)/36));
             int at=creativePage*36+hit;
             if(at<items.size()){
@@ -1173,6 +1176,8 @@ public final class Main implements InputController.Callbacks {
                 renderer.setDebugStreaming(terrain.loadedChunkCount(),
                         terrain.pendingGenerationCount(), terrain.renderDistance());
                 renderer.setDebugWorkload(terrain.pendingMeshCount(),terrain.pendingLodCount(),terrain.readyLodCount(),terrain.residentBlockPayloadBytes());
+                var lightStats=terrain.lightCacheStats();
+                renderer.setDebugLighting(lightStats.residents(),lightStats.hits(),lightStats.fullBakes(),lightStats.localRelights());
             }
             FrameTiming.limitFrameRate(frameStartNanos, settings.fpsLimit());
 

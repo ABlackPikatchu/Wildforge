@@ -5,6 +5,15 @@ import com.wildforge.lang.LanguageManager;
 
 /** Immutable item data. Legacy ItemType IDs and saves are unaffected. */
 public final class ItemDefinition {
+    /** Data-generated tool component. Non-tool items have none. */
+    public record ToolComponent(String kind, int tier, double speed) {
+        public ToolComponent {
+            if (!java.util.Set.of("pickaxe", "axe", "shovel", "hoe", "sword").contains(kind)
+                    || tier < 1 || tier > 16 || !Double.isFinite(speed) || speed <= 0 || speed > 100)
+                throw new IllegalArgumentException("Invalid tool component");
+        }
+    }
+    private final ToolComponent tool;
     private final ResourceId id;
     private final int numericId;
     private final int maxStackSize;
@@ -14,6 +23,12 @@ public final class ItemDefinition {
 
     public ItemDefinition(ResourceId id, int numericId, int maxStackSize, ResourceId placesBlock,
                           ResourceId texture, ResourceId model) {
+        this(id, numericId, maxStackSize, placesBlock, texture, model, null);
+    }
+
+    public ItemDefinition(ResourceId id, int numericId, int maxStackSize, ResourceId placesBlock,
+                          ResourceId texture, ResourceId model, ToolComponent tool) {
+        this.tool = tool;
         this.id = Objects.requireNonNull(id, "id");
         if (numericId < 1 || numericId > 65535) {
             throw new IllegalArgumentException("Item numeric_id must be 1..65535: " + id);
@@ -40,4 +55,5 @@ public final class ItemDefinition {
     public ResourceId getPlacesBlock() { return placesBlock; }
     public ResourceId getTexture() { return texture; }
     public ResourceId getModel() { return model; }
+    public ToolComponent getTool() { return tool; }
 }

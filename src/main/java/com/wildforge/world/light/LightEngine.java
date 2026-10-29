@@ -96,6 +96,77 @@ public final class LightEngine {
             }
         }
     }
+    /** Does swapping these blocks change the ability of sky/block light to travel? */
+    public static boolean sameTransmission(byte before, byte after) {
+        return permeable(before) == permeable(after) && attenuation(before) == attenuation(after);
+    }
+
+    /**
+     * Relight a single emission-only edit without scanning the entire 512-block column.
+     * Rebuild the 15-block influence cube from its real emitters and unchanged outside
+     * boundary. Rebuilding rather than simply propagating handles source removal as
+     * well as source placement (prevents self-sustaining ghost-light cycles).
+     *
+     * Caller must ensure only one voxel changed and that the four boundary slabs
+     * did not change. Returns null for edits that alter opacity/transmission.
+     */
+    public LightEngine withEmissionEdit(byte[] updated, int changed) {
+        if (updated == null || updated.length != LENGTH || changed < 0 || changed >= LENGTH)
+            throw new IllegalArgumentException("Invalid light edit");
+        if (!sameTransmission(blocks[changed], updated[changed])) return null;
+        LightEngine result = new LightEngine(updated);
+        System.arraycopy(sky, 0, result.sky, 0, LENGTH);
+        System.arraycopy(block, 0, result.block, 0, LENGTH);
+        int ey=changed%HEIGHT, ex=changed/(SIZE*HEIGHT), ez=(changed/HEIGHT)%SIZE;
+        int x0=Math.max(0,ex-15),x1=Math.min(SIZE-1,ex+15);
+        int y0=Math.max(0,ey-15),y1=Math.min(HEIGHT-1,ey+15);
+        int z0=Math.max(0,ez-15),z1=Math.min(SIZE-1,ez+15);
+        ArrayDeque<Integer> frontier=new ArrayDeque<>();
+        for(int x=x0;x<=x1;x++)for(int z=z0;z<=z1;z++)for(int y=y0;y<=y1;y++){
+            int i=index(x,y,z);
+            int base=LightEmissionCatalog.emission(updated[i]);
+            result.block[i]=(byte)base;
+            if(base>0)frontier.addLast(i);
+        }
+        // Seed with light that enters from strictly outside the affected cube.
+        // No source edited here can reach beyond 15 steps, so this boundary is
+        // unchanged. Values beyond chunk borders are handled by a full bake.
+        for(int x=x0;x<=x1;x++)for(int z=z0;z<=z1;z++)for(int y=y0;y<=y1;y++){
+            if(x!=x0&&x!=x1&&z!=z0&&z!=z1&&y!=y0&&y!=y1)continue;
+            int i=index(x,y,z);
+            if(!permeable(updated[i]))continue;
+            int best=Byte.toUnsignedInt(result.block[i]);
+            for(int d=0;d<6;d++){
+                int nx=x+DX[d],ny=y+DY[d],nz=z+DZ[d];
+                if(nx>=x0&&nx<=x1&&ny>=y0&&ny<=y1&&nz>=z0&&nz<=z1)continue;
+                if(nx<0||nx>=SIZE||ny<0||ny>=HEIGHT||nz<0||nz>=SIZE)continue;
+                best=Math.max(best, Byte.toUnsignedInt(block[index(nx,ny,nz)])-attenuation(updated[i]));
+            }
+            if(best>Byte.toUnsignedInt(result.block[i])){
+                result.block[i]=(byte)best;
+                frontier.addLast(i);
+            }
+        }
+        while(!frontier.isEmpty()){
+            int current=frontier.removeFirst();
+            int amount=Byte.toUnsignedInt(result.block[current]);
+            if(amount<=1)continue;
+            int y=current%HEIGHT,x=current/(HEIGHT*SIZE),z=(current/HEIGHT)%SIZE;
+            for(int d=0;d<6;d++){
+                int nx=x+DX[d],ny=y+DY[d],nz=z+DZ[d];
+                if(nx<x0||nx>x1||ny<y0||ny>y1||nz<z0||nz>z1)continue;
+                int i=index(nx,ny,nz);
+                if(!permeable(updated[i]))continue;
+                int next=amount-attenuation(updated[i]);
+                if(next>Byte.toUnsignedInt(result.block[i])){
+                    result.block[i]=(byte)next;
+                    frontier.addLast(i);
+                }
+            }
+        }
+        return result;
+    }
+
     public int sky(int x,int y,int z){return sample(sky,x,y,z);}
     public int block(int x,int y,int z){return sample(block,x,y,z);}
     private static int sample(byte[] source,int x,int y,int z){

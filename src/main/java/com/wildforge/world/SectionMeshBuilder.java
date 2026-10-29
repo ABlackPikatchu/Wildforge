@@ -2,6 +2,7 @@ package com.wildforge.world;
 
 import com.wildforge.worldgen.WorldGenerator;
 import com.wildforge.world.light.LightEngine;
+import com.wildforge.world.light.ColumnLightCache;
 import com.wildforge.world.mesh.FloatArrayBuilder;
 import com.wildforge.world.fluid.FluidRules;
 import java.util.*;
@@ -14,9 +15,81 @@ import static com.wildforge.world.TerrainMesh.SECTION_HEIGHT;
 /** Pure CPU geometry builder; never reads mutable live chunks or schedules jobs. */
 final class SectionMeshBuilder {
     private SectionMeshBuilder() {}
+    /** Immutable runtime-state IDs captured on the simulation thread. Neighbor
+     * strips have 16 * WORLD_HEIGHT entries; the center is column-major. */
+    public record NativeStates(int[] center, int[] west, int[] east, int[] north, int[] south) {
+        public NativeStates {
+            if (center == null || center.length != CHUNK_SIZE * CHUNK_SIZE * WORLD_HEIGHT)
+                throw new IllegalArgumentException("Expected complete native-state column");
+            for (int[] edge : new int[][]{west,east,north,south})
+                if (edge != null && edge.length != CHUNK_SIZE * WORLD_HEIGHT)
+                    throw new IllegalArgumentException("Invalid native-state neighbor strip");
+        }
+        int at(int x, int y, int z) {
+            if (y < 0 || y >= WORLD_HEIGHT) return 0;
+            if (x>=0 && x<CHUNK_SIZE && z>=0 && z<CHUNK_SIZE)
+                return center[index(x,y,z)];
+            if (x==-1 && z>=0 && z<CHUNK_SIZE && west!=null)return west[z*WORLD_HEIGHT+y];
+            if (x==CHUNK_SIZE && z>=0 && z<CHUNK_SIZE && east!=null)return east[z*WORLD_HEIGHT+y];
+            if (z==-1 && x>=0 && x<CHUNK_SIZE && north!=null)return north[x*WORLD_HEIGHT+y];
+            if (z==CHUNK_SIZE && x>=0 && x<CHUNK_SIZE && south!=null)return south[x*WORLD_HEIGHT+y];
+            return 0; // absent neighbor is air for outer-face geometry
+        }
+    }
+    /** Sparse overlays avoid copying 512 KiB of integer IDs for a typical
+     * terrain column, where all blocks already fit the byte material palette. */
+    public record StateOverrides(Map<Integer,Integer> center,Map<Integer,Integer> west,
+                                 Map<Integer,Integer> east,Map<Integer,Integer> north,
+                                 Map<Integer,Integer> south) {
+        public StateOverrides {
+            center=Map.copyOf(center);
+            west=Map.copyOf(west);
+            east=Map.copyOf(east);
+            north=Map.copyOf(north);
+            south=Map.copyOf(south);
+        }
+        int at(int x,int y,int z) {
+            if(y<0 || y>=WORLD_HEIGHT)return -1;
+            if(x>=0 && x<CHUNK_SIZE && z>=0 && z<CHUNK_SIZE)
+                return center.getOrDefault(index(x,y,z),-1);
+            if(x==-1 && z>=0 && z<CHUNK_SIZE)return west.getOrDefault(z*WORLD_HEIGHT+y,-1);
+            if(x==CHUNK_SIZE && z>=0 && z<CHUNK_SIZE)return east.getOrDefault(z*WORLD_HEIGHT+y,-1);
+            if(z==-1 && x>=0 && x<CHUNK_SIZE)return north.getOrDefault(x*WORLD_HEIGHT+y,-1);
+            if(z==CHUNK_SIZE && x>=0 && x<CHUNK_SIZE)return south.getOrDefault(x*WORLD_HEIGHT+y,-1);
+            return -1;
+        }
+    }
     public record Snapshot(int cx, int cz, byte[] blocks, byte[] west, byte[] east, byte[] north, byte[] south,
                            Map<Integer,Byte> flows, Map<Integer,Byte> westFlows, Map<Integer,Byte> eastFlows,
-                           Map<Integer,Byte> northFlows, Map<Integer,Byte> southFlows, WorldGenerator generator) {}
+                           Map<Integer,Byte> northFlows, Map<Integer,Byte> southFlows, WorldGenerator generator,
+                           NativeStates states, StateOverrides overrides) {
+        /** Old tests and transitional byte-worldgen clients can still supply legacy snapshots. */
+        public Snapshot(int cx,int cz,byte[] blocks,byte[] west,byte[] east,byte[] north,byte[] south,
+                        Map<Integer,Byte> flows,Map<Integer,Byte> westFlows,Map<Integer,Byte> eastFlows,
+                        Map<Integer,Byte> northFlows,Map<Integer,Byte> southFlows,WorldGenerator generator) {
+            this(cx,cz,blocks,west,east,north,south,flows,westFlows,eastFlows,northFlows,southFlows,generator,null,null);
+        }
+        public Snapshot(int cx,int cz,byte[] blocks,byte[] west,byte[] east,byte[] north,byte[] south,
+                        Map<Integer,Byte> flows,Map<Integer,Byte> westFlows,Map<Integer,Byte> eastFlows,
+                        Map<Integer,Byte> northFlows,Map<Integer,Byte> southFlows,WorldGenerator generator,
+                        NativeStates states) {
+            this(cx,cz,blocks,west,east,north,south,flows,westFlows,eastFlows,northFlows,southFlows,generator,states,null);
+        }
+        int stateIdAt(int x,int y,int z) {
+            if (y<0 || y>=WORLD_HEIGHT) return 0;
+            if (states!=null) return states.at(x,y,z);
+            if(overrides!=null){int id=overrides.at(x,y,z);if(id>=0)return id;}
+            byte[] source;
+            int i;
+            if(x>=0 && x<CHUNK_SIZE && z>=0 && z<CHUNK_SIZE){source=blocks;i=index(x,y,z);}
+            else if(x==-1 && z>=0 && z<CHUNK_SIZE){source=west;i=z*WORLD_HEIGHT+y;}
+            else if(x==CHUNK_SIZE && z>=0 && z<CHUNK_SIZE){source=east;i=z*WORLD_HEIGHT+y;}
+            else if(z==-1 && x>=0 && x<CHUNK_SIZE){source=north;i=x*WORLD_HEIGHT+y;}
+            else if(z==CHUNK_SIZE && x>=0 && x<CHUNK_SIZE){source=south;i=x*WORLD_HEIGHT+y;}
+            else return 0;
+            return source==null ? 0 : Byte.toUnsignedInt(source[i]);
+        }
+    }
     private static final byte LEGACY_FLOW_LEVEL=6;
     private static int index(int x,int y,int z){ return ChunkCoordinates.localIndex(x,y,z); }
     private static int snapshotFluidLevel(byte type,Map<Integer,Byte> levels,int i) {
@@ -37,9 +110,14 @@ final class SectionMeshBuilder {
     }
 
     static float[][] buildSelectedMeshes(Snapshot snap,BitSet sections) {
+        return buildSelectedMeshes(snap,sections,null,0);
+    }
+    static float[][] buildSelectedMeshes(Snapshot snap,BitSet sections,ColumnLightCache cache,int generation) {
         float[][] built=new float[SECTION_COUNT*2][];
-        // One read-only light volume per mesh job, reused for its sections.
-        LightEngine light=LightEngine.bake(snap.blocks(),snap.west(),snap.east(),snap.north(),snap.south());
+        // Light is cached across section jobs, not re-baked for every dirty section.
+        LightEngine light=cache==null
+                ?LightEngine.bake(snap.blocks(),snap.west(),snap.east(),snap.north(),snap.south())
+                :cache.get(snap.cx(),snap.cz(),snap.blocks(),snap.west(),snap.east(),snap.north(),snap.south(),generation);
         for(int i=sections.nextSetBit(0);i>=0;i=sections.nextSetBit(i+1)) {
             if(Thread.currentThread().isInterrupted())throw new CancellationException();
             float[][] layers=buildSectionLayers(snap,i);
@@ -76,6 +154,24 @@ final class SectionMeshBuilder {
     private static boolean fluidId(byte id) {
         return id==BlockType.WATER.id||id==BlockType.LAVA.id||
                id==BlockType.FLOWING_WATER.id||id==BlockType.FLOWING_LAVA.id;
+    }
+    /** All face decisions use the native state registry, never collapsed byte IDs. */
+    private static boolean faceVisible(Snapshot snap,int x,int y,int z,int dx,int dy,int dz) {
+        int currentId=snap.stateIdAt(x,y,z);
+        int neighborId=snap.stateIdAt(x+dx,y+dy,z+dz);
+        if(currentId==neighborId && currentId!=0)return false;
+        BlockState current=BlockStateRegistry.GLOBAL.byId(currentId);
+        BlockState neighbor=BlockStateRegistry.GLOBAL.byId(neighborId);
+        if(neighbor.toLegacyBlock()==BlockType.AIR)return true;
+        BlockModels.Model model=BlockModels.modelFor(current);
+        BlockModels.Model adjacent=BlockModels.modelFor(neighbor);
+        if(model.pass()==BlockModels.Pass.CUTOUT && current.resourceId().equals(neighbor.resourceId()))return false;
+        if(model.shape()==BlockModels.Shape.FLUID || current.toLegacyBlock().isFluid()) {
+            if(adjacent.shape()!=BlockModels.Shape.FLUID && !neighbor.toLegacyBlock().isFluid())return false;
+            return current.resourceId().equals(neighbor.resourceId()) ? false : true;
+        }
+        if(adjacent.shape()==BlockModels.Shape.FLUID || neighbor.toLegacyBlock().isFluid())return true;
+        return !adjacent.fullCubeOcclusion();
     }
     private static boolean faceVisible(byte current,byte neighbor) {
         if(neighbor==BlockType.AIR.id)return true;
@@ -155,21 +251,26 @@ final class SectionMeshBuilder {
             byte[] westSource=lx==0?westBlocks:blocks;
             byte[] eastSource=lx==CHUNK_SIZE-1?eastBlocks:blocks;
             for(int y=section*SECTION_HEIGHT;y<(section+1)*SECTION_HEIGHT;y++){
-                byte id=blocks[column+y];
-                if(id==air)continue;
-                BlockType type=BlockType.fromId(id);
-                BlockModels.Shape shape=BlockModels.modelFor(BlockState.fromLegacy(type)).shape();
+                int runtimeId=snap.stateIdAt(lx,y,lz);
+                BlockState runtimeState=BlockStateRegistry.GLOBAL.byId(runtimeId);
+                byte id=runtimeState.toLegacyId();
+                if(runtimeState.resourceId().equals(BlockState.fromLegacy(BlockType.AIR).resourceId()))continue;
+                BlockType type=runtimeState.toLegacyBlock();
+                BlockModels.Shape shape=BlockModels.modelFor(runtimeState).shape();
                 if(type.isSnowLayer()) {
                     float top=y+type.collisionHeight();
                     int x=worldX,z=worldZ,tex=type.getTopTextureLayer();
-                    BlockType above=y==WORLD_HEIGHT-1?BlockType.AIR:BlockType.fromId(blocks[column+y+1]);
+                    BlockType above=y==WORLD_HEIGHT-1?BlockType.AIR:
+                            BlockStateRegistry.GLOBAL.byId(snap.stateIdAt(lx,y+1,lz)).toLegacyBlock();
                     if(above==BlockType.AIR || (above.isSnowLayer() && above.collisionHeight()<type.collisionHeight()))
                         face(data,x,top,z+1,x+1,top,z+1,x+1,top,z,x,top,z,tex,1f);
                     byte[][] neighbors={northSource,southSource,westSource,eastSource};
                     int[] offsets={northColumn+y,southColumn+y,westColumn+y,eastColumn+y};
                     float[] shade={.75f,.85f,.8f,.8f};
                     for(int side=0;side<4;side++) {
-                        BlockType neighbor=neighbors[side]==null?BlockType.AIR:BlockType.fromId(neighbors[side][offsets[side]]);
+                        BlockType neighbor=BlockStateRegistry.GLOBAL.byId(snap.stateIdAt(
+                                lx+(side==2?-1:side==3?1:0),y,
+                                lz+(side==0?-1:side==1?1:0))).toLegacyBlock();
                         float h=neighbor.isSnowLayer()?neighbor.collisionHeight():(neighbor.isSolid()?1f:0f);
                         if(h>=type.collisionHeight())continue;
                         float bottom=y+h;
@@ -204,12 +305,12 @@ final class SectionMeshBuilder {
                     crystalCluster(data,worldX,y,worldZ,type.getSideTextureLayer());
                     continue;
                 }
-                boolean showNorth=northSource==null||faceVisible(id,northSource[northColumn+y]);
-                boolean showSouth=southSource==null||faceVisible(id,southSource[southColumn+y]);
-                boolean showWest=westSource==null||faceVisible(id,westSource[westColumn+y]);
-                boolean showEast=eastSource==null||faceVisible(id,eastSource[eastColumn+y]);
-                boolean showTop=y==WORLD_HEIGHT-1||faceVisible(id,blocks[column+y+1]);
-                boolean showBottom=y==0||faceVisible(id,blocks[column+y-1]);
+                boolean showNorth=faceVisible(snap,lx,y,lz,0,0,-1);
+                boolean showSouth=faceVisible(snap,lx,y,lz,0,0,1);
+                boolean showWest=faceVisible(snap,lx,y,lz,-1,0,0);
+                boolean showEast=faceVisible(snap,lx,y,lz,1,0,0);
+                boolean showTop=faceVisible(snap,lx,y,lz,0,1,0);
+                boolean showBottom=faceVisible(snap,lx,y,lz,0,-1,0);
                 if(!(showNorth||showSouth||showWest||showEast||showTop||showBottom))continue;
                 BlockType block=BlockType.fromId(id);
                 int x=worldX,z=worldZ;
@@ -245,13 +346,13 @@ final class SectionMeshBuilder {
                     if(showBottom)face(fluid,x,y,z,x+1,y,z,x+1,y,z+1,x,y,z+1,block.getBottomTextureLayer(),.72f+anim);
                     continue;
                 }
-                if(showSouth)face(data,x,y,z+1,x+1,y,z+1,x+1,y+1,z+1,x,y+1,z+1,block.textureForFace(BlockModels.Face.SOUTH),.85f);
-                if(showNorth)face(data,x+1,y,z,x,y,z,x,y+1,z,x+1,y+1,z,block.textureForFace(BlockModels.Face.NORTH),.75f);
-                if(showEast)face(data,x+1,y,z+1,x+1,y,z,x+1,y+1,z,x+1,y+1,z+1,block.textureForFace(BlockModels.Face.EAST),.8f);
-                if(showWest)face(data,x,y,z,x,y,z+1,x,y+1,z+1,x,y+1,z,block.textureForFace(BlockModels.Face.WEST),.8f);
-                if(showTop)face(data,x,y+1,z+1,x+1,y+1,z+1,x+1,y+1,z,x,y+1,z,block.textureForFace(BlockModels.Face.UP),1f);
+                if(showSouth)face(data,x,y,z+1,x+1,y,z+1,x+1,y+1,z+1,x,y+1,z+1,BlockModels.textureForFace(runtimeState,BlockModels.Face.SOUTH),.85f);
+                if(showNorth)face(data,x+1,y,z,x,y,z,x,y+1,z,x+1,y+1,z,BlockModels.textureForFace(runtimeState,BlockModels.Face.NORTH),.75f);
+                if(showEast)face(data,x+1,y,z+1,x+1,y,z,x+1,y+1,z,x+1,y+1,z+1,BlockModels.textureForFace(runtimeState,BlockModels.Face.EAST),.8f);
+                if(showWest)face(data,x,y,z,x,y,z+1,x,y+1,z+1,x,y+1,z,BlockModels.textureForFace(runtimeState,BlockModels.Face.WEST),.8f);
+                if(showTop)face(data,x,y+1,z+1,x+1,y+1,z+1,x+1,y+1,z,x,y+1,z,BlockModels.textureForFace(runtimeState,BlockModels.Face.UP),1f);
                 if(showBottom)face(data,x,y,z,x+1,y,z,x+1,y,z+1,x,y,z+1,
-                        block.textureForFace(BlockModels.Face.DOWN),.55f);
+                        BlockModels.textureForFace(runtimeState,BlockModels.Face.DOWN),.55f);
             }
         }
         appendFoliage(snap,data,section);

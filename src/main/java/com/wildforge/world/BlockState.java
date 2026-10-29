@@ -1,16 +1,29 @@
 package com.wildforge.world;
 
 import java.util.Objects;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.Collections;
+import com.wildforge.content.ResourceId;
 
 /**
  * Logical block identity plus orientation. Logs are ONE logical wood block
- * with an axis property, even though legacy byte storage still uses three
- * different numeric encodings. Other properties can be added through a
- * versioned codec later, without renumbering the existing block catalog.
- *
- * Immutable and cached for all currently representable legacy states.
+ * with an axis property. Other properties are stored in a sorted immutable map,
+ * with integer runtime IDs and stable named save identities. Existing enum IDs
+ * are compatibility aliases for worldgen, mesh building and older save data.
  */
-public record BlockState(BlockType block, Axis axis) {
+public record BlockState(BlockType block, Axis axis, Map<String,String> properties, ResourceId resourceId) {
+    public BlockState(BlockType block, Axis axis, Map<String,String> properties) {
+        this(block, axis, properties, new ResourceId("wildforge", block.name().toLowerCase(java.util.Locale.ROOT)));
+    }
+    /** Create a registered data-only block. The legacy material is a temporary geometry fallback. */
+    public static BlockState registered(ResourceId id, BlockType renderFallback) {
+        Objects.requireNonNull(id, "id");
+        Objects.requireNonNull(renderFallback, "renderFallback");
+        return new BlockState(renderFallback, Axis.NONE, Map.of(), id);
+    }
+
+    public BlockState(BlockType block, Axis axis) { this(block, axis, Map.of()); }
     public enum Axis {
         NONE, X, Y, Z;
         /** Face normal axis: 0=X, 1=Y, 2=Z. */
@@ -36,10 +49,21 @@ public record BlockState(BlockType block, Axis axis) {
     public BlockState {
         Objects.requireNonNull(block, "block");
         Objects.requireNonNull(axis, "axis");
+        Objects.requireNonNull(properties, "properties");
+        Objects.requireNonNull(resourceId, "resourceId");
+        TreeMap<String,String> validated = new TreeMap<>();
+        for (var prop : properties.entrySet()) {
+            if (!prop.getKey().matches("[a-z][a-z0-9_]*") ||
+                prop.getValue() == null || !prop.getValue().matches("[a-zA-Z0-9_.-]+"))
+                throw new IllegalArgumentException("Invalid state property: " + prop);
+            if ("axis".equals(prop.getKey())) throw new IllegalArgumentException("Axis is an intrinsic log property");
+            validated.put(prop.getKey(), prop.getValue());
+        }
+        properties = Collections.unmodifiableMap(validated);
         if (block != canonical(block))
             throw new IllegalArgumentException("Use canonical logical block, not legacy axis ID: " + block);
         boolean log = canonicalIsLog(block);
-        if (log == (axis == Axis.NONE))
+        if (log == (axis == Axis.NONE) && resourceId.getPath().equals(block.name().toLowerCase(java.util.Locale.ROOT)))
             throw new IllegalArgumentException("Axis must be X/Y/Z for logs and NONE for other blocks");
     }
 
@@ -57,10 +81,62 @@ public record BlockState(BlockType block, Axis axis) {
 
     public BlockState withAxis(Axis newAxis) {
         if (!isLog()) return this;
-        return fromLegacy(encodeLog(block, newAxis));
+        return new BlockState(block, newAxis, properties, resourceId);
     }
 
-    /** Encode with the original byte ID, preserving v1-v4 save compatibility. */
+    /** Additional states can be stored without reserving new BlockType enum members. */
+    public BlockState withProperty(String name, String value) {
+        TreeMap<String,String> next = new TreeMap<>(properties);
+        next.put(name, value);
+        return new BlockState(block, axis, next, resourceId);
+    }
+
+    /** Stable on-disk identity. Runtime state numbers are NEVER written to disk. */
+    public String persistentKey() {
+        StringBuilder result = new StringBuilder(resourceId.toString());
+        TreeMap<String,String> values = new TreeMap<>(properties);
+        if (isLog()) values.put("axis", axis.name().toLowerCase(java.util.Locale.ROOT));
+        if (!values.isEmpty()) {
+            result.append('[');
+            boolean first = true;
+            for (var entry : values.entrySet()) {
+                if (!first) result.append(',');
+                result.append(entry.getKey()).append('=').append(entry.getValue());
+                first = false;
+            }
+            result.append(']');
+        }
+        return result.toString();
+    }
+
+    public static BlockState fromPersistentKey(String key) {
+        Objects.requireNonNull(key, "key");
+        int bracket = key.indexOf('[');
+        if (bracket >= 0 && (!key.endsWith("]") || bracket == key.length() - 2))
+            throw new IllegalArgumentException("Invalid state key: " + key);
+        ResourceId id = ResourceId.parse(bracket < 0 ? key : key.substring(0, bracket));
+        BlockState base = BlockStateRegistry.GLOBAL.baseState(id);
+        TreeMap<String,String> extras = new TreeMap<>();
+        if (bracket >= 0) {
+            String interior = key.substring(bracket + 1, key.length() - 1);
+            if (interior.isBlank()) throw new IllegalArgumentException("Empty state properties");
+            for (String pair : interior.split(",", -1)) {
+                String[] parts = pair.split("=", -1);
+                if (parts.length != 2 || extras.putIfAbsent(parts[0], parts[1]) != null)
+                    throw new IllegalArgumentException("Invalid/duplicate property: " + pair);
+            }
+        }
+        if (base.isLog()) {
+            String direction = extras.remove("axis");
+            if (direction == null) throw new IllegalArgumentException("Missing log axis in " + key);
+            base = base.withAxis(Axis.valueOf(direction.toUpperCase(java.util.Locale.ROOT)));
+        } else if (extras.containsKey("axis")) {
+            throw new IllegalArgumentException("Non-log cannot have an axis: " + key);
+        }
+        return new BlockState(base.block, base.axis, extras, base.resourceId);
+    }
+
+    /** Legacy byte conversion is a *rendering fallback* for extra properties. */
     public BlockType toLegacyBlock() {
         return isLog() ? encodeLog(block, axis) : block;
     }

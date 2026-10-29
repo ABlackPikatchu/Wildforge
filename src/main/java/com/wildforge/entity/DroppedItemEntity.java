@@ -2,6 +2,9 @@
 package com.wildforge.entity;
 
 import com.wildforge.item.ItemType;
+import com.wildforge.content.ItemDefinition;
+import com.wildforge.content.ItemCatalog;
+import com.wildforge.content.ResourceId;
 import com.wildforge.world.TerrainMesh;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -16,14 +19,18 @@ public final class DroppedItemEntity extends Entity {
     private static final float AIR_DRAG_PER_SECOND = 0.70f;
     private static final float STOP_SPEED = 0.08f;
 
-    private final ItemType itemType;
+    private final ItemDefinition itemType;
     private final TerrainMesh terrain;
 
     private int count;
     private boolean grounded;
 
+    public DroppedItemEntity(ItemType itemType,int count,float x,float y,float z,TerrainMesh terrain) {
+        this(ItemCatalog.legacy(itemType),count,x,y,z,terrain);
+    }
+
     public DroppedItemEntity(
-            ItemType itemType,
+            ItemDefinition itemType,
             int count,
             float x,
             float y,
@@ -61,9 +68,11 @@ public final class DroppedItemEntity extends Entity {
         age = savedAge;
     }
 
-    public ItemType getItemType() {
-        return itemType;
-    }
+    /** Compatibility adapter for built-in items. */
+    public ItemType getItemType() { return ItemCatalog.legacyAdapter(itemType.getId()); }
+    public ItemDefinition definition() { return itemType; }
+    public ResourceId itemId() { return itemType.getId(); }
+    public int maxStackSize() { return itemType.getMaxStackSize(); }
 
     public int getCount() {
         return count;
@@ -263,11 +272,11 @@ public final class DroppedItemEntity extends Entity {
             for (int bx = minX; bx <= maxX; bx++) {
                 for (int by = minY; by <= maxY; by++) {
                     for (int bz = minZ; bz <= maxZ; bz++) {
-                        if (!terrain.getBlockAt(bx, by, bz).isSolid()) {
+                        if (!terrain.isSolidAt(bx,by,bz)) {
                             continue;
                         }
 
-                        float top = by + terrain.getBlockAt(bx, by, bz).collisionHeight();
+                        float top = by + terrain.collisionHeightAt(bx,by,bz);
 
                         if (oldBottom >= top - 0.0001f
                                 && nextBottom <= top
@@ -306,7 +315,7 @@ public final class DroppedItemEntity extends Entity {
             for (int bx = minX; bx <= maxX; bx++) {
                 for (int by = minY; by <= maxY; by++) {
                     for (int bz = minZ; bz <= maxZ; bz++) {
-                        if (!terrain.getBlockAt(bx, by, bz).isSolid()) {
+                        if (!terrain.isSolidAt(bx,by,bz)) {
                             continue;
                         }
 
@@ -431,7 +440,7 @@ public final class DroppedItemEntity extends Entity {
                  by <= (int) Math.floor(maxY); by++) {
                 for (int bz = (int) Math.floor(minZ);
                      bz <= (int) Math.floor(maxZ); bz++) {
-                    if (terrain.getBlockAt(bx, by, bz).isSolid()
+                    if (terrain.isSolidAt(bx,by,bz)
                             && overlapsBlockAt(
                                     centerX, centerY, centerZ,
                                     bx, by, bz)) {

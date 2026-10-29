@@ -207,15 +207,16 @@ public final class ContentLoader {
         if (items.getByNumericId(7) != null) {
             throw new IOException("Legacy item numeric ID 7 must remain unused");
         }
-        // Until world storage and inventory are fully registry-backed, every
-        // generated definition must also have an enum-backed runtime entry.
-        // Otherwise a new JSON block can pass validation but never render or
-        // be represented in saves/inventory (the earlier cobblestone bug).
-        if (blocks.size() != BlockType.values().length
-                || items.size() != ItemType.values().length) {
-            throw new IOException("Generated content is not fully registered in runtime enums: "
-                    + blocks.size() + " blocks vs " + BlockType.values().length
-                    + ", " + items.size() + " items vs " + ItemType.values().length);
+        // Block rendering and worldgen still rely on the old numeric block catalog.
+        // Additional item definitions are now supported by registry-keyed inventory
+        // and saves, although creative UI and dropped-entity rendering still need
+        // adapters before custom item entries are fully playable.
+        if (blocks.size() != BlockType.values().length) {
+            throw new IOException("Generated blocks must match the current renderer: "
+                    + blocks.size() + " vs " + BlockType.values().length);
+        }
+        if (items.size() < ItemType.values().length) {
+            throw new IOException("Generated item catalog omits built-in items");
         }
     }
 
@@ -279,14 +280,20 @@ public final class ContentLoader {
                 requiredFloat(json, "hardness"), optionalId(json, "block_item"),
                 optionalId(json, "model"), textures == null ? null : optionalId(textures, "top"),
                 textures == null ? null : optionalId(textures, "side"),
-                textures == null ? null : optionalId(textures, "bottom"), drops);
+                textures == null ? null : optionalId(textures, "bottom"), drops,
+                json.has("mining_tool") ? requiredString(json, "mining_tool") : null,
+                json.has("harvest_tier") ? requiredInt(json, "harvest_tier") : 0);
     }
 
     private static ItemDefinition parseItem(JsonObject json) {
+        JsonObject tool = json.has("tool") ? json.getAsJsonObject("tool") : null;
+        ItemDefinition.ToolComponent component = tool == null ? null :
+                new ItemDefinition.ToolComponent(requiredString(tool, "kind"),
+                        requiredInt(tool, "tier"), requiredFloat(tool, "speed"));
         return new ItemDefinition(requiredId(json, "id"), requiredInt(json, "numeric_id"),
                 requiredInt(json, "max_stack_size"),
                 optionalId(json, "places_block"), optionalId(json, "texture"),
-                optionalId(json, "model"));
+                optionalId(json, "model"), component);
     }
 
     private static void validateReferences(BlockRegistry blocks, ItemRegistry items)

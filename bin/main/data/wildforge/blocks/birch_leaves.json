@@ -4,6 +4,8 @@
   "solid": true,
   "breakable": true,
   "hardness": 0.3,
+  "mining_tool": "hand",
+  "harvest_tier": 0,
   "model": "wildforge:block/leaves",
   "textures": {
     "top": "wildforge:birch_leaves",

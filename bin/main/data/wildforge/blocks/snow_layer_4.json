@@ -4,6 +4,8 @@
   "solid": true,
   "breakable": true,
   "hardness": 0.1,
+  "mining_tool": "shovel",
+  "harvest_tier": 0,
   "model": "wildforge:block/cube",
   "textures": {
     "top": "wildforge:snow",

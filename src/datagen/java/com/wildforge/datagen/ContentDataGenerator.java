@@ -184,10 +184,10 @@ public final class ContentDataGenerator {
         blockWithItem("furnace", 105, 106, 2).textures("furnace_top", "furnace_side", "furnace_side");
         blockWithItem("cactus", 106, 107, 2).textures("cactus_top", "cactus_side", "cactus_side");
         // Physics-managed fluids are not ordinary inventory/placeable blocks.
-        blockWithoutItem("water", 107, false, false, 0).textures("water", "water", "water");
-        blockWithoutItem("lava", 108, false, false, 0).textures("lava", "lava", "lava");
-        blockWithoutItem("flowing_water", 109, false, false, 0).textures("water", "water", "water");
-        blockWithoutItem("flowing_lava", 110, false, false, 0).textures("lava", "lava", "lava");
+        fluidBlock("water", 107).textures("water", "water", "water");
+        fluidBlock("lava", 108).textures("lava", "lava", "lava");
+        fluidBlock("flowing_water", 109).textures("water", "water", "water");
+        fluidBlock("flowing_lava", 110).textures("lava", "lava", "lava");
         // Log orientation variants keep the original block item and drops.
         orientedLog("oak_log_x", 111, "oak_log_block", "oak_log_top", "oak_log_side");
         orientedLog("oak_log_z", 112, "oak_log_block", "oak_log_top", "oak_log_side");
@@ -384,7 +384,9 @@ public final class ContentDataGenerator {
         String model = name.equals("crystal_cluster") ? "block/crystal" :
                 name.endsWith("_leaves") ? "block/leaves" :
                 name.equals("stalactite") || name.equals("stalagmite") ? "block/spike" :
-                name.equals("hanging_roots") ? "block/ceiling_plant" : "block/cross_plant";
+                name.equals("hanging_roots") ? "block/ceiling_plant" :
+                (name.equals("tall_grass_plant") || name.equals("cattail_plant"))
+                    ? "block/tall_cross_plant" : "block/cross_plant";
         block.json.addProperty("model", id(model));
         block.json.addProperty("block_item", id(blockItem));
         JsonArray drops = new JsonArray();
@@ -411,6 +413,13 @@ public final class ContentDataGenerator {
         JsonObject item=new JsonObject();item.addProperty("item",id(drop));
         item.addProperty("count",1);drops.add(item);
         block.json.add("drops",drops);
+    }
+
+    /** Fluids must not be emitted as opaque cubes in the authoritative model data. */
+    private BlockBuilder fluidBlock(String name, int id) {
+        BlockBuilder block=blockWithoutItem(name,id,false,false,0);
+        block.json.addProperty("model",id("block/fluid"));
+        return block;
     }
 
     private BlockBuilder blockWithoutItem(String name, int blockId,
@@ -471,6 +480,29 @@ public final class ContentDataGenerator {
             json.addProperty("texture", id(texture));
             json.addProperty("model", id("item/generated"));
         }
+        // The schema, not the runtime enum name, supplies mining tool statistics.
+        String[] parts = name.split("_", 2);
+        if (parts.length == 2 && java.util.Set.of("wooden", "stone", "iron", "silver", "gold", "diamond").contains(parts[0])
+                && java.util.Set.of("axe", "shovel", "pickaxe", "hoe", "sword").contains(parts[1])) {
+            JsonObject tool = new JsonObject();
+            tool.addProperty("kind", parts[1]);
+            int tier = switch (parts[0]) {
+                case "wooden", "gold" -> 1;
+                case "stone" -> 2;
+                case "iron", "silver" -> 3;
+                default -> 4;
+            };
+            int speed = switch (parts[0]) {
+                case "wooden" -> 2;
+                case "stone" -> 4;
+                case "iron", "silver" -> 6;
+                case "diamond" -> 8;
+                default -> 12;
+            };
+            tool.addProperty("tier", tier);
+            tool.addProperty("speed", speed);
+            json.add("tool", tool);
+        }
         items.add(new FileSpec(itemId, name, json));
     }
 
@@ -492,6 +524,27 @@ public final class ContentDataGenerator {
             json.addProperty("solid", solid);
             json.addProperty("breakable", breakable);
             json.addProperty("hardness", hardness);
+            // Mining behavior belongs to the content definition, never an enum-name lookup at runtime.
+            String upper = name.toUpperCase(java.util.Locale.ROOT);
+            String mining = "hand";
+            if (upper.endsWith("_LOG") || upper.endsWith("_LOG_X") || upper.endsWith("_LOG_Z")
+                    || upper.contains("WOOD") || upper.contains("PLANK") || upper.contains("FURNACE")
+                    || upper.contains("CRAFTING_TABLE")) mining = "axe";
+            else if (upper.contains("DIRT") || upper.contains("GRASS") || upper.contains("SAND")
+                    || upper.contains("GRAVEL") || upper.contains("SNOW") || upper.contains("CLAY")
+                    || upper.contains("MUD") || upper.contains("SILT") || upper.contains("LOAM")
+                    || upper.contains("PEAT")) mining = "shovel";
+            else if (upper.contains("ORE") || upper.contains("STONE") || upper.contains("SLATE")
+                    || upper.contains("ROCK") || upper.contains("BASALT") || upper.contains("GRANITE")
+                    || upper.contains("ANDESITE") || upper.contains("DIORITE") || upper.contains("SCORIA")
+                    || upper.contains("OBSIDIAN") || upper.contains("COBBLE") || upper.contains("GYPSUM")
+                    || upper.contains("CALCITE") || upper.contains("SHALE")) mining = "pickaxe";
+            json.addProperty("mining_tool", mining);
+            int harvestTier = upper.contains("DIAMOND_ORE") || upper.contains("GOLD_ORE")
+                    || upper.contains("OBSIDIAN") ? 3
+                    : upper.contains("IRON_ORE") || upper.contains("SILVER_ORE") ? 2
+                    : upper.contains("COAL_ORE") ? 1 : 0;
+            json.addProperty("harvest_tier", harvestTier);
             if (blockId != 0) {
                 json.addProperty("model", id("block/cube"));
                 textures(name, name, name);
@@ -607,6 +660,7 @@ public final class ContentDataGenerator {
         json.addProperty("dry_plant_multiplier",1.15);
         json.addProperty("bank_plant_chance",0.62);
         json.addProperty("frostspire_treeline_above_sea",94);
+        json.addProperty("tree_min_spacing",3);
         Files.writeString(dir.resolve("feature_placement.json"),GSON.toJson(json)+"\n",StandardCharsets.UTF_8);
     }
 

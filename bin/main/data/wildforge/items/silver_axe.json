@@ -3,5 +3,10 @@
   "numeric_id": 139,
   "max_stack_size": 1,
   "texture": "wildforge:silver_axe",
-  "model": "wildforge:item/generated"
+  "model": "wildforge:item/generated",
+  "tool": {
+    "kind": "axe",
+    "tier": 3,
+    "speed": 6
+  }
 }

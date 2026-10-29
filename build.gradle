@@ -420,3 +420,89 @@ tasks.register('worldgenProfile', JavaExec) {
          (project.findProperty('profileRadius') ?: '512').toString(),
          (project.findProperty('profileStep') ?: '16').toString()
 }
+
+// Phase 7: light-cache correctness, bounded relights and section invalidation.
+tasks.register('phase7LightingCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify cached light reuse, source addition/removal and sky updates'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.phase7.Phase7LightingSmokeTest'
+}
+tasks.register('phase7LightInvalidationCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify vertical dirty-section envelopes for skylight and emission'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.Phase7LightInvalidationSmokeTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('phase7LightingCheck'), tasks.named('phase7LightInvalidationCheck')
+}
+
+tasks.register('phase7VegetationCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify deterministic minimum spacing for generated tree candidates'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.worldgen.Phase7VegetationSmokeTest'
+}
+tasks.register('featureProfile', JavaExec) {
+    group = 'wildforge'
+    description = 'Profile tree species, plants, candidate timing and nearest spacing'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.wildforge.worldgen.FeatureDistributionProfiler'
+    args (project.findProperty('worldSeed') ?: '20261029').toString(),
+         (project.findProperty('profileRadius') ?: '256').toString()
+}
+tasks.named('check') { dependsOn tasks.named('phase7VegetationCheck') }
+
+// Phase 8A: typed block properties, bit-packed 16^3 sections, persistent save identities.
+tasks.register('phase8AStateCheck', JavaExec) {
+    group = 'verification'
+    description = 'Check extended block states, bit-packed storage, and version-6 save palettes'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.Phase8AStateStorageSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('phase8AStateCheck') }
+
+// Phase 8A continuation: registry-backed stacks and JSON-driven mining data.
+tasks.register('phase8AItemCheck', JavaExec) {
+    group = 'verification'
+    description = 'Test inventory identity, stack operations and keyed player save migration'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.item.Phase8AItemMigrationSmokeTest'
+}
+tasks.register('phase8AMetadataCheck', JavaExec) {
+    group = 'verification'
+    description = 'Validate generated mining and tool metadata against runtime behavior'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.item.Phase8AContentMetadataSmokeTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('phase8AItemCheck'), tasks.named('phase8AMetadataCheck')
+}
+
+// Phase 8A completion: registry-driven creative, block models/placement and keyed drop saves.
+tasks.register('phase8ARegistryCompletionCheck', JavaExec) {
+    group = 'verification'
+    description = 'Validate registry-defined creative items, block models, support rules and v1/v2 dropped-item saves'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.content.Phase8ARegistryCompletionSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('phase8ARegistryCompletionCheck') }
+
+// Phase 8A native block identity: generated-content IDs remain typed through meshing.
+tasks.register('phase8ANativeBlocksCheck', JavaExec) {
+    group = 'verification'
+    description = 'Validate namespaced states, palette snapshots, models and chunk-border occlusion'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.Phase8ANativeBlocksSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('phase8ANativeBlocksCheck') }

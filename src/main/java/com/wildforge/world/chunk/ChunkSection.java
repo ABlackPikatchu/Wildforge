@@ -3,74 +3,105 @@ package com.wildforge.world.chunk;
 import java.util.Arrays;
 
 /**
- * Immutable palette-encoded 16x16x16 block section.
- *
- * The layout is (localX * 16 + localZ) * 16 + localY, matching Wildforge's
- * historical column-major save indices. Section updates produce a new section
- * so readers never observe a partially re-encoded palette.
+ * Immutable bit-packed palette of 4096 runtime state IDs. The indices are
+ * (x*16+z)*16+y, matching the existing column data layout. Palette indices
+ * are bit-packed into long words, including boundary-spanning entries.
  */
 public final class ChunkSection {
-    public static final int VOLUME = 16 * 16 * 16;
-    private final byte[] palette;
-    private final byte[] packed;
+    public static final int VOLUME = 4096;
+    private final int[] palette;
+    private final long[] words;
     private final int bits;
 
-    private ChunkSection(byte[] palette, byte[] packed, int bits) {
+    private ChunkSection(int[] palette, long[] words, int bits) {
         this.palette = palette;
-        this.packed = packed;
+        this.words = words;
         this.bits = bits;
     }
 
-    public static ChunkSection encode(byte[] input) {
-        if (input == null || input.length != VOLUME)
-            throw new IllegalArgumentException("Section must contain exactly 4096 blocks");
-        int[] indices = new int[256];
-        Arrays.fill(indices, -1);
-        byte[] unique = new byte[16];
-        int used = 0;
-        for (byte block : input) {
-            int id = block & 255;
-            if (indices[id] >= 0) continue;
-            if (used == 16) return new ChunkSection(new byte[0], input.clone(), 8);
-            indices[id] = used;
-            unique[used++] = block;
-        }
-        if (used == 1) return new ChunkSection(new byte[]{unique[0]}, new byte[0], 0);
-        int width = used <= 2 ? 1 : used <= 4 ? 2 : 4;
-        byte[] data = new byte[(VOLUME * width + 7) / 8];
-        for (int i = 0; i < VOLUME; i++) {
-            int bit = i * width;
-            data[bit >>> 3] |= (byte)(indices[input[i] & 255] << (bit & 7));
-        }
-        return new ChunkSection(Arrays.copyOf(unique, used), data, width);
+    public static ChunkSection encode(byte[] bytes) {
+        if (bytes == null || bytes.length != VOLUME)
+            throw new IllegalArgumentException("Section must contain 4096 blocks");
+        int[] ids = new int[VOLUME];
+        for (int i = 0; i < VOLUME; i++) ids[i] = Byte.toUnsignedInt(bytes[i]);
+        return encodeStates(ids);
     }
 
-    public byte get(int index) {
+    public static ChunkSection encodeStates(int[] ids) {
+        if (ids == null || ids.length != VOLUME)
+            throw new IllegalArgumentException("Section must contain 4096 block states");
+        java.util.LinkedHashMap<Integer,Integer> lookup = new java.util.LinkedHashMap<>();
+        for (int id : ids) {
+            if (id < 0 || id >= (1 << 20)) throw new IllegalArgumentException("Invalid state ID: " + id);
+            lookup.computeIfAbsent(id, ignored -> lookup.size());
+        }
+        int[] palette = new int[lookup.size()];
+        for (var entry : lookup.entrySet()) palette[entry.getValue()] = entry.getKey();
+        if (palette.length == 1) return new ChunkSection(palette, new long[0], 0);
+        int bits = 32 - Integer.numberOfLeadingZeros(palette.length - 1);
+        long[] packed = new long[(VOLUME * bits + 63) >>> 6];
+        for (int i = 0; i < VOLUME; i++) {
+            long index = lookup.get(ids[i]);
+            int bitOffset = i * bits, wordIndex = bitOffset >>> 6, shift = bitOffset & 63;
+            packed[wordIndex] |= index << shift;
+            if (shift + bits > 64) packed[wordIndex + 1] |= index >>> (64 - shift);
+        }
+        return new ChunkSection(palette, packed, bits);
+    }
+
+    public int stateIdAt(int index) {
         if (index < 0 || index >= VOLUME) throw new IndexOutOfBoundsException(index);
         if (bits == 0) return palette[0];
-        if (bits == 8) return packed[index];
-        int bit = index * bits;
-        int paletteIndex = ((packed[bit >>> 3] & 255) >>> (bit & 7)) & ((1 << bits) - 1);
-        return palette[paletteIndex];
+        int offset = index * bits, word = offset >>> 6, shift = offset & 63;
+        long data = words[word] >>> shift;
+        if (shift + bits > 64) data |= words[word + 1] << (64 - shift);
+        return palette[(int)(data & ((1L << bits) - 1))];
     }
 
-    public ChunkSection with(int index, byte block) {
-        if (get(index) == block) return this;
-        byte[] copy = decode();
-        copy[index] = block;
-        return encode(copy);
-    }
-
-    public byte[] decode() {
-        if (bits == 8) return packed.clone();
-        byte[] result = new byte[VOLUME];
-        if (bits == 0) {
-            Arrays.fill(result, palette[0]);
-        } else {
-            for (int i = 0; i < VOLUME; i++) result[i] = get(i);
+    public ChunkSection withStateId(int index, int id) {
+        if (id < 0 || id >= (1 << 20)) throw new IllegalArgumentException("Invalid state ID: " + id);
+        if (stateIdAt(index) == id) return this;
+        // Most gameplay edits reuse a material already in this section. Change
+        // one packed palette index without allocating/encoding 4096 values.
+        for (int paletteIndex = 0; paletteIndex < palette.length; paletteIndex++) {
+            if (palette[paletteIndex] != id) continue;
+            if (bits == 0) return this; // The only palette value was handled above.
+            long[] updated = words.clone();
+            int offset = index * bits, word = offset >>> 6, shift = offset & 63;
+            long mask = (1L << bits) - 1L;
+            updated[word] = (updated[word] & ~(mask << shift)) | ((long)paletteIndex << shift);
+            if (shift + bits > 64) {
+                int remaining = shift + bits - 64;
+                long upperMask = (1L << remaining) - 1;
+                updated[word + 1] = (updated[word + 1] & ~upperMask) |
+                        ((long)paletteIndex >>> (64 - shift));
+            }
+            return new ChunkSection(palette, updated, bits);
         }
-        return result;
+        int[] values = decodeStateIds();
+        values[index] = id;
+        return encodeStates(values);
     }
 
-    public int storedBytes() { return palette.length + packed.length; }
+    public int[] decodeStateIds() {
+        int[] values = new int[VOLUME];
+        if (bits == 0) Arrays.fill(values, palette[0]);
+        else for (int i = 0; i < values.length; i++) values[i] = stateIdAt(i);
+        return values;
+    }
+
+    // Transitional adapters for existing byte-oriented mesh and worldgen APIs.
+    public byte get(int index) {
+        int stateId = stateIdAt(index);
+        if (stateId > 255) throw new IllegalStateException("State " + stateId + " requires the typed state API");
+        return (byte)stateId;
+    }
+    public ChunkSection with(int index, byte value) { return withStateId(index, Byte.toUnsignedInt(value)); }
+    public byte[] decode() {
+        byte[] values = new byte[VOLUME];
+        for (int i = 0; i < values.length; i++) values[i] = get(i);
+        return values;
+    }
+    public int paletteSize() { return palette.length; }
+    public int storedBytes() { return palette.length * Integer.BYTES + words.length * Long.BYTES; }
 }

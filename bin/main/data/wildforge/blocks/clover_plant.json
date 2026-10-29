@@ -4,6 +4,8 @@
   "solid": false,
   "breakable": true,
   "hardness": 0.3,
+  "mining_tool": "hand",
+  "harvest_tier": 0,
   "model": "wildforge:block/cross_plant",
   "textures": {
     "top": "wildforge:clover",

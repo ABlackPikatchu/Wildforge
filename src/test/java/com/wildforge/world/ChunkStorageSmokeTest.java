@@ -10,7 +10,7 @@ public final class ChunkStorageSmokeTest {
         byte[] solid = new byte[ChunkSection.VOLUME];
         Arrays.fill(solid, (byte)127);
         ChunkSection base = ChunkSection.encode(solid);
-        require(base.storedBytes() == 1, "single-value compression");
+        require(base.storedBytes() == Integer.BYTES, "single-value compression");
         require(base.get(4095) == 127, "max section index");
         ChunkSection changed = base.with(0, (byte)-128);
         require(base.get(0) == 127, "copy-on-write immutability");

@@ -3,5 +3,10 @@
   "numeric_id": 137,
   "max_stack_size": 1,
   "texture": "wildforge:gold_shovel",
-  "model": "wildforge:item/generated"
+  "model": "wildforge:item/generated",
+  "tool": {
+    "kind": "shovel",
+    "tier": 1,
+    "speed": 12
+  }
 }

@@ -4,7 +4,9 @@
   "solid": false,
   "breakable": true,
   "hardness": 0.3,
-  "model": "wildforge:block/cross_plant",
+  "mining_tool": "shovel",
+  "harvest_tier": 0,
+  "model": "wildforge:block/tall_cross_plant",
   "textures": {
     "top": "wildforge:tall_grass",
     "side": "wildforge:tall_grass",

@@ -3,5 +3,10 @@
   "numeric_id": 140,
   "max_stack_size": 1,
   "texture": "wildforge:silver_hoe",
-  "model": "wildforge:item/generated"
+  "model": "wildforge:item/generated",
+  "tool": {
+    "kind": "hoe",
+    "tier": 3,
+    "speed": 6
+  }
 }

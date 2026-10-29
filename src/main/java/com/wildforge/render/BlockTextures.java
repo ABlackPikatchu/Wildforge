@@ -266,6 +266,20 @@ public final class BlockTextures implements AutoCloseable {
         "/textures/lichen_patch.png"
     };
 
+    /** Resolve registry textures using actual texture-array entries, not enum IDs. */
+    public static int textureLayer(com.wildforge.content.ResourceId texture) {
+        if (texture==null || !texture.getNamespace().equals("wildforge")) return -1;
+        String path=texture.getPath();
+        String filename="/textures/"+path+(path.endsWith(".png")?"":".png");
+        for(int i=0;i<TEXTURE_PATHS.length;i++)
+            if(TEXTURE_PATHS[i].equals(filename)) return i;
+        return -1;
+    }
+
+    public static int itemTextureLayer(com.wildforge.content.ItemDefinition item) {
+        return item==null ? -1 : textureLayer(item.getTexture());
+    }
+
     /** Icon layers appended after terrain textures. IDs remain unchanged. */
     public static int itemTextureLayer(com.wildforge.item.ItemType item) {
         if(item==null)return -1;

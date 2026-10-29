@@ -4,6 +4,8 @@
   "solid": true,
   "breakable": false,
   "hardness": 999.0,
+  "mining_tool": "pickaxe",
+  "harvest_tier": 0,
   "model": "wildforge:block/cube",
   "textures": {
     "top": "wildforge:bedrock",

@@ -1,6 +1,8 @@
 package com.wildforge.ui;
 
 import com.wildforge.item.ItemType;
+import com.wildforge.content.ItemCatalog;
+import com.wildforge.content.ItemDefinition;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -35,10 +37,35 @@ public final class CreativeCatalog {
             if(category>0 && category(item)!=category)continue;
             result.add(item);
         }
-        result.sort(Comparator.comparingInt(CreativeCatalog::category)
+        result.sort(Comparator.<ItemType>comparingInt(CreativeCatalog::category)
             .thenComparing(ItemType::getDisplayName).thenComparingInt(ItemType::getId));
         return List.copyOf(result);
     }
+    /** Runtime creative browser: includes every registered item, not only ItemType values. */
+    public static List<ItemDefinition> definitions(String search, int category) {
+        String q=search==null?"":search.strip().toLowerCase(Locale.ROOT).replace(' ','_');
+        List<ItemDefinition> result=new ArrayList<>();
+        for(ItemDefinition item:ItemCatalog.all()) {
+            if(!item.getId().getPath().contains(q) &&
+                    !item.getDisplayName().toLowerCase(Locale.ROOT).replace(' ','_').contains(q)) continue;
+            if(category>0 && category(item)!=category) continue;
+            result.add(item);
+        }
+        result.sort(Comparator.<ItemDefinition>comparingInt(CreativeCatalog::category)
+                .thenComparing(ItemDefinition::getDisplayName)
+                .thenComparing(ItemDefinition::getId));
+        return List.copyOf(result);
+    }
+
+    public static int category(ItemDefinition item) {
+        if(item==null)return 0;
+        if(item.getTool()!=null)return 5;
+        String n=item.getId().getPath().toUpperCase(Locale.ROOT);
+        if(n.contains("LOG")||n.contains("PLANK")||n.contains("WOOD")||n.contains("LEAVES")||n.contains("CRAFTING_TABLE"))return 2;
+        if(n.contains("FLOWER")||n.contains("TUFT")||n.contains("CRYSTAL_CLUSTER")||n.contains("STALACTITE")||n.contains("STALAGMITE")||n.contains("ROOTS")||n.contains("SPORECAP")||n.contains("REED")||n.contains("GRASS")||n.contains("FERN")||n.contains("SHRUB")||n.contains("MUSHROOM")||n.contains("BUSH")||n.contains("CACTUS")||n.contains("MOSS")||n.contains("LITTER"))return 3;
+        return item.getPlacesBlock()==null?4:1;
+    }
+
     /** -2 previous, -3 next, -10..-15 tabs, -100..-108 hotbar, 0..35 catalog. */
     public static int hit(float x,float y,int w,int h) {
         float left=(w-568f)/2f,top=(h-456f)/2f;
