@@ -1,7 +1,7 @@
 {
   "id": "wildforge:wooden_hoe",
   "numeric_id": 120,
-  "max_stack_size": 64,
+  "max_stack_size": 1,
   "texture": "wildforge:wooden_hoe",
   "model": "wildforge:item/generated"
 }

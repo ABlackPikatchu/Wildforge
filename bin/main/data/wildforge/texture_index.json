@@ -1,6 +1,55 @@
 {
   "textures": [
     {
+      "id": "wildforge:acacia_log_side",
+      "source": "textures/acacia_log_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:acacia_log_top",
+      "source": "textures/acacia_log_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:acacia_planks",
+      "source": "textures/acacia_planks.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:alder_leaves",
+      "source": "textures/alder_leaves.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cutout_cube"
+    },
+    {
+      "id": "wildforge:alder_log_side",
+      "source": "textures/alder_log_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:alder_log_top",
+      "source": "textures/alder_log_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:alder_planks",
+      "source": "textures/alder_planks.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
       "id": "wildforge:alpine_moss",
       "source": "textures/alpine_moss.png",
       "width": 32,
@@ -10,6 +59,13 @@
     {
       "id": "wildforge:andesite",
       "source": "textures/andesite.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:anemone_green",
+      "source": "textures/anemone_green.png",
       "width": 32,
       "height": 32,
       "model_hint": "cube_face"
@@ -45,6 +101,34 @@
     {
       "id": "wildforge:bedrock",
       "source": "textures/bedrock.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:birch_leaves",
+      "source": "textures/birch_leaves.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cutout_cube"
+    },
+    {
+      "id": "wildforge:birch_log_side",
+      "source": "textures/birch_log_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:birch_log_top",
+      "source": "textures/birch_log_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:birch_planks",
+      "source": "textures/birch_planks.png",
       "width": 32,
       "height": 32,
       "model_hint": "cube_face"
@@ -164,6 +248,55 @@
     {
       "id": "wildforge:compacted_sediment",
       "source": "textures/compacted_sediment.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:coral_blue_tube",
+      "source": "textures/coral_blue_tube.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:coral_dead_branch",
+      "source": "textures/coral_dead_branch.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:coral_orange_branch",
+      "source": "textures/coral_orange_branch.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:coral_pink_fan",
+      "source": "textures/coral_pink_fan.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:coral_purple_brain",
+      "source": "textures/coral_purple_brain.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:coral_red_branch",
+      "source": "textures/coral_red_branch.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:coral_yellow_plate",
+      "source": "textures/coral_yellow_plate.png",
       "width": 32,
       "height": 32,
       "model_hint": "cube_face"
@@ -722,6 +855,20 @@
       "model_hint": "flat_item"
     },
     {
+      "id": "wildforge:kelp_crown",
+      "source": "textures/kelp_crown.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:kelp_stalk",
+      "source": "textures/kelp_stalk.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
       "id": "wildforge:lava",
       "source": "textures/lava.png",
       "width": 32,
@@ -780,6 +927,34 @@
     {
       "id": "wildforge:magma_crust",
       "source": "textures/magma_crust.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:mangrove_leaves",
+      "source": "textures/mangrove_leaves.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cutout_cube"
+    },
+    {
+      "id": "wildforge:mangrove_log_side",
+      "source": "textures/mangrove_log_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:mangrove_log_top",
+      "source": "textures/mangrove_log_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:mangrove_planks",
+      "source": "textures/mangrove_planks.png",
       "width": 32,
       "height": 32,
       "model_hint": "cube_face"
@@ -911,6 +1086,76 @@
       "model_hint": "cube_face"
     },
     {
+      "id": "wildforge:ocean_abyssal_silt",
+      "source": "textures/ocean_abyssal_silt.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:ocean_algae_stone",
+      "source": "textures/ocean_algae_stone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:ocean_basalt_pebbles",
+      "source": "textures/ocean_basalt_pebbles.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:ocean_cold_gravel",
+      "source": "textures/ocean_cold_gravel.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:ocean_coral_sand",
+      "source": "textures/ocean_coral_sand.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:ocean_dark_silt",
+      "source": "textures/ocean_dark_silt.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:ocean_dead_coral_rubble",
+      "source": "textures/ocean_dead_coral_rubble.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:ocean_reef_limestone",
+      "source": "textures/ocean_reef_limestone.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:ocean_shell_grit",
+      "source": "textures/ocean_shell_grit.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:ocean_silty_sand",
+      "source": "textures/ocean_silty_sand.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
       "id": "wildforge:packed_snow",
       "source": "textures/packed_snow.png",
       "width": 32,
@@ -923,6 +1168,34 @@
       "width": 32,
       "height": 32,
       "model_hint": "underwater_cutout"
+    },
+    {
+      "id": "wildforge:palm_leaves",
+      "source": "textures/palm_leaves.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cutout_cube"
+    },
+    {
+      "id": "wildforge:palm_log_side",
+      "source": "textures/palm_log_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:palm_log_top",
+      "source": "textures/palm_log_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:palm_planks",
+      "source": "textures/palm_planks.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
     },
     {
       "id": "wildforge:peat",
@@ -1142,11 +1415,39 @@
       "model_hint": "cube_face"
     },
     {
+      "id": "wildforge:seagrass_broad",
+      "source": "textures/seagrass_broad.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:seagrass_short",
+      "source": "textures/seagrass_short.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:seagrass_tall_segment",
+      "source": "textures/seagrass_tall_segment.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
       "id": "wildforge:seaweed",
       "source": "textures/seaweed.png",
       "width": 32,
       "height": 64,
       "model_hint": "double_height_cross"
+    },
+    {
+      "id": "wildforge:sea_fan_green",
+      "source": "textures/sea_fan_green.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
     },
     {
       "id": "wildforge:sea_shell",
@@ -1282,11 +1583,46 @@
       "model_hint": "cross"
     },
     {
+      "id": "wildforge:sponge_yellow",
+      "source": "textures/sponge_yellow.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
       "id": "wildforge:sporecap_fungus",
       "source": "textures/sporecap_fungus.png",
       "width": 32,
       "height": 32,
       "model_hint": "floor_cutout"
+    },
+    {
+      "id": "wildforge:spruce_leaves",
+      "source": "textures/spruce_leaves.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cutout_cube"
+    },
+    {
+      "id": "wildforge:spruce_log_side",
+      "source": "textures/spruce_log_side.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:spruce_log_top",
+      "source": "textures/spruce_log_top.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
+    },
+    {
+      "id": "wildforge:spruce_planks",
+      "source": "textures/spruce_planks.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cube_face"
     },
     {
       "id": "wildforge:stalactite",

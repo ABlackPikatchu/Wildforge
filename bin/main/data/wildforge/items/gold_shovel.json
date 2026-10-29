@@ -1,7 +1,7 @@
 {
   "id": "wildforge:gold_shovel",
   "numeric_id": 137,
-  "max_stack_size": 64,
+  "max_stack_size": 1,
   "texture": "wildforge:gold_shovel",
   "model": "wildforge:item/generated"
 }

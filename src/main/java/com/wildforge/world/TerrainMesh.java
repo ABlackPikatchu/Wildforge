@@ -54,14 +54,13 @@ public final class TerrainMesh {
     private boolean legacyVerticalMigration=false;
     public boolean needsLegacyPlayerHeightShift(){return legacyVerticalMigration;}
     private int version=0, renderDistance=8, simulationDistance=5;
-    private int centerX=1,centerZ=1;
-    private boolean streamed=false;
     // Worker builds raw chunk data only. OpenGL-facing meshes remain on the main thread.
     private ExecutorService generationWorker = newGenerationWorker();
     private final HashMap<Long, Future<Chunk>> pending = new HashMap<>();
     // Mesh jobs never read live chunk maps or mutate meshes; only the game thread installs results.
     private ExecutorService meshWorker = newMeshWorker();
-    private final LinkedHashSet<Long> dirtyMeshes = new LinkedHashSet<>();
+    // Each pending column has a bit set for only the vertical sections needing remesh.
+    private final LinkedHashMap<Long,BitSet> dirtyMeshes = new LinkedHashMap<>();
     private final HashMap<Long, MeshJob> meshJobs = new HashMap<>();
     private final HashMap<Long, Integer> meshEpochs = new HashMap<>();
     private int meshGeneration = 0;
@@ -82,7 +81,7 @@ public final class TerrainMesh {
             return t;
         });
     }
-    private record MeshJob(Future<float[][]> future, int epoch, int generation) {}
+    private record MeshJob(Future<float[][]> future, BitSet sections, int epoch, int generation) {}
     private record MeshSnapshot(int cx, int cz, byte[] blocks, byte[] west, byte[] east, byte[] north, byte[] south,
                                 Map<Integer,Byte> flows, Map<Integer,Byte> westFlows, Map<Integer,Byte> eastFlows,
                                 Map<Integer,Byte> northFlows, Map<Integer,Byte> southFlows, WorldGenerator generator) {}
@@ -182,12 +181,11 @@ public final class TerrainMesh {
     }
     public int activeFluidUpdates(){return fluidQueue.size();}
     public long seed(){return seed;}
-    public void resetWorld(){legacyVerticalMigration=false;cancelGeneration();edits.clear();fluidLevels.clear();seed=DEFAULT_SEED;initializeGenerator();chunks.clear();streamed=false;generateSpawnChunk(16,27);version++;}
+    public void resetWorld(){legacyVerticalMigration=false;cancelGeneration();edits.clear();fluidLevels.clear();seed=DEFAULT_SEED;initializeGenerator();chunks.clear();generateSpawnChunk(16,27);version++;}
     /** Nonblocking player-centered streaming: one worker produces raw columns, main thread owns meshes. */
     public void streamAround(float x,float z){
         int cx=Math.floorDiv((int)Math.floor(x),CHUNK_SIZE);
         int cz=Math.floorDiv((int)Math.floor(z),CHUNK_SIZE);
-        streamed=true;centerX=cx;centerZ=cz;
         boolean changed=false;
         Iterator<Map.Entry<Long,Chunk>> it=chunks.entrySet().iterator();
         while(it.hasNext()){
@@ -253,7 +251,8 @@ public final class TerrainMesh {
                 }
             }
         }
-        // Install no more than one completed column (16 sections) per frame.
+        // Install at most one completed mesh result per frame. The result may contain
+        // a full column (first load) or just the sections dirtied by block edits.
         int installed = 0;
         var meshIter = meshJobs.entrySet().iterator();
         while (meshIter.hasNext() && installed < 1) {
@@ -264,9 +263,15 @@ public final class TerrainMesh {
             try {
                 float[][] built = job.future().get();
                 Chunk target = chunks.get(entry.getKey());
-                if (target == null || job.generation() != meshGeneration
-                    || job.epoch() != meshEpochs.getOrDefault(entry.getKey(), 0)) continue;
-                for (int section=0; section<SECTION_COUNT; section++) {
+                if (target == null || job.generation() != meshGeneration) continue;
+                if (job.epoch() != meshEpochs.getOrDefault(entry.getKey(), 0)) {
+                    // A late result must never overwrite newer edits.
+                    dirtyMeshes.computeIfAbsent(entry.getKey(), k -> new BitSet(SECTION_COUNT))
+                        .or(job.sections());
+                    continue;
+                }
+                for (int section=job.sections().nextSetBit(0); section>=0;
+                     section=job.sections().nextSetBit(section+1)) {
                     target.sectionVertices[section] = built[section];
                     target.fluidVertices[section] = built[section+SECTION_COUNT];
                     target.sectionRevision[section]++;
@@ -275,39 +280,68 @@ public final class TerrainMesh {
                 changed = true;
                 installed++;
             } catch (CancellationException ignored) {
+                // Cancellation from an edit already requeued the sections.
             } catch (ExecutionException e) {
                 throw new IllegalStateException("Asynchronous section meshing failed", e.getCause());
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
         }
-        // Snapshots are captured on the game thread. Queue is bounded to prevent memory spikes.
+        // Snapshot once per scheduled column. Selected sections are meshed on
+        // worker threads; untouched GPU sections keep their current revisions.
         while (meshJobs.size() < 2 && !dirtyMeshes.isEmpty()) {
             long bestKey = 0;
             long bestDistance = Long.MAX_VALUE;
-            for (long candidate : dirtyMeshes) {
+            for (long candidate : dirtyMeshes.keySet()) {
                 int mx=(int)(candidate>>32),mz=(int)candidate;
                 long d=(long)(mx-cx)*(mx-cx)+(long)(mz-cz)*(mz-cz);
                 if (d < bestDistance) {bestDistance=d;bestKey=candidate;}
             }
-            dirtyMeshes.remove(bestKey);
+            BitSet selected = dirtyMeshes.remove(bestKey);
             Chunk target = chunks.get(bestKey);
-            if (target == null || meshJobs.containsKey(bestKey)) continue;
+            if (target == null || selected==null || selected.isEmpty() || meshJobs.containsKey(bestKey)) continue;
             MeshSnapshot snapshot = snapshot(target);
             int epoch=meshEpochs.getOrDefault(bestKey,0);
             int generation=meshGeneration;
-            meshJobs.put(bestKey,new MeshJob(meshWorker.submit(() -> buildColumnMesh(snapshot)),epoch,generation));
+            // Capture a private bit set; edits can requeue this column while the worker runs.
+            BitSet immutable=(BitSet)selected.clone();
+            meshJobs.put(bestKey,new MeshJob(
+                meshWorker.submit(() -> buildSelectedMeshes(snapshot, immutable)),immutable,epoch,generation));
         }
-        // The queue is budgeted so fluid spread never stalls rendering.
         if(changed)version++;
     }
+    /** A block can affect faces in a second vertical section only at a section boundary. */
+    static BitSet affectedSections(int y) {
+        if(y<0 || y>=WORLD_HEIGHT)throw new IllegalArgumentException("Invalid block height: " + y);
+        BitSet result=new BitSet(SECTION_COUNT);
+        int section=y/SECTION_HEIGHT;
+        result.set(section);
+        if(y%SECTION_HEIGHT==0 && section>0)result.set(section-1);
+        if(y%SECTION_HEIGHT==SECTION_HEIGHT-1 && section<SECTION_COUNT-1)result.set(section+1);
+        return result;
+    }
     private void markMeshDirty(int x,int z) {
+        BitSet all=new BitSet(SECTION_COUNT);
+        all.set(0,SECTION_COUNT);
+        markMeshDirty(x,z,all);
+    }
+    private void markMeshDirty(int x,int z,int y) {
+        markMeshDirty(x,z,affectedSections(y));
+    }
+    private void markMeshDirty(int x,int z,BitSet sections) {
         long k=key(x,z);
-        if (!chunks.containsKey(k)) return;
+        if (!chunks.containsKey(k) || sections.isEmpty()) return;
         meshEpochs.put(k,meshEpochs.getOrDefault(k,0)+1);
         MeshJob previous=meshJobs.remove(k);
-        if(previous!=null)previous.future().cancel(true);
-        dirtyMeshes.add(k);
+        BitSet requested=dirtyMeshes.computeIfAbsent(k,ignore -> new BitSet(SECTION_COUNT));
+        requested.or(sections);
+        if(previous!=null) {
+            // Do not lose sections already removed from the pending queue for this job.
+            requested.or(previous.sections());
+            previous.future().cancel(true);
+        }
+        // Distant LOD is a per-column representation. A changed section still
+        // invalidates its LOD, but not the other 31 full-detail section meshes.
         Chunk lodChunk=chunks.get(k);
         LodJob lodJob=lodJobs.remove(k);
         if(lodJob!=null)lodJob.future().cancel(true);
@@ -331,9 +365,9 @@ public final class TerrainMesh {
             return Byte.toUnsignedInt(levels.getOrDefault(index,LEGACY_FLOW_LEVEL));
         return 0;
     }
-    private float[][] buildColumnMesh(MeshSnapshot snap) {
+    private float[][] buildSelectedMeshes(MeshSnapshot snap,BitSet sections) {
         float[][] built=new float[SECTION_COUNT*2][];
-        for(int i=0;i<SECTION_COUNT;i++) {
+        for(int i=sections.nextSetBit(0);i>=0;i=sections.nextSetBit(i+1)) {
             if(Thread.currentThread().isInterrupted())throw new CancellationException();
             float[][] layers=buildSectionLayers(snap,i);
             built[i]=layers[0];
@@ -341,11 +375,16 @@ public final class TerrainMesh {
         }
         return built;
     }
+    /** Pending sections count includes queued and in-flight work. */
+    public int pendingMeshSectionCount() {
+        int count=0;
+        for(BitSet sections:dirtyMeshes.values())count+=sections.cardinality();
+        for(MeshJob job:meshJobs.values())count+=job.sections().cardinality();
+        return count;
+    }
     public int pendingMeshCount() {return meshJobs.size()+dirtyMeshes.size();}
     public int pendingLodCount() {return lodJobs.size();}
     public int readyLodCount() {int n=0;for(Chunk c:chunks.values())if(c.lodVertices!=null)n++;return n;}
-    private void rebuildNeighbor(int x,int z){Chunk c=chunks.get(key(x,z));if(c!=null)rebuild(c);}
-    private void rebuildNeighborSection(int x,int z,int section){Chunk c=chunks.get(key(x,z));if(c!=null)rebuildSection(c,section);}
     private Chunk generate(int cx,int cz){
         Chunk c=new Chunk(cx,cz);
         // Cache nearby tree anchors once per column to avoid repeatedly sampling
@@ -536,7 +575,7 @@ public final class TerrainMesh {
         if(getFluidLevelAt(x,y,z)==level)return false;
         storeFlowLevel(key(cx,cz),i,b,level);
         edits.computeIfAbsent(key(cx,cz),k->new HashMap<>()).put(i,b.id);
-        scheduleFluid(x,y,z);markFluidMeshDirty(x,z);version++;
+        scheduleFluid(x,y,z);markFluidMeshDirty(x,y,z);version++;
         return true;
     }
     /** Fractional fluid surface in world Y (or -infinity if dry). */
@@ -589,13 +628,13 @@ public final class TerrainMesh {
             scheduleFluid(c.cx*CHUNK_SIZE+lx,y,c.cz*CHUNK_SIZE+lz);
         }
     }
-    private void markFluidMeshDirty(int x,int z) {
+    private void markFluidMeshDirty(int x,int y,int z) {
         int cx=Math.floorDiv(x,CHUNK_SIZE),cz=Math.floorDiv(z,CHUNK_SIZE);
-        markMeshDirty(cx,cz);
-        if(Math.floorMod(x,CHUNK_SIZE)==0)markMeshDirty(cx-1,cz);
-        if(Math.floorMod(x,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx+1,cz);
-        if(Math.floorMod(z,CHUNK_SIZE)==0)markMeshDirty(cx,cz-1);
-        if(Math.floorMod(z,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx,cz+1);
+        markMeshDirty(cx,cz,y);
+        if(Math.floorMod(x,CHUNK_SIZE)==0)markMeshDirty(cx-1,cz,y);
+        if(Math.floorMod(x,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx+1,cz,y);
+        if(Math.floorMod(z,CHUNK_SIZE)==0)markMeshDirty(cx,cz-1,y);
+        if(Math.floorMod(z,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx,cz+1,y);
     }
     private void scheduleFluid(int x,int y,int z) {
         if(y<1||y>=WORLD_HEIGHT-1||fluidQueue.size()>=FLUID_QUEUE_LIMIT)return;
@@ -681,7 +720,7 @@ public final class TerrainMesh {
             c.set(pos,rock.id);
             storeFlowLevel(chunkKey,pos,rock,0);
             edits.computeIfAbsent(chunkKey,k->new HashMap<>()).put(pos,rock.id);
-            markFluidMeshDirty(x,z);version++;return true;
+            markFluidMeshDirty(x,y,z);version++;return true;
         }
         if(old.isFluid()) {
             if(old==BlockType.WATER||old==BlockType.LAVA)return false; // Never overwrite a source.
@@ -695,7 +734,7 @@ public final class TerrainMesh {
             storeFlowLevel(chunkKey,pos,flow,strength);
         } else return false;
         scheduleFluid(x,y,z);
-        markFluidMeshDirty(x,z);
+        markFluidMeshDirty(x,y,z);
         version++;return true;
     }
 
@@ -910,12 +949,11 @@ public final class TerrainMesh {
             scheduleFluid(x,y,z);
         }
         edits.computeIfAbsent(key(cx,cz),k->new HashMap<>()).put(i,type.id);
-        int section=y/SECTION_HEIGHT;
-        markMeshDirty(cx,cz);
-        if(Math.floorMod(x,CHUNK_SIZE)==0)markMeshDirty(cx-1,cz);
-        if(Math.floorMod(x,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx+1,cz);
-        if(Math.floorMod(z,CHUNK_SIZE)==0)markMeshDirty(cx,cz-1);
-        if(Math.floorMod(z,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx,cz+1);
+        markMeshDirty(cx,cz,y);
+        if(Math.floorMod(x,CHUNK_SIZE)==0)markMeshDirty(cx-1,cz,y);
+        if(Math.floorMod(x,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx+1,cz,y);
+        if(Math.floorMod(z,CHUNK_SIZE)==0)markMeshDirty(cx,cz-1,y);
+        if(Math.floorMod(z,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx,cz+1,y);
         version++;return true;
     }
     public float getHeightAt(float x,float z){
@@ -1104,7 +1142,7 @@ public final class TerrainMesh {
         return result;
     }
     public void newWorld(long newSeed){
-        cancelGeneration();edits.clear();fluidLevels.clear();seed=newSeed;initializeGenerator();chunks.clear();streamed=false;
+        cancelGeneration();edits.clear();fluidLevels.clear();seed=newSeed;initializeGenerator();chunks.clear();
         generateSpawnChunk(16,27);version++;
     }
     public int getVersion(){return version;}
@@ -1208,7 +1246,7 @@ public final class TerrainMesh {
         legacyVerticalMigration=migrateLegacy;
         cancelGeneration();seed=newSeed;initializeGenerator();edits.clear();edits.putAll(incoming);
         fluidLevels.clear();fluidLevels.putAll(incomingFluidLevels);
-        chunks.clear();streamed=false;generateSpawnChunk(16,27);version++;
+        chunks.clear();generateSpawnChunk(16,27);version++;
     }
     private static float fluidSideBase(byte current,byte[] neighbor,int idx,
                                        Map<Integer,Byte> levels,boolean exposed,int y,float top) {
@@ -1240,25 +1278,19 @@ public final class TerrainMesh {
         return currentWater!=otherWater;
     }
     /** Build only exposed faces. Chunk neighbors are resolved once per rebuild. */
-    private void rebuild(Chunk c){for(int section=0;section<SECTION_COUNT;section++)rebuildSection(c,section);}
-    private void rebuildSection(Chunk c,int section){
-        float[][] layers=buildSectionLayers(snapshot(c),section);
-        c.sectionVertices[section]=layers[0];
-        c.fluidVertices[section]=layers[1];
-        c.sectionRevision[section]++;
-        c.fluidRevision[section]++;
+    private void rebuild(Chunk c){
+        BitSet all=new BitSet(SECTION_COUNT);
+        all.set(0,SECTION_COUNT);
+        float[][] layers=buildSelectedMeshes(snapshot(c),all);
+        for(int section=0;section<SECTION_COUNT;section++) {
+            c.sectionVertices[section]=layers[section];
+            c.fluidVertices[section]=layers[section+SECTION_COUNT];
+            c.sectionRevision[section]++;
+            c.fluidRevision[section]++;
+        }
     }
     // Never mix translucent fluids into the opaque / cutout terrain mesh.
     // Both streams use the same immutable neighbor snapshot and revision epoch.
-    private static byte snapshotBlock(MeshSnapshot snap,int x,int y,int z) {
-        if(y<0||y>=WORLD_HEIGHT)return BlockType.AIR.id;
-        byte[] blocks=snap.blocks();
-        if(x<0) {blocks=snap.west();x+=CHUNK_SIZE;}
-        else if(x>=CHUNK_SIZE){blocks=snap.east();x-=CHUNK_SIZE;}
-        if(z<0) {if(blocks!=snap.blocks())return BlockType.AIR.id;blocks=snap.north();z+=CHUNK_SIZE;}
-        else if(z>=CHUNK_SIZE){if(blocks!=snap.blocks())return BlockType.AIR.id;blocks=snap.south();z-=CHUNK_SIZE;}
-        return blocks==null?BlockType.AIR.id:blocks[index(x,y,z)];
-    }
     private static int snapshotLevel(MeshSnapshot snap,int x,int y,int z,byte fluidId) {
         byte[] blocks=snap.blocks();Map<Integer,Byte> levels=snap.flows();
         if(x<0) {blocks=snap.west();levels=snap.westFlows();x+=CHUNK_SIZE;}

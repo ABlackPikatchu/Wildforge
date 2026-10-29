@@ -191,3 +191,13 @@ tasks.register('catalogCheck', JavaExec) {
     mainClass = 'com.wildforge.ui.CreativeCatalogSmokeTest'
 }
 tasks.named('check') { dependsOn tasks.named('catalogCheck') }
+
+// Phase: section-level mesh invalidation regression. No GPU/OpenGL context required.
+tasks.register('sectionMeshCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify per-section block-edit invalidation across vertical boundaries'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.SectionMeshingSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('sectionMeshCheck') }

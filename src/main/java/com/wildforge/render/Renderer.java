@@ -128,7 +128,7 @@ public final class Renderer {
         hud.setDebugStreaming(loaded,pending,distance);
     }
     public void setDebugWorkload(int meshes,int lodJobs,int lodReady,long blockBytes){
-        hud.setDebugWorkload(meshes,lodJobs,lodReady,blockBytes,gpuChunks.size(),lastTerrainUploads,lastTerrainUploadMicros);
+        hud.setDebugWorkload(meshes,terrain.pendingMeshSectionCount(),lodJobs,lodReady,blockBytes,gpuChunks.size(),lastTerrainUploads,lastTerrainUploadMicros);
     }
 
     public float[] uiScaleSliderTrack(int width, int height, int optionsPage) {

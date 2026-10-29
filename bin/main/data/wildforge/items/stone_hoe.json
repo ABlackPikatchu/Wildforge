@@ -1,7 +1,7 @@
 {
   "id": "wildforge:stone_hoe",
   "numeric_id": 125,
-  "max_stack_size": 64,
+  "max_stack_size": 1,
   "texture": "wildforge:stone_hoe",
   "model": "wildforge:item/generated"
 }

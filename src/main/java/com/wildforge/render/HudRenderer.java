@@ -122,7 +122,7 @@ public final class HudRenderer {
         debugHeapUsed=runtime.totalMemory()-runtime.freeMemory();debugHeapMax=runtime.maxMemory();
     }
     private int debugLoaded, debugPending, debugDistance;
-    private int debugMeshes,debugLodJobs,debugLodReady,debugGpu,debugUploads;
+    private int debugMeshes,debugMeshSections,debugLodJobs,debugLodReady,debugGpu,debugUploads;
     private long debugStorageBytes,debugUploadMicros;
     private int debugAverageFps;
     private float debugAverageMs, debugP95Ms, debugWorstMs;
@@ -165,8 +165,8 @@ public final class HudRenderer {
         debugLoaded=loaded;debugPending=pending;debugDistance=distance;
     }
 
-    public void setDebugWorkload(int meshes,int lodJobs,int lodReady,long bytes,int gpu,int uploads,long micros){
-        debugMeshes=meshes;debugLodJobs=lodJobs;debugLodReady=lodReady;debugStorageBytes=bytes;debugGpu=gpu;debugUploads=uploads;debugUploadMicros=micros;
+    public void setDebugWorkload(int meshes,int sections,int lodJobs,int lodReady,long bytes,int gpu,int uploads,long micros){
+        debugMeshSections=sections;debugMeshes=meshes;debugLodJobs=lodJobs;debugLodReady=lodReady;debugStorageBytes=bytes;debugGpu=gpu;debugUploads=uploads;debugUploadMicros=micros;
     }
 
     public HudRenderer(BlockTextures blockTextures) {
@@ -238,7 +238,7 @@ public final class HudRenderer {
             }
             if (debugOverlay) {
                 float y0=showFps?58f:15f;
-                rect(data,5f,y0,390f,235f,0.04f,0.05f,0.06f,0.72f);
+                rect(data,5f,y0,390f,284f,0.04f,0.05f,0.06f,0.72f);
                 float px=198f;
                 menuText(data,"WILDFORGE 0.1 / DEBUG [F3]",px,y0+7f,1.5f,.94f,.94f,.78f,1f);
                 menuText(data,"FPS " + measuredFps + " AVG " + debugAverageFps + " P95 " + formatMs(debugP95Ms) + "MS",px,y0+29f,1.18f,.94f,.94f,.78f,1f);
@@ -248,9 +248,11 @@ public final class HudRenderer {
                 menuText(data,"BIOME " + debugBiome,px,y0+106f,1.07f,.94f,.94f,.78f,1f);
                 menuText(data,"MODE " + debugMode + (debugFlying?"  FLYING":""),px,y0+126f,1.15f,.94f,.94f,.78f,1f);
                 menuText(data,"CHUNKS " + debugLoaded + " / " + ((2*debugDistance+1)*(2*debugDistance+1)) + "  GEN " + debugPending,px,y0+146f,1.08f,.94f,.94f,.78f,1f);
-                menuText(data,"MESH " + debugMeshes + " LOD " + debugLodJobs + " GPU " + debugGpu + " FLUID " + debugFluidQueue,px,y0+164f,1.07f,.94f,.94f,.78f,1f);
-                menuText(data,"MEM " + (debugHeapUsed/1048576) + " / " + (debugHeapMax/1048576) + " MIB",px,y0+182f,1.15f,.94f,.94f,.78f,1f);
-                menuText(data,"SEED " + debugSeed,px,y0+202f,.95f,.94f,.94f,.78f,1f);
+                menuText(data,"MESH JOBS " + debugMeshes + "  SECTIONS " + debugMeshSections + " LOD JOBS " + debugLodJobs,px,y0+164f,1.0f,.94f,.94f,.78f,1f);
+                menuText(data,"GPU " + debugGpu + "  LOD READY " + debugLodReady + "  UPLOADS " + debugUploads,px,y0+183f,1.03f,.94f,.94f,.78f,1f);
+                menuText(data,"UPLOAD CPU " + formatMs(debugUploadMicros/1000f) + " MS  BLOCK DATA " + (debugStorageBytes/1048576) + " MIB",px,y0+202f,0.98f,.94f,.94f,.78f,1f);
+                menuText(data,"FLUID " + debugFluidQueue + "  MEM " + (debugHeapUsed/1048576) + " / " + (debugHeapMax/1048576) + " MIB",px,y0+221f,1.08f,.94f,.94f,.78f,1f);
+                menuText(data,"SEED " + debugSeed,px,y0+241f,.95f,.94f,.94f,.78f,1f);
             }
             if(consoleOpen || !consoleFeedback.isBlank()) {
                 // A left-aligned chat-style input bar. Slash is a supported pixel glyph.

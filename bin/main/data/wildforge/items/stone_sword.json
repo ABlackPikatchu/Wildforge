@@ -1,7 +1,7 @@
 {
   "id": "wildforge:stone_sword",
   "numeric_id": 128,
-  "max_stack_size": 64,
+  "max_stack_size": 1,
   "texture": "wildforge:stone_sword",
   "model": "wildforge:item/generated"
 }

@@ -1,7 +1,7 @@
 {
   "id": "wildforge:gold_sword",
   "numeric_id": 138,
-  "max_stack_size": 64,
+  "max_stack_size": 1,
   "texture": "wildforge:gold_sword",
   "model": "wildforge:item/generated"
 }

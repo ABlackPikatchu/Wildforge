@@ -1,7 +1,7 @@
 {
   "id": "wildforge:silver_pickaxe",
   "numeric_id": 141,
-  "max_stack_size": 64,
+  "max_stack_size": 1,
   "texture": "wildforge:silver_pickaxe",
   "model": "wildforge:item/generated"
 }

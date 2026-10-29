@@ -16,7 +16,6 @@ public final class WorldGenerator {
     private static final long DETAIL = 0x40f00dL;
     private static final long TEMP = 0x50cafeL;
     private static final long MOISTURE = 0x60abcdL;
-    private static final long RIVER = 0x70abcdL;
     private static final long CAVE = 0x80abcdL;
     private static final long CAVE_BREAKUP = 0x90abcdL;
     private static final long TREES = 0xa0abcdL;
@@ -232,11 +231,6 @@ public final class WorldGenerator {
 
     private double continentalness(int x, int z) {
         return noise.fbm2(x / settings.continentScale(), z / settings.continentScale(), 5, CONTINENT);
-    }
-    private double riverStrength(int x, int z) {
-        double field = Math.abs(noise.fbm2(x / settings.riverScale(),
-                z / settings.riverScale(), 3, RIVER));
-        return smoothstep(0.052, 0.014, field);
     }
 
     /** Rock formation is generated independently of the surface biome and climate. */
