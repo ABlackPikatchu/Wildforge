@@ -228,6 +228,14 @@ public final class HudRenderer {
                         16, 2, 1f, 1f, 1f, 0.9f);
             }
 
+            // Fixed-tick survival mining feedback, centered beneath the crosshair.
+            if(!player.isInventoryOpen() && player.miningProgress()>0f) {
+                float progress=player.miningProgress();
+                rect(data,width/2f-27,height/2f+17,54,5,.04f,.05f,.06f,.85f);
+                rect(data,width/2f-25,height/2f+19,50*progress,2,
+                        .9f,.72f,.4f,.96f);
+            }
+
             inventory.drawHotbar(
                     data, skinData, iconData, countData,
                     width, height, player, settings);

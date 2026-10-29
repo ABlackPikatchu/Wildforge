@@ -21,6 +21,38 @@ public final class BlockInteraction {
     private final Inventory inventory;
     private final WorldItemManager worldItems;
     private final RegistryContentAdapter content;
+    private int mineX,mineY,mineZ;
+    private BlockType miningType;
+    private ItemType miningTool;
+    private double miningSeconds;
+    /** Target progress in [0,1], for future crack-overlay rendering. */
+    public double miningProgress() {
+        if(miningType==null)return 0;
+        return Math.min(1.0, miningSeconds / MiningRules.seconds(miningType,hardness(miningType),miningTool));
+    }
+    public void stopMining() { miningType=null;miningTool=null;miningSeconds=0; }
+    private float hardness(BlockType block) {
+        BlockDefinition definition=content==null?null:content.block(block);
+        return definition==null ? (MiningRules.preferred(block)==MiningRules.Tool.HAND?.35f:2f) : definition.getHardness();
+    }
+    /** Starts or continues mining the same block; does not instantly break in Survival. */
+    public void tickMining(TerrainMesh terrain,Camera camera,ItemType held,float dt) {
+        if(terrain==null||camera==null||dt<=0) {stopMining();return;}
+        RayHit hit=raycastFromCamera(terrain,camera);
+        if(hit==null||hit.block==BlockType.AIR){stopMining();return;}
+        BlockDefinition definition=content==null?null:content.block(hit.block);
+        if(definition==null?!hit.block.isBreakable():!definition.isBreakable()){stopMining();return;}
+        if(miningType!=hit.block||mineX!=hit.x||mineY!=hit.y||mineZ!=hit.z||miningTool!=held){
+            mineX=hit.x;mineY=hit.y;mineZ=hit.z;miningType=hit.block;miningTool=held;miningSeconds=0;
+        }
+        miningSeconds+=dt;
+        if(miningProgress()>=1.0){
+            boolean canHarvest=MiningRules.drops(hit.block,held);
+            stopMining();
+            breakHit(terrain,hit,definition,false,canHarvest);
+        }
+    }
+
 
     public BlockInteraction(Inventory inventory, WorldItemManager worldItems) {
         this(inventory, worldItems, null);
@@ -57,8 +89,18 @@ public final class BlockInteraction {
         BlockDefinition block = content == null ? null : content.block(hit.block);
         if (block == null ? !hit.block.isBreakable() : !block.isBreakable()) return;
 
-        if (!terrain.setBlock(hit.x, hit.y, hit.z, BlockType.AIR)) return;
-        if (creative) return; // Instant break; Creative does not generate drops.
+        if (!creative) {
+            // Survival starts a timed action; fixed-step updates advance progress.
+            return;
+        }
+        stopMining();
+        breakHit(terrain,hit,block,true,false);
+    }
+
+    private void breakHit(TerrainMesh terrain, RayHit hit, BlockDefinition block,
+                          boolean creative, boolean harvest) {
+        if(!terrain.setBlock(hit.x,hit.y,hit.z,BlockType.AIR))return;
+        if(creative || !harvest)return;
         if (block == null) {
             ItemType drop = hit.block.getDropItem();
             if (drop != null && hit.block.getDropCount() > 0) {

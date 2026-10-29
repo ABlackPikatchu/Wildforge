@@ -101,6 +101,12 @@ public final class SpawnFinder {
             }
         }
         if (grade > 6) return null;
+        // Density-based overhangs may place stone above the approximate heightmap.
+        // Verify the actual generated floor and headroom before accepting spawn.
+        int slope=generator.slopeAt(x,z);
+        if(!generator.isSolidTerrain(x,y,z,y,slope)
+                || generator.isSolidTerrain(x,y+1,z,y,slope)
+                || generator.isSolidTerrain(x,y+2,z,y,slope)) return null;
 
         // Check only cells capable of placing a trunk at the spawn, not the
         // entire 64x64 area: treeForCell samples hydrology and local slopes.

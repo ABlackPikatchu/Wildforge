@@ -1,0 +1,10 @@
+{
+  "schema": "wildforge-light-emission-v1",
+  "blocks": {
+    "lava": 15,
+    "flowing_lava": 15,
+    "magma_crust": 6,
+    "sporecap_fungus": 10,
+    "crystal_cluster": 8
+  }
+}

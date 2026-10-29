@@ -551,9 +551,9 @@ public boolean canAddItem(ItemType itemType, int amount) {
 }
 
 public void mineBlock(TerrainMesh terrain) {
-    if (gameMode != GameMode.SPECTATOR)
-        blockInteraction.mineBlock(terrain, camera, gameMode == GameMode.CREATIVE);
+    if (gameMode == GameMode.CREATIVE) blockInteraction.mineBlock(terrain,camera,true);
 }
+public float miningProgress() {return (float)blockInteraction.miningProgress();}
 
 public void placeBlock(TerrainMesh terrain) {
         if (gameMode == GameMode.SPECTATOR) return;
@@ -596,8 +596,13 @@ public void update(
     }
 
     if (inventoryOpen || !mouseCaptured) {
+        blockInteraction.stopMining();
         return;
     }
+    if(gameMode==GameMode.SURVIVAL && GLFW.glfwGetMouseButton(window,GLFW.GLFW_MOUSE_BUTTON_LEFT)==GLFW.GLFW_PRESS) {
+        ItemStack held=inventory.getSelectedStack();
+        blockInteraction.tickMining(terrain,camera,held==null?null:held.getItemType(),deltaTime);
+    } else blockInteraction.stopMining();
 
     updateMovement(window, terrain, deltaTime);
 }

@@ -1,6 +1,7 @@
 package com.wildforge.world;
 
 import com.wildforge.worldgen.WorldGenerator;
+import com.wildforge.world.light.LightEngine;
 import com.wildforge.world.mesh.FloatArrayBuilder;
 import com.wildforge.world.fluid.FluidRules;
 import java.util.*;
@@ -37,13 +38,23 @@ final class SectionMeshBuilder {
 
     static float[][] buildSelectedMeshes(Snapshot snap,BitSet sections) {
         float[][] built=new float[SECTION_COUNT*2][];
+        // One read-only light volume per mesh job, reused for its sections.
+        LightEngine light=LightEngine.bake(snap.blocks(),snap.west(),snap.east(),snap.north(),snap.south());
         for(int i=sections.nextSetBit(0);i>=0;i=sections.nextSetBit(i+1)) {
             if(Thread.currentThread().isInterrupted())throw new CancellationException();
             float[][] layers=buildSectionLayers(snap,i);
+            applyLight(layers[0],light,snap.cx(),snap.cz());
             built[i]=layers[0];
             built[i+SECTION_COUNT]=layers[1];
         }
         return built;
+    }
+    /** Apply sky/block lighting to opaque and cutout terrain; fluid flow codes in
+     * the shade channel are intentionally left unchanged. */
+    private static void applyLight(float[] vertices,LightEngine light,int cx,int cz) {
+        for(int i=0;i+6<vertices.length;i+=7) {
+            vertices[i+6]*=light.vertexBrightness(vertices[i],vertices[i+1],vertices[i+2],cx,cz);
+        }
     }
     private static float fluidSideBase(byte current,byte[] neighbor,int idx,
                                        Map<Integer,Byte> levels,int flowIndex,boolean exposed,int y,float top) {

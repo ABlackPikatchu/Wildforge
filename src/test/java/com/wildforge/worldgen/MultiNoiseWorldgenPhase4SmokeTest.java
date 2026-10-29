@@ -8,9 +8,16 @@ public final class MultiNoiseWorldgenPhase4SmokeTest {
         WorldGenRegistry registry=WorldGenRegistry.loadBuiltIn();
         long seed=20261029L;
         WorldGenerator revised=registry.generator(seed);
-        if(revised.generationRevision()!=8||revised.settings().minY()!=0||revised.settings().maxY()!=511)
-            throw new AssertionError("Fresh-world revision and height must agree");
-        try {new WorldGenerator(seed,revised.settings(),6);throw new AssertionError("Legacy generator accepted");}
+        if(revised.generationRevision()!=WorldGenerator.CURRENT_REVISION
+                ||revised.settings().minY()!=0||revised.settings().maxY()!=511)
+            throw new AssertionError("Current-world revision/height mismatch: expected revision "
+                    +WorldGenerator.CURRENT_REVISION+" and Y 0..511, got revision "
+                    +revised.generationRevision()+" and Y "
+                    +revised.settings().minY()+".."+revised.settings().maxY());
+        try {
+            new WorldGenerator(seed,revised.settings(),WorldGenerator.CURRENT_REVISION-1);
+            throw new AssertionError("Previous generation revision was accepted");
+        }
         catch(IllegalArgumentException expected) {}
         EnumSet<Biome> found=EnumSet.noneOf(Biome.class);
         int ocean=0,land=0;
@@ -26,6 +33,7 @@ public final class MultiNoiseWorldgenPhase4SmokeTest {
         for(int x=-500;x<=500;x+=71)for(int z=-500;z<=500;z+=83) {
             if(!revised.surface(x,z).equals(revised.surface(x,z)))throw new AssertionError("Non-deterministic world");
         }
-        System.out.println("Multi-noise biome spread and v8-only generation passed: "+found.size()+" biomes");
+        System.out.println("Multi-noise biome spread and current revision "
+                +WorldGenerator.CURRENT_REVISION+" passed: "+found.size()+" biomes");
     }
 }

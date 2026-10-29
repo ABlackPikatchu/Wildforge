@@ -398,3 +398,25 @@ tasks.register('worldCompositionCheck', JavaExec) {
     mainClass = 'com.wildforge.worldgen.WorldCompositionSmokeTest'
 }
 tasks.named('check') { dependsOn tasks.named('worldCompositionCheck') }
+
+// Phase 6: executable deterministic tests for terrain passes, density, mining and lighting.
+tasks.register('phase6EngineCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify ordered worldgen, 3D density, mining/tool tiers, dual-channel lighting and placed-feature rules'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.phase6.Phase6EngineSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('phase6EngineCheck') }
+
+// New-world preview and statistical profile; does not modify or create saves.
+tasks.register('worldgenProfile', JavaExec) {
+    group = 'wildforge'
+    description = 'Sample surface heights, biome distribution, cave density and vegetation candidates'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.wildforge.worldgen.WorldGenerationProfiler'
+    args (project.findProperty('worldSeed') ?: '20261029').toString(),
+         (project.findProperty('profileRadius') ?: '512').toString(),
+         (project.findProperty('profileStep') ?: '16').toString()
+}

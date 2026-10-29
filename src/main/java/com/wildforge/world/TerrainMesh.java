@@ -34,7 +34,7 @@ public final class TerrainMesh implements AutoCloseable {
     private static final long DEFAULT_SEED=0x57494C44464F5247L;
     /** Generator revision is independent of the binary save format. Never change an
      * old revision's semantics silently; reject incompatible future saves. */
-    public static final int WORLDGEN_REVISION=8;
+    public static final int WORLDGEN_REVISION=WorldGenerator.CURRENT_REVISION;
     private int worldgenRevision=WORLDGEN_REVISION;
     public int worldgenRevision(){return worldgenRevision;}
     private final ChunkSource chunkSource = new ChunkSource();
@@ -267,8 +267,24 @@ public final class TerrainMesh implements AutoCloseable {
     public int pendingMeshCount() {return meshScheduler.pendingMeshCount();}
     public int pendingLodCount() {return meshScheduler.pendingLodCount();}
     public int readyLodCount() {int n=0;for(ChunkColumn c:chunkSource.columns())if(c.render.hasDistant())n++;return n;}
-    private ChunkColumn generate(int cx,int cz){
+    private ChunkColumn generate(int cx,int cz) {
         ChunkColumn c=new ChunkColumn(cx,cz);
+        // Generation passes correspond to the major stages of Minecraft-style
+        // chunk construction. Keep rules independent of load order.
+        return new com.wildforge.worldgen.ChunkGenerationPipeline.Builder<ChunkColumn>()
+            .add("density-and-surface", this::buildBaseTerrain)
+            .add("cave-carvers", column -> new CaveCarvers(seed).carve(column.blocks,column.cx,column.cz,generator))
+            .add("cave-surface", column -> CaveBiomePainter.paint(column.blocks,column.cx,column.cz,generator,WORLD_HEIGHT,caveWalls))
+            .add("ores", column -> oreFeatures.generate(column.blocks,column.cx,column.cz,WORLD_HEIGHT,generator))
+            .add("aquifers-and-waterbodies", this::placeNaturalFluids)
+            .add("cave-decorations", this::populateCaveDecorations)
+            .add("surface-features", this::populateFeatures)
+            .add("snow-cover", this::populateSnowCover)
+            .build().run(c);
+    }
+
+    private void buildBaseTerrain(ChunkColumn c) {
+        int cx=c.cx,cz=c.cz;
         // Cache nearby tree anchors once per column to avoid repeatedly sampling
         // tree candidates for each surface block. Includes anchors across seams.
         java.util.List<WorldGenerator.Tree> litterTrees = new java.util.ArrayList<>();
@@ -331,8 +347,9 @@ public final class TerrainMesh implements AutoCloseable {
             if(slope>=7 && topBlock!=BlockType.PACKED_SNOW && topBlock!=BlockType.SNOW_CRUST)
                 topBlock=baseRock;
             // The first 3D density pass works above and below the old heightmap.
-            // Sample only the upper terrain band; deep rock remains inexpensive.
-            int highest=Math.min(WORLD_HEIGHT-2,top+8);
+            // Sample the full signed-density transition, including cliff overhangs.
+            // Deep rock remains inexpensive because density short-circuits there.
+            int highest=Math.min(WORLD_HEIGHT-2,top+26);
             for(int y=0;y<=highest;y++){
                 if(y>0 && !generator.isSolidTerrain(wx,y,wz,top,slope))continue;
                 if(y>=5 && generator.isCave(wx,y,wz,top))continue;
@@ -347,21 +364,6 @@ public final class TerrainMesh implements AutoCloseable {
                 c.blocks[index(lx,y,lz)]=b.id;
             }
         }
-        // Hard floor seal: no cave/noise pass may erase randomized bedrock.
-        // Directed regional tunnels and ravines supplement existing 3D noise caves.
-        new CaveCarvers(seed).carve(c.blocks,cx,cz,generator);
-        // Paint exposed cave surfaces after ALL carving, before features and ores.
-        CaveBiomePainter.paint(c.blocks, cx, cz, generator, WORLD_HEIGHT,caveWalls);
-        // Generation order: base density -> surface -> carvers -> cave materials
-        // -> ores -> aquifers/oceans -> cave features -> trees/plants -> snow.
-        // World-positioned features cross seams without relying on chunk order.
-        oreFeatures.generate(c.blocks,c.cx,c.cz,WORLD_HEIGHT,generator);
-        placeNaturalFluids(c);
-        populateCaveDecorations(c);
-        populateFeatures(c);
-        populateSnowCover(c);
-        // Edits are applied when the completed chunk is installed on the main thread.
-        return c;
     }
     /** Deterministic 1..8-height snow cover, placed only on exposed cold ground.
      * Layer state is encoded in append-only numeric block IDs for existing saves.
@@ -1034,9 +1036,9 @@ public final class TerrainMesh implements AutoCloseable {
             catch(AtomicMoveNotSupportedException e){Files.move(temp,p,StandardCopyOption.REPLACE_EXISTING);}
         }finally{Files.deleteIfExists(temp);}
     }
-    /** Only v5 saves made with this generator revision are supported.
-     * v6/v7 terrain has different noise and cannot be silently mixed with v8.
-     * Back up old saves and start a new world when switching to this fresh generator.
+    /** Only saves with the current binary format and generation revision are supported.
+     * Older terrain uses different noise and cannot safely be reinterpreted by this generator.
+     * Back up old saves and start a new world when switching generator revisions.
      */
     public void loadFrom(Path path)throws IOException{
         HashMap<Long,HashMap<Integer,Byte>> incoming=new HashMap<>();

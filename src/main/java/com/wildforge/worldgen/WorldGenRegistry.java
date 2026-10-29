@@ -49,6 +49,7 @@ public record WorldGenRegistry(
         CaveWallCatalog.loadBuiltIn();
         MarineSedimentCatalog.loadBuiltIn();
         TreeSpeciesCatalog.loadBuiltIn();
+        FeaturePlacementEngine.loadBuiltIn();
         return data;
     }
 

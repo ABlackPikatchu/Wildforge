@@ -1,0 +1,9 @@
+{
+  "schema": "wildforge-aquifers-v1",
+  "cell_size": 72,
+  "water_table_below_sea": 33,
+  "water_table_variation": 22.0,
+  "basin_threshold": 0.13,
+  "lava_threshold": 0.36,
+  "lava_max_y": 29
+}

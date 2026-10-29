@@ -1,0 +1,11 @@
+{
+  "schema": "wildforge-placed-features-v1",
+  "tree_patch_scale": 96.0,
+  "tree_patch_amplitude": 0.45,
+  "forest_boost": 1.24,
+  "plant_patch_scale": 75.0,
+  "wet_plant_multiplier": 1.65,
+  "dry_plant_multiplier": 1.15,
+  "bank_plant_chance": 0.62,
+  "frostspire_treeline_above_sea": 94
+}

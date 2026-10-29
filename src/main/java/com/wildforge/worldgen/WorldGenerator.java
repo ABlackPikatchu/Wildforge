@@ -7,6 +7,8 @@ import java.util.Objects;
  * Oceans, rivers, cave systems, and underground biomes are separate passes.
  */
 public final class WorldGenerator {
+    /** New-world generation format; increment when terrain rules change incompatibly. */
+    public static final int CURRENT_REVISION = 9;
     private static final long HILLS = 0x20beefL;
     private static final long DETAIL = 0x40f00dL;
     private static final long TREES = 0xa0abcdL;
@@ -45,7 +47,9 @@ public final class WorldGenerator {
     private final HydrologyNetwork hydrology;
     private final ClimateField climateField;
     private final CaveShapeSampler caveShapes;
+    private final TerrainDensityGenerator terrainDensity;
     private final TreeSpeciesCatalog treeSpecies;
+    private final FeaturePlacementEngine placements;
     private final MultiNoiseBiomeSource multiNoise;
     private final int generationRevision;
 
@@ -55,7 +59,7 @@ public final class WorldGenerator {
 
     public WorldGenerator(long seed, WorldGenSettings settings, BiomeCatalog biomes) {
         this(seed, settings, biomes, UndergroundBiomeCatalog.loadBuiltInUnchecked(),
-                loadUndergroundSettings(), 8);
+                loadUndergroundSettings(), CURRENT_REVISION);
     }
 
     private static UndergroundGenSettings loadUndergroundSettings() {
@@ -69,7 +73,7 @@ public final class WorldGenerator {
     public WorldGenerator(long seed, WorldGenSettings settings, BiomeCatalog biomes,
                           UndergroundBiomeCatalog undergroundBiomes,
                           UndergroundGenSettings undergroundSettings) {
-        this(seed, settings, biomes, undergroundBiomes, undergroundSettings, 8);
+        this(seed, settings, biomes, undergroundBiomes, undergroundSettings, CURRENT_REVISION);
     }
 
     public WorldGenerator(long seed, WorldGenSettings settings, int revision) {
@@ -80,11 +84,13 @@ public final class WorldGenerator {
     public WorldGenerator(long seed, WorldGenSettings settings, BiomeCatalog biomes,
                           UndergroundBiomeCatalog undergroundBiomes,
                           UndergroundGenSettings undergroundSettings, int revision) {
-        if (revision != 8) throw new IllegalArgumentException("Unsupported worldgen revision: " + revision);
+        if (revision != CURRENT_REVISION) throw new IllegalArgumentException("Unsupported worldgen revision: " + revision);
         generationRevision = revision;
         climateField = new ClimateField(seed, settings);
         caveShapes = new CaveShapeSampler(seed, settings);
+        terrainDensity = new TerrainDensityGenerator(seed, settings.seaLevel());
         treeSpecies = TreeSpeciesCatalog.loadBuiltInUnchecked();
+        placements = FeaturePlacementEngine.loadBuiltInUnchecked();
         multiNoise = new MultiNoiseBiomeSource(biomes, seed);
         this.seed = seed;
         this.settings = Objects.requireNonNull(settings, "settings");
@@ -288,37 +294,12 @@ public final class WorldGenerator {
         };
     }
 
-    // First-stage solid-density model. The heightfield supplies the broad landform,
-    // while 3D noise changes cliff faces and creates shallow shelves/overhangs.
-    // These are world-coordinate samples: neighboring chunks agree exactly.
-    private static final long DENSITY_SHAPE = 0x6d2e31a9L;
-    private static final long DENSITY_DETAIL = 0x7bff42c1L;
-
-    /**
-     * World-coordinate terrain density. Mountain cliffs may form small ledges;
-     * lowlands retain the familiar stable ground surface. Positive = solid.
-     */
-    public double terrainDensity(int x, int y, int z, int surfaceY) {
-        return terrainDensity(x, y, z, surfaceY, slopeAt(x, z));
+    /** New density router: a world-coordinate 3D cliff function on the climate height. */
+    public double terrainDensity(int x,int y,int z,int surfaceY) {
+        return terrainDensity(x,y,z,surfaceY,slopeAt(x,z));
     }
-
-    /** Column-cached variant used during streaming chunk generation. */
-    public double terrainDensity(int x, int y, int z, int surfaceY, int slope) {
-        double depth = surfaceY + 0.5 - y;
-        if (depth > 18.0 || depth < -12.0) return depth;
-        // Only genuinely steep, high-altitude terrain may project beyond its
-        // heightfield. This prevents floating shelves in ordinary forests.
-        double steep = smoothstep(3.5, 12.5, slope);
-        double altitude = smoothstep(settings.seaLevel() + 23.0,
-                                     settings.seaLevel() + 61.0, surfaceY);
-        double relief = steep * altitude;
-        if (relief < 0.01) return depth;
-        double broad = noise.noise3(x / 52.0, y / 37.0, z / 52.0, DENSITY_SHAPE);
-        double detail = noise.noise3(x / 23.0, y / 27.0, z / 23.0, DENSITY_DETAIL);
-        // Displacement is continuous, deliberately modest, and tapered with
-        // distance from the approximate land surface.
-        double taper = 1.0 - smoothstep(4.0, 18.0, Math.abs(depth));
-        return depth + 5.0 * relief * taper * (0.8 * broad + 0.2 * detail);
+    public double terrainDensity(int x,int y,int z,int surfaceY,int slope) {
+        return terrainDensity.sample(x,y,z,surfaceY,slope);
     }
 
     public boolean isSolidTerrain(int x, int y, int z, int surfaceY, int slope) {
@@ -341,22 +322,14 @@ public final class WorldGenerator {
         int x = cellX * TREE_CELL_SIZE + (int)(noise.unit(cellX, 0, cellZ, TREES) * TREE_CELL_SIZE);
         int z = cellZ * TREE_CELL_SIZE + (int)(noise.unit(cellX, 1, cellZ, TREES) * TREE_CELL_SIZE);
         Surface surface = surface(x, z);
-        if (surface.waterBody() != WaterBody.LAND) return null;
         BiomeProfile profile = biomes.get(surface.biome());
         int treeSlope=slopeAt(x,z);
-        if (treeSlope > profile.maxTreeSlope()) return null;
-        // No mature trees on bare alpine cliffs or exposed upper snowfields.
-        // Pine survives in sheltered lower slopes, but thins near the treeline.
-        if (surface.biome()==Biome.FROSTSPIRE_HIGHLANDS) {
-            if (treeSlope>2 || surface.surfaceY()>settings.seaLevel()+94) return null;
-        }
+        if (!placements.validTree(profile,surface,treeSlope,settings.seaLevel()))return null;
         double local = clamp(0.85 + noise.noise2(x / 150.0, z / 150.0, TREES) * 0.5, 0.20, 1.0);
         // Individual patches have clustered forest openings. This is not a
         // rectangular tree grid: each candidate is jittered and seed-derived.
-        double cluster = noise.fbm2(x/96.0,z/96.0,3,TREES ^ 0x771aL);
-        double forestBoost = profile.treeDensity()>.35 ? 1.24 : 1.0;
-        double chance = clamp(profile.treeDensity()*settings.treeDensity()*local
-                *forestBoost*(0.88+0.45*cluster),0,0.91);
+        double cluster = noise.fbm2(x/placements.treePatchScale(),z/placements.treePatchScale(),3,TREES ^ 0x771aL);
+        double chance=placements.treeChance(profile,settings.treeDensity(),local,cluster);
         if (noise.unit(cellX, 2, cellZ, TREES) >= chance) return null;
         String tree = BiomeProfile.chooseFeature(profile.trees(), noise.unit(cellX, 3, cellZ, TREES));
         if (tree == null) return null;
@@ -393,23 +366,21 @@ public final class WorldGenerator {
         int x = cellX * PLANT_CELL_SIZE + (int)(noise.unit(cellX, 0, cellZ, PLANTS) * PLANT_CELL_SIZE);
         int z = cellZ * PLANT_CELL_SIZE + (int)(noise.unit(cellX, 1, cellZ, PLANTS) * PLANT_CELL_SIZE);
         Surface surface = surface(x, z);
-        if (surface.waterBody() != WaterBody.LAND) return null;
         BiomeProfile profile = biomes.get(surface.biome());
         int slope=slopeAt(x,z);
-        if (slope > profile.maxPlantSlope()) return null;
-        double local = clamp(0.85 + noise.noise2(x / 75.0, z / 75.0, PLANTS) * .5, .20,1.0);
+        if(!placements.validPlant(profile,surface,slope))return null;
+        double local = clamp(0.85 + noise.noise2(x / placements.plantPatchScale(), z / placements.plantPatchScale(), PLANTS) * .5, .20,1.0);
         // A 4x4 feature grid places at most one plant per 16 surface cells.
         // Riparian reeds only belong near rivers/lakes, on their actual dry
         // banks. Use the same seeded hydrology signal as the channel geometry.
         // Stable world-coordinate samples prevent chunk-boundary clusters.
         double bank=hydrology.sample(x,z,baseTerrainHeight(x,z)).drainage();
         if(bank>0.28 && slope<=2 &&
-                noise.unit(cellX,5,cellZ,PLANTS^0x2C4L)<0.62)
+                noise.unit(cellX,5,cellZ,PLANTS^0x2C4L)<placements.bankChance())
             return new Plant(x,z,noise.unit(cellX,6,cellZ,PLANTS^0x531L)<0.5
                     ? "cattails" : "marsh_reeds",true);
         // Raise coverage in vegetated biomes without forcing plants into deserts or cliffs.
-        double coverage=surface.rainfall()>0.4 ? 1.65 : 1.15;
-        double chance = clamp(profile.plantDensity() * settings.plantDensity() * local * coverage,0,0.88);
+        double chance=placements.plantChance(profile,settings.plantDensity(),local,surface.rainfall());
         if (noise.unit(cellX, 2, cellZ, PLANTS) >= chance) return null;
         String species = BiomeProfile.chooseFeature(profile.plants(),
                 noise.unit(cellX, 3, cellZ, PLANTS));

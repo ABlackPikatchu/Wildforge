@@ -59,6 +59,9 @@ public final class ContentDataGenerator {
         generator.writeCaveWalls(Path.of(args[0]));
         generator.writeMarineSediments(Path.of(args[0]));
         generator.writeTreeSpecies(Path.of(args[0]));
+        generator.writePlacedFeatures(Path.of(args[0]));
+        generator.writeAquifers(Path.of(args[0]));
+        generator.writeLightEmission(Path.of(args[0]));
         generator.writeTextureManifest(Path.of(args[0]), Path.of("src/main/resources/textures"));
         BiomeDataGenerator.write(Path.of(args[0]), Path.of("src/main/resources/textures"));
         UndergroundBiomeDataGenerator.write(
@@ -588,6 +591,53 @@ public final class ContentDataGenerator {
         json.addProperty("plant_density", 0.55);
         Files.writeString(directory.resolve("overworld.json"),
                 GSON.toJson(json) + "\n", StandardCharsets.UTF_8);
+    }
+
+    /** Shared feature-placement modifiers; biome-specific species/weights are generated separately. */
+    private void writePlacedFeatures(Path destination) throws IOException {
+        Path dir=destination.resolve("data/wildforge/worldgen");
+        Files.createDirectories(dir);
+        JsonObject json=new JsonObject();
+        json.addProperty("schema","wildforge-placed-features-v1");
+        json.addProperty("tree_patch_scale",96.0);
+        json.addProperty("tree_patch_amplitude",0.45);
+        json.addProperty("forest_boost",1.24);
+        json.addProperty("plant_patch_scale",75.0);
+        json.addProperty("wet_plant_multiplier",1.65);
+        json.addProperty("dry_plant_multiplier",1.15);
+        json.addProperty("bank_plant_chance",0.62);
+        json.addProperty("frostspire_treeline_above_sea",94);
+        Files.writeString(dir.resolve("feature_placement.json"),GSON.toJson(json)+"\n",StandardCharsets.UTF_8);
+    }
+
+    private void writeAquifers(Path destination) throws IOException {
+        Path dir=destination.resolve("data/wildforge/worldgen");
+        Files.createDirectories(dir);
+        JsonObject j=new JsonObject();
+        j.addProperty("schema","wildforge-aquifers-v1");
+        j.addProperty("cell_size",72);
+        j.addProperty("water_table_below_sea",33);
+        j.addProperty("water_table_variation",22.0);
+        j.addProperty("basin_threshold",0.13);
+        j.addProperty("lava_threshold",0.36);
+        j.addProperty("lava_max_y",29);
+        Files.writeString(dir.resolve("aquifers.json"),GSON.toJson(j)+"\n",StandardCharsets.UTF_8);
+    }
+
+    /** All nonzero emissive blocks, including natural cavern lights. */
+    private void writeLightEmission(Path destination) throws IOException {
+        Path dir=destination.resolve("data/wildforge/lighting");
+        Files.createDirectories(dir);
+        JsonObject root=new JsonObject();
+        root.addProperty("schema","wildforge-light-emission-v1");
+        JsonObject values=new JsonObject();
+        values.addProperty("lava",15);
+        values.addProperty("flowing_lava",15);
+        values.addProperty("magma_crust",6);
+        values.addProperty("sporecap_fungus",10);
+        values.addProperty("crystal_cluster",8);
+        root.add("blocks",values);
+        Files.writeString(dir.resolve("emission.json"),GSON.toJson(root)+"\n",StandardCharsets.UTF_8);
     }
 
     /** Minecraft-inspired stone/deep-rock and randomized unbreakable floor rules. */
