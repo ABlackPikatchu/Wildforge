@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:maple_leaves",
+  "numeric_id": 157,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/leaves",
+  "textures": {
+    "top": "wildforge:maple_leaves",
+    "side": "wildforge:maple_leaves",
+    "bottom": "wildforge:maple_leaves"
+  },
+  "drops": [
+    {
+      "item": "wildforge:maple_leaves_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:maple_leaves_block"
+}

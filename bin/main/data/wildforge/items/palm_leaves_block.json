@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:palm_leaves_block",
+  "numeric_id": 181,
+  "max_stack_size": 64,
+  "places_block": "wildforge:palm_leaves",
+  "model": "wildforge:item/block"
+}

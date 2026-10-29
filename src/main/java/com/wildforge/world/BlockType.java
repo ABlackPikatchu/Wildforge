@@ -165,7 +165,32 @@ public enum BlockType {
     MANGROVE_LOG_X(151, 167, 1, true, true, 194, 193, 194),
     MANGROVE_LOG_Z(152, 167, 1, true, true, 194, 193, 194),
     PALM_LOG_X(153, 169, 1, true, true, 198, 197, 198),
-    PALM_LOG_Z(154, 169, 1, true, true, 198, 197, 198);
+    PALM_LOG_Z(154, 169, 1, true, true, 198, 197, 198),
+    OAK_LEAVES(155, 171, 1, false, true, 116, 116, 116),
+    PINE_LEAVES(156, 172, 1, false, true, 117, 117, 117),
+    MAPLE_LEAVES(157, 173, 1, false, true, 118, 118, 118),
+    WILLOW_LEAVES(158, 174, 1, false, true, 119, 119, 119),
+    CYPRESS_LEAVES(159, 175, 1, false, true, 120, 120, 120),
+    BIRCH_LEAVES(160, 176, 1, false, true, 180, 180, 180),
+    SPRUCE_LEAVES(161, 177, 1, false, true, 184, 184, 184),
+    ACACIA_LEAVES(162, 178, 1, false, true, 188, 188, 188),
+    ALDER_LEAVES(163, 179, 1, false, true, 192, 192, 192),
+    MANGROVE_LEAVES(164, 180, 1, false, true, 196, 196, 196),
+    PALM_LEAVES(165, 181, 1, false, true, 200, 200, 200),
+    GRASS_TUFT(166, 182, 1, false, true, 121, 121, 121),
+    FERN_PLANT(167, 183, 1, false, true, 122, 122, 122),
+    REED_PLANT(168, 184, 1, false, true, 123, 123, 123),
+    DEAD_BUSH_PLANT(169, 185, 1, false, true, 124, 124, 124),
+    SHRUB_PLANT(170, 186, 1, false, true, 125, 125, 125),
+    MUSHROOM_PLANT(171, 187, 1, false, true, 126, 126, 126),
+    POPPY_FLOWER(172, 188, 1, false, true, 128, 128, 128),
+    DAISY_FLOWER(173, 189, 1, false, true, 129, 129, 129),
+    LAVENDER_FLOWER(174, 190, 1, false, true, 131, 131, 131),
+    STALACTITE(175, 191, 1, false, true, 227, 227, 227),
+    STALAGMITE(176, 192, 1, false, true, 228, 228, 228),
+    HANGING_ROOTS(177, 193, 1, false, true, 226, 226, 226),
+    SPORECAP_FUNGUS(178, 194, 1, false, true, 229, 229, 229),
+    CRYSTAL_CLUSTER(179, 195, 1, false, true, 49, 49, 49);
 
     // Texture-array layer IDs. Keep these aligned with BlockTextures.
     public static final int GRASS_TOP_TEXTURE = 0;

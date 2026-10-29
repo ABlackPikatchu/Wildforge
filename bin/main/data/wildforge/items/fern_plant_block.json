@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:fern_plant_block",
+  "numeric_id": 183,
+  "max_stack_size": 64,
+  "places_block": "wildforge:fern_plant",
+  "model": "wildforge:item/block"
+}

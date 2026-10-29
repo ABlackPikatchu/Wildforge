@@ -31,8 +31,8 @@ public final class ContentSmokeTest {
         check("Stone".equals(content.blocks().get("stone").getDisplayName()),
                 "Block display names must come from en_us.json");
 
-        check(content.blocks().size() == 155, "Expected 155 registered block types");
-        check(content.items().size() == 169, "Expected 169 registered item types");
+        check(content.blocks().size() == 180, "Expected 180 registered block types");
+        check(content.items().size() == 194, "Expected 194 registered item types");
         check(content.blocks().get("wildforge:stone").getNumericId() == 3,
                 "Stone block save ID must remain 3");
         check(content.items().get("wildforge:coal").getNumericId() == 4,
@@ -66,8 +66,8 @@ public final class ContentSmokeTest {
         // Tag membership comes from generated JSON, including nested #tag references.
         TagRegistry tags = content.tags();
         // Keep these totals aligned with ContentDataGenerator's expanded catalogs.
-        check(tags.blockTagCount() == 15 && tags.itemTagCount() == 10,
-                "Expected 15 block tags and 10 item tags, found "
+        check(tags.blockTagCount() == 16 && tags.itemTagCount() == 11,
+                "Expected 16 block tags and 11 item tags, found "
                         + tags.blockTagCount() + " block tags and "
                         + tags.itemTagCount() + " item tags");
         check(tags.containsBlock("wildforge:stone", "wildforge:stone"),
@@ -122,9 +122,16 @@ public final class ContentSmokeTest {
             try (InputStream stream = BlockTextures.class.getResourceAsStream(path)) {
                 check(stream != null, "Missing texture: " + path);
                 BufferedImage image = ImageIO.read(stream);
-                check(image != null && image.getWidth() == BlockTextures.TEXTURE_SIZE
-                        && image.getHeight() == BlockTextures.TEXTURE_SIZE,
-                        "Texture must be 32x32: " + path);
+                check(image != null, "Could not decode texture: " + path);
+                // Keep this in sync with BlockTextures.loadTexture(): the atlas
+                // accepts static 32x32 images and 32x64 two-frame strips.
+                // Until the animated atlas is implemented, frame 0 is rendered.
+                int size = BlockTextures.TEXTURE_SIZE;
+                check(image.getWidth() == size
+                        && (image.getHeight() == size || image.getHeight() == size * 2),
+                        "Texture must be 32x32 or a 32x64 two-frame strip: " + path
+                                + " (got " + image.getWidth() + "x"
+                                + image.getHeight() + ")");
             }
         }
         TagValidationSmokeTest.run();

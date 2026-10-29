@@ -181,7 +181,32 @@ public enum ItemType {
     MANGROVE_LOG_BLOCK(167, "Mangrove Log", 64, BlockType.MANGROVE_LOG),
     MANGROVE_PLANKS_BLOCK(168, "Mangrove Planks", 64, BlockType.MANGROVE_PLANKS),
     PALM_LOG_BLOCK(169, "Palm Log", 64, BlockType.PALM_LOG),
-    PALM_PLANKS_BLOCK(170, "Palm Planks", 64, BlockType.PALM_PLANKS);
+    PALM_PLANKS_BLOCK(170, "Palm Planks", 64, BlockType.PALM_PLANKS),
+    OAK_LEAVES_BLOCK(171, "Oak Leaves", 64, BlockType.OAK_LEAVES),
+    PINE_LEAVES_BLOCK(172, "Pine Leaves", 64, BlockType.PINE_LEAVES),
+    MAPLE_LEAVES_BLOCK(173, "Maple Leaves", 64, BlockType.MAPLE_LEAVES),
+    WILLOW_LEAVES_BLOCK(174, "Willow Leaves", 64, BlockType.WILLOW_LEAVES),
+    CYPRESS_LEAVES_BLOCK(175, "Cypress Leaves", 64, BlockType.CYPRESS_LEAVES),
+    BIRCH_LEAVES_BLOCK(176, "Birch Leaves", 64, BlockType.BIRCH_LEAVES),
+    SPRUCE_LEAVES_BLOCK(177, "Spruce Leaves", 64, BlockType.SPRUCE_LEAVES),
+    ACACIA_LEAVES_BLOCK(178, "Acacia Leaves", 64, BlockType.ACACIA_LEAVES),
+    ALDER_LEAVES_BLOCK(179, "Alder Leaves", 64, BlockType.ALDER_LEAVES),
+    MANGROVE_LEAVES_BLOCK(180, "Mangrove Leaves", 64, BlockType.MANGROVE_LEAVES),
+    PALM_LEAVES_BLOCK(181, "Palm Leaves", 64, BlockType.PALM_LEAVES),
+    GRASS_TUFT_BLOCK(182, "Grass Tuft", 64, BlockType.GRASS_TUFT),
+    FERN_PLANT_BLOCK(183, "Fern Plant", 64, BlockType.FERN_PLANT),
+    REED_PLANT_BLOCK(184, "Reed Plant", 64, BlockType.REED_PLANT),
+    DEAD_BUSH_PLANT_BLOCK(185, "Dead Bush Plant", 64, BlockType.DEAD_BUSH_PLANT),
+    SHRUB_PLANT_BLOCK(186, "Shrub Plant", 64, BlockType.SHRUB_PLANT),
+    MUSHROOM_PLANT_BLOCK(187, "Mushroom Plant", 64, BlockType.MUSHROOM_PLANT),
+    POPPY_FLOWER_BLOCK(188, "Poppy Flower", 64, BlockType.POPPY_FLOWER),
+    DAISY_FLOWER_BLOCK(189, "Daisy Flower", 64, BlockType.DAISY_FLOWER),
+    LAVENDER_FLOWER_BLOCK(190, "Lavender Flower", 64, BlockType.LAVENDER_FLOWER),
+    STALACTITE_BLOCK(191, "Stalactite", 64, BlockType.STALACTITE),
+    STALAGMITE_BLOCK(192, "Stalagmite", 64, BlockType.STALAGMITE),
+    HANGING_ROOTS_BLOCK(193, "Hanging Roots", 64, BlockType.HANGING_ROOTS),
+    SPORECAP_FUNGUS_BLOCK(194, "Sporecap Fungus", 64, BlockType.SPORECAP_FUNGUS),
+    CRYSTAL_CLUSTER_BLOCK(195, "Crystal Cluster", 64, BlockType.CRYSTAL_CLUSTER);
 
     private final int id;
     private final String displayName;

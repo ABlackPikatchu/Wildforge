@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:willow_leaves_block",
+  "numeric_id": 174,
+  "max_stack_size": 64,
+  "places_block": "wildforge:willow_leaves",
+  "model": "wildforge:item/block"
+}

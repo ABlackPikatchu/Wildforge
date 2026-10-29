@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:crystal_cluster_block",
+  "numeric_id": 195,
+  "max_stack_size": 64,
+  "places_block": "wildforge:crystal_cluster",
+  "model": "wildforge:item/block"
+}

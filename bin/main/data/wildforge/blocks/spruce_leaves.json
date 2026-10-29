@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:spruce_leaves",
+  "numeric_id": 161,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/leaves",
+  "textures": {
+    "top": "wildforge:spruce_leaves",
+    "side": "wildforge:spruce_leaves",
+    "bottom": "wildforge:spruce_leaves"
+  },
+  "drops": [
+    {
+      "item": "wildforge:spruce_leaves_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:spruce_leaves_block"
+}

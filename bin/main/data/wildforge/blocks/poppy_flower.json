@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:poppy_flower",
+  "numeric_id": 172,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/cross_plant",
+  "textures": {
+    "top": "wildforge:flower_poppy",
+    "side": "wildforge:flower_poppy",
+    "bottom": "wildforge:flower_poppy"
+  },
+  "drops": [
+    {
+      "item": "wildforge:poppy_flower_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:poppy_flower_block"
+}

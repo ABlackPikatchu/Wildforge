@@ -492,7 +492,10 @@ public final class Renderer {
 
             BlockType blockType = getItemBlockType(item.getItemType());
             int itemLayer = item.getItemType().getPlacedBlock()==null
-                    ? BlockTextures.itemTextureLayer(item.getItemType()) : -1;
+                    ? BlockTextures.itemTextureLayer(item.getItemType())
+                    : (com.wildforge.world.BlockModels.modelFor(
+                            com.wildforge.world.BlockState.fromLegacy(blockType)).shape()
+                        == com.wildforge.world.BlockModels.Shape.CUBE ? -1 : blockType.getSideTextureLayer());
             offset = itemLayer>=0 ? appendItemSprite(vertices,offset,item,itemLayer)
                 : appendItemCube(vertices, offset, item, blockType);
         }

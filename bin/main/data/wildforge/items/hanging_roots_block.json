@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:hanging_roots_block",
+  "numeric_id": 193,
+  "max_stack_size": 64,
+  "places_block": "wildforge:hanging_roots",
+  "model": "wildforge:item/block"
+}

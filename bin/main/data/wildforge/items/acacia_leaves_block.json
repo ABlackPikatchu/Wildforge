@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:acacia_leaves_block",
+  "numeric_id": 178,
+  "max_stack_size": 64,
+  "places_block": "wildforge:acacia_leaves",
+  "model": "wildforge:item/block"
+}

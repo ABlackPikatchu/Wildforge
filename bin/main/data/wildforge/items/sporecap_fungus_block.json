@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:sporecap_fungus_block",
+  "numeric_id": 194,
+  "max_stack_size": 64,
+  "places_block": "wildforge:sporecap_fungus",
+  "model": "wildforge:item/block"
+}

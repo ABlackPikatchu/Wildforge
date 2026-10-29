@@ -258,7 +258,14 @@ final class InventoryRenderer {
 
         BlockType placedBlock = itemType.getPlacedBlock();
         if (placedBlock != null && placedBlock != BlockType.AIR) {
-            drawTexturedBlockIcon(iconData, x, y, placedBlock);
+            var model=com.wildforge.world.BlockModels.modelFor(
+                    com.wildforge.world.BlockState.fromLegacy(placedBlock));
+            if(model.shape()!=com.wildforge.world.BlockModels.Shape.CUBE) {
+                float ix=x+8,iy=y+8;
+                appendTexturedQuad(iconData,ix,iy,0f,0f,ix+32,iy,1f,0f,
+                        ix+32,iy+32,1f,1f,ix,iy+32,0f,1f,
+                        placedBlock.getSideTextureLayer(),1f);
+            } else drawTexturedBlockIcon(iconData,x,y,placedBlock);
             return;
         }
 

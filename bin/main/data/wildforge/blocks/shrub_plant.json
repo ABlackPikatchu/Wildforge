@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:shrub_plant",
+  "numeric_id": 170,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/cross_plant",
+  "textures": {
+    "top": "wildforge:evergreen_shrub",
+    "side": "wildforge:evergreen_shrub",
+    "bottom": "wildforge:evergreen_shrub"
+  },
+  "drops": [
+    {
+      "item": "wildforge:shrub_plant_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:shrub_plant_block"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:grass_tuft_block",
+  "numeric_id": 182,
+  "max_stack_size": 64,
+  "places_block": "wildforge:grass_tuft",
+  "model": "wildforge:item/block"
+}

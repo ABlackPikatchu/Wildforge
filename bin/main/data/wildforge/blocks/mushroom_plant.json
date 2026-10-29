@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:mushroom_plant",
+  "numeric_id": 171,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/cross_plant",
+  "textures": {
+    "top": "wildforge:forest_mushroom",
+    "side": "wildforge:forest_mushroom",
+    "bottom": "wildforge:forest_mushroom"
+  },
+  "drops": [
+    {
+      "item": "wildforge:mushroom_plant_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:mushroom_plant_block"
+}

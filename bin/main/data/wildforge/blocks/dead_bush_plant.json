@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:dead_bush_plant",
+  "numeric_id": 169,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/cross_plant",
+  "textures": {
+    "top": "wildforge:dead_bush",
+    "side": "wildforge:dead_bush",
+    "bottom": "wildforge:dead_bush"
+  },
+  "drops": [
+    {
+      "item": "wildforge:dead_bush_plant_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:dead_bush_plant_block"
+}

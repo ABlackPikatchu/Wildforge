@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:crystal_cluster",
+  "numeric_id": 179,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.8,
+  "model": "wildforge:block/crystal",
+  "textures": {
+    "top": "wildforge:quartz_vein",
+    "side": "wildforge:quartz_vein",
+    "bottom": "wildforge:quartz_vein"
+  },
+  "drops": [
+    {
+      "item": "wildforge:crystal_cluster_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:crystal_cluster_block"
+}

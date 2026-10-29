@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:oak_leaves",
+  "numeric_id": 155,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/leaves",
+  "textures": {
+    "top": "wildforge:oak_leaves",
+    "side": "wildforge:oak_leaves",
+    "bottom": "wildforge:oak_leaves"
+  },
+  "drops": [
+    {
+      "item": "wildforge:oak_leaves_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:oak_leaves_block"
+}

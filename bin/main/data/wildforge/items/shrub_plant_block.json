@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:shrub_plant_block",
+  "numeric_id": 186,
+  "max_stack_size": 64,
+  "places_block": "wildforge:shrub_plant",
+  "model": "wildforge:item/block"
+}

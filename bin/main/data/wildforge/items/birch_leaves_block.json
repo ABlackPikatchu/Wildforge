@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:birch_leaves_block",
+  "numeric_id": 176,
+  "max_stack_size": 64,
+  "places_block": "wildforge:birch_leaves",
+  "model": "wildforge:item/block"
+}

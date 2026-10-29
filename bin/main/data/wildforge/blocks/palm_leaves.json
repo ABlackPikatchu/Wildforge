@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:palm_leaves",
+  "numeric_id": 165,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/leaves",
+  "textures": {
+    "top": "wildforge:palm_leaves",
+    "side": "wildforge:palm_leaves",
+    "bottom": "wildforge:palm_leaves"
+  },
+  "drops": [
+    {
+      "item": "wildforge:palm_leaves_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:palm_leaves_block"
+}

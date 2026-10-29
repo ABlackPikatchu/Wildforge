@@ -17,7 +17,7 @@ public final class CreativeCatalog {
         String n=item.name();
         if(isTool(n))return 5;
         if(n.contains("LOG")||n.contains("PLANK")||n.contains("WOOD")||n.contains("LEAVES")||n.contains("CRAFTING_TABLE"))return 2;
-        if(n.contains("FLOWER")||n.contains("SMALL_GRASS")||n.contains("FERN")||n.contains("SHRUB")||n.contains("MUSHROOM")||n.contains("BUSH")||n.contains("CACTUS")||n.contains("MOSS")||n.contains("LITTER")||n.contains("ROOT_MAT"))return 3;
+        if(n.contains("FLOWER")||n.contains("TUFT")||n.contains("CRYSTAL_CLUSTER")||n.contains("STALACTITE")||n.contains("STALAGMITE")||n.contains("ROOTS")||n.contains("SPORECAP")||n.contains("REED")||n.contains("SMALL_GRASS")||n.contains("FERN")||n.contains("SHRUB")||n.contains("MUSHROOM")||n.contains("BUSH")||n.contains("CACTUS")||n.contains("MOSS")||n.contains("LITTER")||n.contains("ROOT_MAT"))return 3;
         if(item.getPlacedBlock()==null)return 4;
         return 1;
     }

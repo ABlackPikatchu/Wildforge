@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:mangrove_leaves_block",
+  "numeric_id": 180,
+  "max_stack_size": 64,
+  "places_block": "wildforge:mangrove_leaves",
+  "model": "wildforge:item/block"
+}

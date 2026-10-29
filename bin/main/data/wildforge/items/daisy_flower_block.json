@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:daisy_flower_block",
+  "numeric_id": 189,
+  "max_stack_size": 64,
+  "places_block": "wildforge:daisy_flower",
+  "model": "wildforge:item/block"
+}

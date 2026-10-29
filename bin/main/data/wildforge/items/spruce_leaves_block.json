@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:spruce_leaves_block",
+  "numeric_id": 177,
+  "max_stack_size": 64,
+  "places_block": "wildforge:spruce_leaves",
+  "model": "wildforge:item/block"
+}

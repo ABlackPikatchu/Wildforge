@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:lavender_flower_block",
+  "numeric_id": 190,
+  "max_stack_size": 64,
+  "places_block": "wildforge:lavender_flower",
+  "model": "wildforge:item/block"
+}

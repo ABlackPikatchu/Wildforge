@@ -1,0 +1,20 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:oak_leaves_block",
+    "wildforge:pine_leaves_block",
+    "wildforge:maple_leaves_block",
+    "wildforge:willow_leaves_block",
+    "wildforge:cypress_leaves_block",
+    "wildforge:birch_leaves_block",
+    "wildforge:spruce_leaves_block",
+    "wildforge:acacia_leaves_block",
+    "wildforge:alder_leaves_block",
+    "wildforge:mangrove_leaves_block",
+    "wildforge:palm_leaves_block",
+    "wildforge:grass_tuft_block",
+    "wildforge:fern_plant_block",
+    "wildforge:reed_plant_block",
+    "wildforge:shrub_plant_block"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:pine_leaves_block",
+  "numeric_id": 172,
+  "max_stack_size": 64,
+  "places_block": "wildforge:pine_leaves",
+  "model": "wildforge:item/block"
+}

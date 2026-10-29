@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:cypress_leaves_block",
+  "numeric_id": 175,
+  "max_stack_size": 64,
+  "places_block": "wildforge:cypress_leaves",
+  "model": "wildforge:item/block"
+}

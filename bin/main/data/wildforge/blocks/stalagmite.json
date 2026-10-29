@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:stalagmite",
+  "numeric_id": 176,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/spike",
+  "textures": {
+    "top": "wildforge:stalagmite",
+    "side": "wildforge:stalagmite",
+    "bottom": "wildforge:stalagmite"
+  },
+  "drops": [
+    {
+      "item": "wildforge:stalagmite_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:stalagmite_block"
+}

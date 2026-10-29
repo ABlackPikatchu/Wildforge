@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:alder_leaves_block",
+  "numeric_id": 179,
+  "max_stack_size": 64,
+  "places_block": "wildforge:alder_leaves",
+  "model": "wildforge:item/block"
+}

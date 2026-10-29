@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:hanging_roots",
+  "numeric_id": 177,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/ceiling_plant",
+  "textures": {
+    "top": "wildforge:hanging_roots",
+    "side": "wildforge:hanging_roots",
+    "bottom": "wildforge:hanging_roots"
+  },
+  "drops": [
+    {
+      "item": "wildforge:hanging_roots_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:hanging_roots_block"
+}

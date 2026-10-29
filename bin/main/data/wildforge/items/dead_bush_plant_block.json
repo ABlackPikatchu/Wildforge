@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:dead_bush_plant_block",
+  "numeric_id": 185,
+  "max_stack_size": 64,
+  "places_block": "wildforge:dead_bush_plant",
+  "model": "wildforge:item/block"
+}

@@ -230,3 +230,13 @@ tasks.register('blockStateCheck', JavaExec) {
     mainClass = 'com.wildforge.world.BlockStateSmokeTest'
 }
 tasks.named('check') { dependsOn tasks.named('blockStateCheck') }
+
+// Patch 3B: executable headless geometry / deterministic foliage / save ID checks.
+tasks.register('vegetationCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify harvestable foliage, plant models, drops and deterministic canopy generation'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.VegetationModelSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('vegetationCheck'), tasks.named('oceanTreeCheck') }

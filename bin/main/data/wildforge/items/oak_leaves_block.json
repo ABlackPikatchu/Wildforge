@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:oak_leaves_block",
+  "numeric_id": 171,
+  "max_stack_size": 64,
+  "places_block": "wildforge:oak_leaves",
+  "model": "wildforge:item/block"
+}

@@ -8,13 +8,13 @@ import java.io.InputStream;
 /**
  * Central face-texture and model metadata registry. Terrain meshing can use
  * the same definition as dropped cubes and future item/block previews.
- * Model kinds beyond CUBE/FLUID are intentionally reserved for Patch 3B;
- * they are not yet live meshing paths.
+ * Shape metadata is shared by world meshing, placement rules and inventory
+ * previews; all non-cube shapes registered by Wildforge have a render path.
  */
 public final class BlockModels {
     private BlockModels() {}
 
-    public enum Shape { CUBE, FLUID, CROSS_PLANT, WALL_ATTACHMENT, CEILING_ATTACHMENT, CUSTOM }
+    public enum Shape { CUBE, FLUID, CROSS_PLANT, WALL_ATTACHMENT, CEILING_ATTACHMENT, SPIKE, CRYSTAL, CUSTOM }
     public enum Pass { OPAQUE, CUTOUT, TRANSLUCENT }
     public enum Face {
         WEST(0), EAST(0), DOWN(1), UP(1), NORTH(2), SOUTH(2);
@@ -40,8 +40,8 @@ public final class BlockModels {
                     block.isFluid() ? FLUID : block == BlockType.GLASS ? GLASS_CUBE : SOLID_CUBE;
             models[Byte.toUnsignedInt(legacy.getId())] = defaultModel;
         }
-        // An optional resource file can override model metadata without a Java
-        // recompile. Only cube/fluid runtime meshes are implemented in 3A.
+        // Resource definitions override built-in cube/fluid defaults while
+        // retaining the original byte IDs used in saved worlds.
         try (InputStream in = BlockModels.class.getResourceAsStream(RESOURCE)) {
             if (in == null) return models;
             Properties properties = new Properties();
@@ -55,10 +55,12 @@ public final class BlockModels {
                 String occlusionText = fields[2].strip();
                 if (!occlusionText.equals("true") && !occlusionText.equals("false"))
                     throw new IllegalStateException("Bad block occlusion flag for " + name);
-                // Avoid silently treating non-cube models as cubes until their
-                // geometry pipeline is implemented in Patch 3B.
-                if (shape != Shape.CUBE && shape != Shape.FLUID && shape != Shape.CUSTOM)
-                    throw new IllegalStateException("Model shape not implemented yet: " + name + " / " + shape);
+                if (shape != Shape.CUBE && shape != Shape.FLUID && shape != Shape.CUSTOM
+                        && shape != Shape.CROSS_PLANT && shape != Shape.CEILING_ATTACHMENT
+                        && shape != Shape.SPIKE && shape != Shape.CRYSTAL)
+                    throw new IllegalStateException("Model shape is not implemented: " + name + " / " + shape);
+                if (shape != Shape.CUBE && Boolean.parseBoolean(occlusionText))
+                    throw new IllegalStateException("Non-cube model cannot occlude full faces: " + name);
                 Model model = new Model(shape, pass, Boolean.parseBoolean(occlusionText));
                 BlockState state = BlockState.fromLegacy(block);
                 if (state.isLog() && state.block() != block)

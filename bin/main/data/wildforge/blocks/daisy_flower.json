@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:daisy_flower",
+  "numeric_id": 173,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/cross_plant",
+  "textures": {
+    "top": "wildforge:flower_daisy",
+    "side": "wildforge:flower_daisy",
+    "bottom": "wildforge:flower_daisy"
+  },
+  "drops": [
+    {
+      "item": "wildforge:daisy_flower_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:daisy_flower_block"
+}

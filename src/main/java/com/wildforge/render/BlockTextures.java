@@ -251,7 +251,11 @@ public final class BlockTextures implements AutoCloseable {
         "/textures/coral_red_branch.png",
         "/textures/coral_pink_fan.png",
         "/textures/anemone_green.png",
-        "/textures/sponge_yellow.png"
+        "/textures/sponge_yellow.png",
+        "/textures/hanging_roots.png",
+        "/textures/stalactite.png",
+        "/textures/stalagmite.png",
+        "/textures/sporecap_fungus.png"
     };
 
     /** Icon layers appended after terrain textures. IDs remain unchanged. */
@@ -378,10 +382,12 @@ public final class BlockTextures implements AutoCloseable {
                 );
             }
 
+            // Source pack includes some 32x64 two-frame animation strips.
+            // Until the animated atlas exists, upload the first 32x32 frame.
             if (image.getWidth() != TEXTURE_SIZE
-                    || image.getHeight() != TEXTURE_SIZE) {
+                    || (image.getHeight() != TEXTURE_SIZE && image.getHeight() != TEXTURE_SIZE*2)) {
                 throw new IllegalStateException(
-                    "Texture must be 32x32: " + path
+                    "Texture must be 32x32 or a 32x64 two-frame strip: " + path
                     + " (got " + image.getWidth()
                     + "x" + image.getHeight() + ")"
                 );

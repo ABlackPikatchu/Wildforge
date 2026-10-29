@@ -11,9 +11,9 @@ public final class OceanTreeIntegrationSmokeTest {
         if(!condition)throw new AssertionError(message);
     }
     public static void main(String[] args) {
-        check(BlockType.values().length==155,"Block registry count changed");
-        check(ItemType.values().length==169,"Item registry count changed");
-        check(BlockTextures.layerCount()==226,"Missing texture atlas layers");
+        check(BlockType.values().length==180,"Block registry count changed");
+        check(ItemType.values().length==194,"Item registry count changed");
+        check(BlockTextures.layerCount()==230,"Missing texture atlas layers");
         var seen=new HashSet<Integer>();
         for(BlockType block:BlockType.values())
             check(seen.add(Byte.toUnsignedInt(block.getId())),"Duplicate block ID: "+block);
@@ -41,6 +41,6 @@ public final class OceanTreeIntegrationSmokeTest {
         }
         check(WorldGenerator.TreeType.values().length==11,"Expected eleven tree species");
         check(WorldGenerator.OceanBiome.values().length==10,"Expected ten marine regions");
-        System.out.println("Ocean/tree registry smoke test passed: 155 blocks, 169 items, 11 trees, 10 oceans.");
+        System.out.println("Ocean/tree registry smoke test passed: 180 blocks, 194 items, 11 trees, 10 oceans.");
     }
 }

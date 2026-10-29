@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:mushroom_plant_block",
+  "numeric_id": 187,
+  "max_stack_size": 64,
+  "places_block": "wildforge:mushroom_plant",
+  "model": "wildforge:item/block"
+}

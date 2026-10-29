@@ -23,7 +23,7 @@ public final class BlockStateSmokeTest {
                 require(BlockModels.textureForFace(state, face) >= 0, "missing texture: " + legacy);
         }
         require(BlockType.fromId((byte) 255) == BlockType.AIR, "unknown ID fallback");
-        require(BlockType.values().length == 155, "block ID count changed: review migration");
+        require(BlockType.values().length == 180, "block ID count changed: review migration");
 
         BlockType[] logs = {
             BlockType.OAK_LOG, BlockType.PINE_LOG, BlockType.MAPLE_LOG,

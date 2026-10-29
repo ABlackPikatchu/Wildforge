@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:poppy_flower_block",
+  "numeric_id": 188,
+  "max_stack_size": 64,
+  "places_block": "wildforge:poppy_flower",
+  "model": "wildforge:item/block"
+}

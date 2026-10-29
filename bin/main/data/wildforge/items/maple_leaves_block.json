@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:maple_leaves_block",
+  "numeric_id": 173,
+  "max_stack_size": 64,
+  "places_block": "wildforge:maple_leaves",
+  "model": "wildforge:item/block"
+}

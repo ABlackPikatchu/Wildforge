@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:pine_leaves",
+  "numeric_id": 156,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/leaves",
+  "textures": {
+    "top": "wildforge:pine_leaves",
+    "side": "wildforge:pine_leaves",
+    "bottom": "wildforge:pine_leaves"
+  },
+  "drops": [
+    {
+      "item": "wildforge:pine_leaves_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:pine_leaves_block"
+}

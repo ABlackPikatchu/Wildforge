@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:stalactite",
+  "numeric_id": 175,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/spike",
+  "textures": {
+    "top": "wildforge:stalactite",
+    "side": "wildforge:stalactite",
+    "bottom": "wildforge:stalactite"
+  },
+  "drops": [
+    {
+      "item": "wildforge:stalactite_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:stalactite_block"
+}

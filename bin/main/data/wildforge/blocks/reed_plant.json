@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:reed_plant",
+  "numeric_id": 168,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/cross_plant",
+  "textures": {
+    "top": "wildforge:dune_grass",
+    "side": "wildforge:dune_grass",
+    "bottom": "wildforge:dune_grass"
+  },
+  "drops": [
+    {
+      "item": "wildforge:reed_plant_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:reed_plant_block"
+}

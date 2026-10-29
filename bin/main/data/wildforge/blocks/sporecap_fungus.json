@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:sporecap_fungus",
+  "numeric_id": 178,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/cross_plant",
+  "textures": {
+    "top": "wildforge:sporecap_fungus",
+    "side": "wildforge:sporecap_fungus",
+    "bottom": "wildforge:sporecap_fungus"
+  },
+  "drops": [
+    {
+      "item": "wildforge:sporecap_fungus_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:sporecap_fungus_block"
+}

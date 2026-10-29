@@ -225,6 +225,32 @@ public final class ContentDataGenerator {
         orientedLog("mangrove_log_z", 152, "mangrove_log_block", "mangrove_log_top", "mangrove_log_side");
         orientedLog("palm_log_x", 153, "palm_log_block", "palm_log_top", "palm_log_side");
         orientedLog("palm_log_z", 154, "palm_log_block", "palm_log_top", "palm_log_side");
+        // Patch 3B: cutout leaf and decoration blocks; IDs append-only.
+        nonSolidBlockWithItem("oak_leaves", 155, 171, 0.3f).textures("oak_leaves", "oak_leaves", "oak_leaves");
+        nonSolidBlockWithItem("pine_leaves", 156, 172, 0.3f).textures("pine_leaves", "pine_leaves", "pine_leaves");
+        nonSolidBlockWithItem("maple_leaves", 157, 173, 0.3f).textures("maple_leaves", "maple_leaves", "maple_leaves");
+        nonSolidBlockWithItem("willow_leaves", 158, 174, 0.3f).textures("willow_leaves", "willow_leaves", "willow_leaves");
+        nonSolidBlockWithItem("cypress_leaves", 159, 175, 0.3f).textures("cypress_leaves", "cypress_leaves", "cypress_leaves");
+        nonSolidBlockWithItem("birch_leaves", 160, 176, 0.3f).textures("birch_leaves", "birch_leaves", "birch_leaves");
+        nonSolidBlockWithItem("spruce_leaves", 161, 177, 0.3f).textures("spruce_leaves", "spruce_leaves", "spruce_leaves");
+        nonSolidBlockWithItem("acacia_leaves", 162, 178, 0.3f).textures("acacia_leaves", "acacia_leaves", "acacia_leaves");
+        nonSolidBlockWithItem("alder_leaves", 163, 179, 0.3f).textures("alder_leaves", "alder_leaves", "alder_leaves");
+        nonSolidBlockWithItem("mangrove_leaves", 164, 180, 0.3f).textures("mangrove_leaves", "mangrove_leaves", "mangrove_leaves");
+        nonSolidBlockWithItem("palm_leaves", 165, 181, 0.3f).textures("palm_leaves", "palm_leaves", "palm_leaves");
+        nonSolidBlockWithItem("grass_tuft", 166, 182, 0.3f).textures("small_grass", "small_grass", "small_grass");
+        nonSolidBlockWithItem("fern_plant", 167, 183, 0.3f).textures("fern", "fern", "fern");
+        nonSolidBlockWithItem("reed_plant", 168, 184, 0.3f).textures("dune_grass", "dune_grass", "dune_grass");
+        nonSolidBlockWithItem("dead_bush_plant", 169, 185, 0.3f).textures("dead_bush", "dead_bush", "dead_bush");
+        nonSolidBlockWithItem("shrub_plant", 170, 186, 0.3f).textures("evergreen_shrub", "evergreen_shrub", "evergreen_shrub");
+        nonSolidBlockWithItem("mushroom_plant", 171, 187, 0.3f).textures("forest_mushroom", "forest_mushroom", "forest_mushroom");
+        nonSolidBlockWithItem("poppy_flower", 172, 188, 0.3f).textures("flower_poppy", "flower_poppy", "flower_poppy");
+        nonSolidBlockWithItem("daisy_flower", 173, 189, 0.3f).textures("flower_daisy", "flower_daisy", "flower_daisy");
+        nonSolidBlockWithItem("lavender_flower", 174, 190, 0.3f).textures("flower_lavender", "flower_lavender", "flower_lavender");
+        nonSolidBlockWithItem("stalactite", 175, 191, 0.3f).textures("stalactite", "stalactite", "stalactite");
+        nonSolidBlockWithItem("stalagmite", 176, 192, 0.3f).textures("stalagmite", "stalagmite", "stalagmite");
+        nonSolidBlockWithItem("hanging_roots", 177, 193, 0.3f).textures("hanging_roots", "hanging_roots", "hanging_roots");
+        nonSolidBlockWithItem("sporecap_fungus", 178, 194, 0.3f).textures("sporecap_fungus", "sporecap_fungus", "sporecap_fungus");
+        nonSolidBlockWithItem("crystal_cluster", 179, 195, 0.8f).textures("quartz_vein", "quartz_vein", "quartz_vein");
         item("brick", 108, 64, "brick");
         item("diamond", 109, 64, "diamond");
         item("gold_ingot", 110, 64, "gold_ingot");
@@ -272,8 +298,10 @@ public final class ContentDataGenerator {
 
         // Tags are generated, indexed and resolved at runtime. # references nest tags.
         blockTag("stone", "stone", "andesite", "basalt", "diorite", "gabbro", "cobblestone");
+        blockTag("foliage", "oak_leaves", "pine_leaves", "maple_leaves", "willow_leaves", "cypress_leaves", "birch_leaves", "spruce_leaves", "acacia_leaves", "alder_leaves", "mangrove_leaves", "palm_leaves", "fern_plant", "grass_tuft", "shrub_plant");
         itemTag("stone_blocks", "stone_block", "andesite_block", "basalt_block",
                 "diorite_block", "gabbro_block", "cobblestone_block");
+        itemTag("foliage", "oak_leaves_block", "pine_leaves_block", "maple_leaves_block", "willow_leaves_block", "cypress_leaves_block", "birch_leaves_block", "spruce_leaves_block", "acacia_leaves_block", "alder_leaves_block", "mangrove_leaves_block", "palm_leaves_block", "grass_tuft_block", "fern_plant_block", "reed_plant_block", "shrub_plant_block");
         itemTag("building_blocks", "#stone_blocks", "dirt_block", "sandstone_block");
 
         // Functional grouped tags for crafting, harvest rules and future worldgen.
@@ -308,6 +336,26 @@ public final class ContentDataGenerator {
         }
         String blockItem = name + "_block";
         BlockBuilder block = new BlockBuilder(name, blockId, true, true, hardness);
+        block.json.addProperty("block_item", id(blockItem));
+        JsonArray drops = new JsonArray();
+        JsonObject drop = new JsonObject();
+        drop.addProperty("item", id(blockItem));
+        drop.addProperty("count", 1);
+        drops.add(drop);
+        block.json.add("drops", drops);
+        addItem(blockItem, itemId, 64, name, null);
+        return block;
+    }
+
+    /** Harvestable, non-colliding flora.  The block ID is persisted like any other edit. */
+    private BlockBuilder nonSolidBlockWithItem(String name, int blockId, int itemId, float hardness) {
+        String blockItem = name + "_block";
+        BlockBuilder block = new BlockBuilder(name, blockId, false, true, hardness);
+        String model = name.equals("crystal_cluster") ? "block/crystal" :
+                name.endsWith("_leaves") ? "block/leaves" :
+                name.equals("stalactite") || name.equals("stalagmite") ? "block/spike" :
+                name.equals("hanging_roots") ? "block/ceiling_plant" : "block/cross_plant";
+        block.json.addProperty("model", id(model));
         block.json.addProperty("block_item", id(blockItem));
         JsonArray drops = new JsonArray();
         JsonObject drop = new JsonObject();

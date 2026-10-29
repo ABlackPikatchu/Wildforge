@@ -117,16 +117,6 @@ public final class BlockInteraction {
             return;
         }
 
-        // Prevent placing a solid block inside the player's collision body.
-        if (bx + 1 > playerX - playerRadius
-                && bx < playerX + playerRadius
-                && by + 1 > playerFeetY
-                && by < playerFeetY + playerHeight
-                && bz + 1 > playerZ - playerRadius
-                && bz < playerZ + playerRadius) {
-            return;
-        }
-
         ItemType itemType = selected.getItemType();
         BlockType blockToPlace;
         if (content == null) {
@@ -139,6 +129,22 @@ public final class BlockInteraction {
         if (blockToPlace == null || blockToPlace == BlockType.AIR) {
             return;
         }
+        // Non-colliding foliage and sprites can be placed close to the player.
+        // Ground and ceiling attachments require a support block.
+        com.wildforge.world.BlockModels.Shape shape =
+                com.wildforge.world.BlockModels.modelFor(BlockState.fromLegacy(blockToPlace)).shape();
+        if (shape == com.wildforge.world.BlockModels.Shape.CROSS_PLANT ||
+                shape == com.wildforge.world.BlockModels.Shape.SPIKE ||
+                shape == com.wildforge.world.BlockModels.Shape.CEILING_ATTACHMENT) {
+            boolean hangs=shape == com.wildforge.world.BlockModels.Shape.CEILING_ATTACHMENT
+                    || blockToPlace == BlockType.STALACTITE;
+            if (!terrain.getBlockAt(bx, by+(hangs?1:-1), bz).isSolid()) return;
+        }
+
+        if(blockToPlace.isSolid()
+                && bx + 1 > playerX - playerRadius && bx < playerX + playerRadius
+                && by + 1 > playerFeetY && by < playerFeetY + playerHeight
+                && bz + 1 > playerZ - playerRadius && bz < playerZ + playerRadius) return;
 
         // The axis follows the face clicked: east/west X, north/south Z,
         // floor/ceiling Y. Horizontal logs drop the original log item.
