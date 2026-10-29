@@ -11,6 +11,7 @@ public final class CaveBiomePainter {
 
     public static void paint(byte[] blocks,int chunkX,int chunkZ,WorldGenerator generator,int height) {
         byte air=BlockType.AIR.getId(),bedrock=BlockType.BEDROCK.getId();
+        SeededNoise patchNoise = new SeededNoise(generator.seed());
         for(int x=0;x<SIDE;x++)for(int z=0;z<SIDE;z++) {
             int wx=chunkX*SIDE+x,wz=chunkZ*SIDE+z;
             WorldGenerator.Surface land=generator.surface(wx,wz);
@@ -19,28 +20,39 @@ public final class CaveBiomePainter {
             for(int y=5;y<=max;y++) {
                 int at=base+y;
                 byte old=blocks[at];
-                if(old==air||old==bedrock)continue;
+                if(old==air||old==bedrock || !hostRock(old))continue;
                 boolean floor=blocks[at+1]==air, ceiling=blocks[at-1]==air;
                 boolean wall=(x>0 && blocks[at-SIDE*height]==air)
                         ||(x<SIDE-1 && blocks[at+SIDE*height]==air)
                         ||(z>0 && blocks[at-height]==air)
                         ||(z<SIDE-1 && blocks[at+height]==air);
                 if(!floor&&!ceiling&&!wall)continue;
-                // Avoid repaints of explicit ore veins, and retain original host rock extensively.
-                if((old&255)>=BlockType.COAL_ORE.getId() && (old&255)<=BlockType.DIAMOND_ORE.getId())continue;
+                // A continuous world-space mask groups accent material into small
+                // deposits instead of scattering individual checkerboard blocks.
+                // Cheap rejection happens before the expensive biome lookup.
+                double cluster = patchNoise.noise3(wx/7.5, y/6.0, wz/7.5, 0x4c4159455253L);
+                if (cluster < .28) continue;
                 UndergroundBiomeSampler.Context ctx=generator.caveSampler().contextAt(wx,y,wz,land);
                 UndergroundBiome biome=generator.caveSampler().choose(wx,y,wz,ctx);
                 if(biome==null)continue;
                 long h=mix(((long)wx*0x9E3779B97F4A7C15L)^((long)wz*0xC2B2AE3D27D4EB4FL)
                         ^((long)y*0x165667B19E3779F9L));
-                // Small stable patches, not complete recoloring or per-pixel random speckles.
-                int chance=(int)((h>>>59)&31);
-                if(chance>4)continue; // Fewer isolated accent blocks; host stone should dominate.
                 BlockType replacement=material(biome,floor,ctx,choice(h));
                 if(replacement!=null)blocks[at]=replacement.getId();
             }
         }
     }
+    /** Only replace natural rock; ores and other functional blocks stay intact. */
+    private static final boolean[] HOST_ROCK = new boolean[256];
+    static {
+        for (BlockType block : new BlockType[]{BlockType.STONE,BlockType.SLATE,
+                BlockType.SHALE,BlockType.LIMESTONE,BlockType.GRANITE,BlockType.GABBRO,
+                BlockType.BASALT,BlockType.ANDESITE,BlockType.DIORITE,
+                BlockType.SANDSTONE,BlockType.SILTSTONE,BlockType.SCORIA}) {
+            HOST_ROCK[block.getId() & 255] = true;
+        }
+    }
+    private static boolean hostRock(byte id) {return HOST_ROCK[id & 255];}
     private static int choice(long h) {return (int)((h>>>48)&3);}
     private static BlockType material(UndergroundBiome b,boolean floor,UndergroundBiomeSampler.Context ctx,int n) {
         return switch(b) {

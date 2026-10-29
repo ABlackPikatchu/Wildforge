@@ -890,14 +890,29 @@ public final class TerrainMesh {
         for(int ax=c.cx-1;ax<=c.cx+1;ax++) for(int az=c.cz-1;az<=c.cz+1;az++) {
             for(int ay=0;ay<=WORLD_HEIGHT/band;ay++) for(int type=0;type<5;type++) {
                 long salt=0x4f524553L+type*0x54abL;
-                double chance=switch(type){case 0->.73;case 1->.60;case 2->.24;case 3->.13;default->.028;};
-                if(depositNoise.unit(ax,ay,az,salt)>chance)continue;
+                // Rates are probabilities of a deposit, not inverse rarity.
+                // Diamond/gold should be genuinely rarer than coal/iron.
+                double chance=switch(type){case 0->.60;case 1->.43;case 2->.18;case 3->.09;default->.026;};
                 int ox=ax*spacing+(int)(depositNoise.unit(ax,ay,az,salt+1)*spacing);
                 int oy=ay*band+(int)(depositNoise.unit(ax,ay,az,salt+2)*band);
                 int oz=az*spacing+(int)(depositNoise.unit(ax,ay,az,salt+3)*spacing);
                 if(oy<5 || oy>WORLD_HEIGHT-8)continue;
-                if(type==0 && oy>145 || type==1 && oy>135 || type==2 && (oy<12||oy>100)
-                        || type==3 && (oy<7||oy>80) || type==4 && oy>42)continue;
+                int sea=generator.settings().seaLevel();
+                if(type==0 && oy>sea+48 || type==1 && oy>sea+24
+                        || type==2 && (oy<14||oy>sea-6)
+                        || type==3 && (oy<8||oy>sea-45)
+                        || type==4 && oy>sea-105)continue;
+                // Soft host-province preference, not hard filtering: mixed rock
+                // retains occasional discoveries outside the most favorable province.
+                com.wildforge.worldgen.Geology province=generator.geologyAt(ox,oz);
+                double bonus=switch(type) {
+                    case 0 -> province==com.wildforge.worldgen.Geology.SHALE || province==com.wildforge.worldgen.Geology.SANDSTONE ? 1.25 : .9;
+                    case 1 -> province==com.wildforge.worldgen.Geology.GRANITE || province==com.wildforge.worldgen.Geology.SHALE ? 1.18 : 1.0;
+                    case 2 -> province==com.wildforge.worldgen.Geology.GRANITE ? 1.22 : .9;
+                    case 3 -> province==com.wildforge.worldgen.Geology.VOLCANIC || province==com.wildforge.worldgen.Geology.BASALT ? 1.38 : .85;
+                    default -> province==com.wildforge.worldgen.Geology.GRANITE || province==com.wildforge.worldgen.Geology.BASALT ? 1.25 : .9;
+                };
+                if(depositNoise.unit(ax,ay,az,salt)>=Math.min(.95,chance*bonus))continue;
                 BlockType ore=switch(type){case 0->BlockType.COAL_ORE;case 1->BlockType.IRON_ORE;
                     case 2->BlockType.SILVER_ORE;case 3->BlockType.GOLD_ORE;default->BlockType.DIAMOND_ORE;};
                 int length=switch(type){case 0->4+(int)(depositNoise.unit(ax,ay,az,salt+4)*11);

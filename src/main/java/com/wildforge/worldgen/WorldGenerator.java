@@ -488,14 +488,21 @@ public final class WorldGenerator {
         return isSolidTerrain(x, y, z, surfaceY, slopeAt(x, z));
     }
 
-    /** Cheap 3D cave-carving predicate; stream-chunk engine will apply this later. */
+    /**
+     * Broad noise caverns retain an intact roof; dedicated CaveCarvers supplies
+     * the rare entrances. Cave frequency tapers naturally toward the surface.
+     */
     public boolean isCave(int x, int y, int z, int surfaceY) {
-        if (y < settings.minY() + 5 || y > surfaceY - 6) return false;
+        int depth = surfaceY - y;
+        if (y < settings.minY() + 5 || depth < 14) return false;
+        double taper = smoothstep(14.0, 34.0, depth);
+        double threshold = settings.caveThreshold() * (0.45 + 0.55 * taper);
         double main = noise.noise3(x / settings.caveScale(), y / (settings.caveScale() * 0.73),
                 z / settings.caveScale(), CAVE);
+        if (Math.abs(main) >= threshold) return false;
         double breakup = noise.noise3(x / (settings.caveScale() * 0.65),
                 y / (settings.caveScale() * 0.55), z / (settings.caveScale() * 0.65), CAVE_BREAKUP);
-        return Math.abs(main) < settings.caveThreshold() && breakup > -0.27;
+        return breakup > -0.16 + (1.0 - taper) * 0.15;
     }
 
     /** One tree candidate per 8x8 world-cell, independent of chunk-loading order. */

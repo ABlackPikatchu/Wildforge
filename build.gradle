@@ -201,3 +201,13 @@ tasks.register('sectionMeshCheck', JavaExec) {
     mainClass = 'com.wildforge.world.SectionMeshingSmokeTest'
 }
 tasks.named('check') { dependsOn tasks.named('sectionMeshCheck') }
+
+// Phase 2: underground carver determinism, intact roofs and protected bedrock.
+tasks.register('caveCheck', JavaExec) {
+    group = 'verification'
+    description = 'Test seeded geological carvers and cave roof safety'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.worldgen.CaveGenerationSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('caveCheck') }
