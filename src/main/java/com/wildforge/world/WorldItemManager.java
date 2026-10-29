@@ -95,7 +95,7 @@ public final class WorldItemManager {
         entityManager.removeRemoved();
 
         // Attract items before their physics update.
-        if (player != null) {
+        if (player != null && player.getGameMode() != com.wildforge.player.GameMode.SPECTATOR) {
             float magnetDistanceSquared =
                     MAGNET_DISTANCE * MAGNET_DISTANCE;
 
@@ -114,7 +114,7 @@ public final class WorldItemManager {
 
         mergeNearbyStacks();
 
-        if (player != null) {
+        if (player != null && player.getGameMode() != com.wildforge.player.GameMode.SPECTATOR) {
             collectNearbyItems(player);
         }
 

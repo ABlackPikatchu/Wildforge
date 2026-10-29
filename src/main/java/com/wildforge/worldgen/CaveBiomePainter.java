@@ -35,7 +35,7 @@ public final class CaveBiomePainter {
                         ^((long)y*0x165667B19E3779F9L));
                 // Small stable patches, not complete recoloring or per-pixel random speckles.
                 int chance=(int)((h>>>59)&31);
-                if(chance>10)continue;
+                if(chance>4)continue; // Fewer isolated accent blocks; host stone should dominate.
                 BlockType replacement=material(biome,floor,ctx,choice(h));
                 if(replacement!=null)blocks[at]=replacement.getId();
             }

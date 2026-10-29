@@ -92,6 +92,8 @@ public final class Renderer {
     private final BlockTextures blockTextures;
     private final TitleScreenRenderer titleScreen;
     private float fov = 70f;
+    private float underwaterBlend=0f;
+    private long lastFogNanos=System.nanoTime();
 
     public void setFov(float fieldOfView) {
         if (fieldOfView < 40f || fieldOfView > 120f) {
@@ -114,6 +116,9 @@ public final class Renderer {
 
     public void setMeasuredFps(int fps) {
         hud.setMeasuredFps(fps);
+    }
+    public void setDeveloperOverlay(Player player,TerrainMesh terrain,boolean open,String input,String feedback){
+        hud.setDeveloperOverlay(player,terrain,open,input,feedback);
     }
     public void setDebugOverlay(boolean enabled){hud.setDebugOverlay(enabled);}
     public void setDebugFrameStats(int avgFps, float avgMs, float p95Ms, float worstMs) {
@@ -239,7 +244,7 @@ public final class Renderer {
                 // Complementary screen-door dithering: full geometry uses the
                 // low samples and distant LOD the remaining samples.
                 "  vec2 ip = mod(floor(gl_FragCoord.xy),4.0);\n" +
-                "  float noise = fract(dot(ip,vec2(0.375,0.625)));\n" +
+                "  float noise = fract(sin(dot(floor(gl_FragCoord.xy),vec2(127.1,311.7)))*43758.5453123);\n" +
                 "  if(uMeshCoverage >= 0.0 && noise >= uMeshCoverage) discard;\n" +
                 "  if(uMeshCoverage < 0.0 && noise < (1.0 + uMeshCoverage)) discard;\n" +
                 "  float fog = smoothstep(uFogNear, uFogFar, vDistance);\n" +
@@ -696,7 +701,15 @@ public final class Renderer {
         int eyeZ=(int)Math.floor(camera.getPosition().z);
         boolean underwater=terrain.getBlockAt(eyeX,eyeY,eyeZ).isWater() &&
                 camera.getPosition().y<terrain.fluidSurfaceAt(eyeX,eyeY,eyeZ);
-        glClearColor(underwater?.055f:.48f,underwater?.235f:.68f,underwater?.33f:.88f,1.0f);
+        long fogNow=System.nanoTime();
+        float fogDt=Math.min(.15f,Math.max(0f,(fogNow-lastFogNanos)*1e-9f));
+        lastFogNanos=fogNow;
+        float fogTarget=underwater?1f:0f;
+        underwaterBlend+=(fogTarget-underwaterBlend)*(1f-(float)Math.exp(-3.4f*fogDt));
+        float fogR=lerp(.48f,.055f,underwaterBlend);
+        float fogG=lerp(.68f,.235f,underwaterBlend);
+        float fogB=lerp(.88f,.33f,underwaterBlend);
+        glClearColor(fogR,fogG,fogB,1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if (screenMode == HudRenderer.ScreenMode.MAIN_MENU
@@ -732,9 +745,9 @@ public final class Renderer {
         float far=(terrain.renderDistance()+0.35f)*TerrainMesh.CHUNK_SIZE;
         // Water absorbs light much faster than air. Only the CAMERA's medium
         // determines underwater fog, so coastlines remain clear from above.
-        org.lwjgl.opengl.GL20.glUniform1f(fogNearLocation,underwater?1.5f:far*0.67f);
-        org.lwjgl.opengl.GL20.glUniform1f(fogFarLocation,underwater?22f:far);
-        glUniform3f(fogColorLocation,underwater?.055f:.48f,underwater?.235f:.68f,underwater?.33f:.88f);
+        org.lwjgl.opengl.GL20.glUniform1f(fogNearLocation,lerp(far*.67f,1.5f,underwaterBlend));
+        org.lwjgl.opengl.GL20.glUniform1f(fogFarLocation,lerp(far,22f,underwaterBlend));
+        glUniform3f(fogColorLocation,fogR,fogG,fogB);
         glUniform3f(glGetUniformLocation(shaderProgram,"uCamera"),camera.getPosition().x,camera.getPosition().y,camera.getPosition().z);
         blockTextures.bind(0);
         FrustumIntersection frustum=new FrustumIntersection(mvp);
@@ -779,6 +792,7 @@ public final class Renderer {
         renderTargetOutline(mvp, camera, player);
     }
 
+    private static float lerp(float a,float b,float t){return a+(b-a)*t;}
     private static boolean isFluidMesh(MeshKey key) {
         return key.section()==-2 || key.section()>=TerrainMesh.FLUID_SECTION_OFFSET;
     }
@@ -809,7 +823,13 @@ public final class Renderer {
         float transition=Math.max(0f,Math.min(1f,(Math.max(dx,dz)-7f)/3f));
         float age=Math.max(0f,Math.min(1f,(System.nanoTime()-chunk.firstVisibleNanos())/700_000_000f));
         float coverage;
-        if(hasLod&&hasFull) {
+        if (isFluidMesh(key) && hasLod && hasFull) {
+            // Transparent fluids cannot use complementary screen-door crossfades:
+            // without depth writes, both surfaces blend on top of each other,
+            // making dark underwater stripes. Render exactly one representation.
+            coverage = transition < .5f ? (section<0 ? 0f : 1f)
+                    : (section<0 ? -1f : 0f);
+        } else if(hasLod&&hasFull) {
             GpuChunk farChunk=gpuChunks.get(new MeshKey(cx,-1,cz));
             if(farChunk==null)farChunk=gpuChunks.get(new MeshKey(cx,-2,cz));
             float farAge=Math.max(0f,Math.min(1f,
@@ -918,6 +938,9 @@ public final class Renderer {
         return hud.buttonAt(mouseX, mouseY, width, height, screenMode, optionsPage);
     }
 
+    public void setCreativeInventoryState(String query,int page,int category){hud.setCreativeInventoryState(query,page,category);}
+    public int creativeInventoryHit(float x,float y,int w,int h){return hud.creativeInventoryHit(x,y,w,h);}
+
     public void renderUi(
             int width,
             int height,
@@ -933,14 +956,15 @@ public final class Renderer {
             boolean hasNextSavePage,
             com.wildforge.core.GameSettings settings,
             String deleteWorldLabel,
-            int optionsPage, String worldName, String worldSeed, boolean editingWorldName
+            int optionsPage, String worldName, String worldSeed, boolean editingWorldName,
+            com.wildforge.player.GameMode newGameMode, boolean cheatsEnabled
     ) {
         hud.render(
                 width, height, player, mouseX, mouseY,
                 screenMode, statusMessage,
                 visibleSaveLabels, visibleSaveExists,
                 savePage, hasPreviousSavePage, hasNextSavePage,
-                settings, deleteWorldLabel, optionsPage,worldName,worldSeed,editingWorldName
+                settings, deleteWorldLabel, optionsPage,worldName,worldSeed,editingWorldName,newGameMode,cheatsEnabled
         );
     }
 

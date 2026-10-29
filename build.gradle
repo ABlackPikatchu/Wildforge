@@ -163,3 +163,22 @@ tasks.register('fluidCheck', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('fluidCheck')
 }
+
+// Player game-mode persistence and local developer-command regression suite.
+tasks.register('devCheck', JavaExec) {
+    group = 'verification'
+    description = 'Test developer commands, gamemodes, teleport safety and player save v1/v2 compatibility'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.core.DeveloperModeSmokeTest'
+}
+
+// Creative catalog, permission persistence and inventory hitbox regression tests.
+tasks.register('creativeCheck', JavaExec) {
+    group = 'verification'
+    description = 'Check creative inventory catalog and per-world cheat permissions'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.core.CreativeWorldRulesSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('creativeCheck') }

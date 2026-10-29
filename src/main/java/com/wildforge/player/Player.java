@@ -30,7 +30,7 @@ public static final int MAIN_INVENTORY_SLOTS = Inventory.MAIN_INVENTORY_SLOTS;
 public static final int TOTAL_INVENTORY_SLOTS = Inventory.TOTAL_SLOTS;
 
 private static final int PLAYER_SAVE_MAGIC = 0x5746504C;
-private static final int PLAYER_SAVE_VERSION = 1;
+private static final int PLAYER_SAVE_VERSION = 2;
 
 private static final float WALK_SPEED = 5.0f;
 private static final float JUMP_SPEED = 7.0f;
@@ -72,9 +72,47 @@ private float z = 27.0f;
 private float feetY;
 
 private float verticalVelocity = 0.0f;
+private GameMode gameMode = GameMode.SURVIVAL;
+private boolean flying;
+public GameMode getGameMode() { return gameMode; }
+public boolean isFlying() { return flying || gameMode == GameMode.SPECTATOR; }
+public void setGameMode(GameMode next) {
+    if (next == null) throw new IllegalArgumentException("Mode is required");
+    gameMode = next;
+    flying = next == GameMode.SPECTATOR || (next == GameMode.CREATIVE && flying);
+    verticalVelocity = 0;
+    grounded = false;
+    updateCameraPosition();
+}
+public void setFlying(boolean enabled) {
+    if (gameMode == GameMode.SURVIVAL && enabled) throw new IllegalStateException("Flying requires Creative or Spectator mode");
+    flying = enabled || gameMode == GameMode.SPECTATOR;
+    verticalVelocity = 0f;
+    grounded = false;
+}
+/** Developer teleport; finite bounded coordinates prevent accidental invalid saves. */
+public void teleport(float tx, float ty, float tz) {
+    if (!Float.isFinite(tx) || !Float.isFinite(ty) || !Float.isFinite(tz) ||
+        Math.abs(tx)>30_000_000f || Math.abs(tz)>30_000_000f ||
+        ty<0f || ty+PLAYER_HEIGHT>TerrainMesh.WORLD_HEIGHT)
+        throw new IllegalArgumentException("Position outside world bounds");
+    x=tx; z=tz; feetY=ty; verticalVelocity=0f;
+    grounded=false; stepCameraOffset=0; walkBobOffset=0;
+    updateCameraPosition();
+}
 
 private boolean grounded = false;
 private boolean jumpWasPressed = false;
+private boolean flightJumpWasDown = false;
+private long lastCreativeJumpTapNanos = 0;
+/** Places a creative catalog item in the currently selected hotbar slot. */
+public void creativeSelect(com.wildforge.item.ItemType type, int count) {
+    if (gameMode != GameMode.CREATIVE || type == null) return;
+    inventory.setStack(HOTBAR_START_INDEX + inventory.getSelectedHotbarSlot(),
+        new ItemStack(type, Math.min(type.getMaxStackSize(), Math.max(1,count))));
+}
+
+private float swimExitGrace=0f;
 private boolean inventoryOpen = false;
 private boolean mouseCaptured = true;
 private boolean inventoryKeyWasPressed = false;
@@ -235,6 +273,8 @@ public void saveTo(Path path) throws IOException {
                     output.writeInt(stack.getCount());
                 }
             }
+            output.writeByte(gameMode.ordinal());
+            output.writeBoolean(flying);
         }
 
         try {
@@ -271,6 +311,8 @@ public void loadFrom(Path path, TerrainMesh terrain) throws IOException {
     float loadedPitch;
     int loadedSelectedSlot;
     ItemStack[] loadedInventory = new ItemStack[TOTAL_INVENTORY_SLOTS];
+    GameMode loadedMode = GameMode.SURVIVAL;
+    boolean loadedFlying = false;
 
     try (DataInputStream input = new DataInputStream(
             new BufferedInputStream(Files.newInputStream(path)))) {
@@ -279,7 +321,7 @@ public void loadFrom(Path path, TerrainMesh terrain) throws IOException {
         }
 
         int saveVersion = input.readInt();
-        if (saveVersion != PLAYER_SAVE_VERSION) {
+        if (saveVersion != 1 && saveVersion != PLAYER_SAVE_VERSION) {
             throw new IOException(
                     "Unsupported player save version: " + saveVersion);
         }
@@ -329,12 +371,20 @@ public void loadFrom(Path path, TerrainMesh terrain) throws IOException {
             }
         }
 
+        if (saveVersion >= 2) {
+            int modeId = input.readUnsignedByte();
+            if (modeId >= GameMode.values().length) throw new IOException("Invalid player game mode");
+            loadedMode = GameMode.values()[modeId];
+            loadedFlying = input.readBoolean();
+        }
         if (input.read() != -1) {
             throw new IOException("Player save contains trailing data");
         }
     }
 
     inventory.setContents(loadedInventory);
+    gameMode = loadedMode;
+    flying = (loadedFlying && loadedMode == GameMode.CREATIVE) || loadedMode == GameMode.SPECTATOR;
     x = loadedX;
     z = loadedZ;
     feetY = loadedFeetY;
@@ -346,7 +396,7 @@ public void loadFrom(Path path, TerrainMesh terrain) throws IOException {
     );
 
     grounded = false;
-    if (!canOccupy(terrain, x, z, feetY)) {
+    if (gameMode != GameMode.SPECTATOR && !isFlying() && !canOccupy(terrain, x, z, feetY)) {
         x = 16.0f;
         z = 27.0f;
         feetY = terrain.getHeightAt(x, z);
@@ -492,18 +542,20 @@ public boolean canAddItem(ItemType itemType, int amount) {
 }
 
 public void mineBlock(TerrainMesh terrain) {
-    blockInteraction.mineBlock(terrain, camera);
+    if (gameMode != GameMode.SPECTATOR)
+        blockInteraction.mineBlock(terrain, camera, gameMode == GameMode.CREATIVE);
 }
 
 public void placeBlock(TerrainMesh terrain) {
-    blockInteraction.placeBlock(
+        if (gameMode == GameMode.SPECTATOR) return;
+        blockInteraction.placeBlock(
             terrain,
             camera,
             x,
             z,
             feetY,
             PLAYER_RADIUS,
-            PLAYER_HEIGHT
+            PLAYER_HEIGHT, gameMode == GameMode.CREATIVE
     );
 }
 
@@ -521,7 +573,8 @@ public void update(
     boolean inventoryPressed =
             isKeyDown(window, keyBindings.get(KeyBindings.Action.INVENTORY));
 
-    if (inventoryPressed && !inventoryKeyWasPressed) {
+    if (inventoryPressed && !inventoryKeyWasPressed &&
+        !(gameMode==GameMode.CREATIVE && inventoryOpen)) {
         toggleInventory();
     }
 
@@ -597,6 +650,32 @@ private void updateMovement(
         moveZ /= moveLength;
     }
 
+    // Double-tap Space to toggle Creative flight; holding Space still ascends.
+    boolean jumpKeyDown = isKeyDown(window, keyBindings.get(KeyBindings.Action.JUMP));
+    if (gameMode == GameMode.CREATIVE && jumpKeyDown && !flightJumpWasDown) {
+        long now = System.nanoTime();
+        if (lastCreativeJumpTapNanos != 0 && now - lastCreativeJumpTapNanos < 330_000_000L) {
+            setFlying(!isFlying());
+            lastCreativeJumpTapNanos = 0;
+        } else lastCreativeJumpTapNanos = now;
+    }
+    flightJumpWasDown = jumpKeyDown;
+    if (isFlying()) {
+        float flySpeed = (sprintIsDown(window) ? 17f : 9f) * dt;
+        float yMove = (isKeyDown(window, keyBindings.get(KeyBindings.Action.JUMP)) ? 1f : 0f)
+                - (isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT) ? 1f : 0f);
+        float targetX = x + moveX * flySpeed;
+        float targetZ = z + moveZ * flySpeed;
+        float targetY = Math.max(0f, Math.min(TerrainMesh.WORLD_HEIGHT - PLAYER_HEIGHT, feetY + yMove * flySpeed));
+        if (gameMode == GameMode.SPECTATOR || canOccupy(terrain, targetX, z, feetY)) x = targetX;
+        if (gameMode == GameMode.SPECTATOR || canOccupy(terrain, x, targetZ, feetY)) z = targetZ;
+        if (gameMode == GameMode.SPECTATOR || canOccupy(terrain, x, z, targetY)) feetY = targetY;
+        verticalVelocity = 0; grounded = false;
+        stepCameraOffset = 0; walkBobOffset = 0;
+        updateCameraPosition();
+        return;
+    }
+
     float startX = x;
     float startZ = z;
 
@@ -623,15 +702,22 @@ private void updateMovement(
     boolean wetFeet=terrain.fluidSurfaceAt(waterX,(int)Math.floor(ankles),waterZ)>ankles;
     boolean torsoSubmerged=terrain.fluidSurfaceAt(waterX,(int)Math.floor(waist),waterZ)>waist;
     boolean swimming=wetFeet||torsoSubmerged;
+    if(swimming) swimExitGrace=0.40f;
+    else swimExitGrace=Math.max(0f,swimExitGrace-dt);
+    boolean swimAssist=swimming || (swimExitGrace>0f &&
+            isKeyDown(window,keyBindings.get(KeyBindings.Action.JUMP)));
     if(torsoSubmerged)grounded=false; // Water supports swimming, not a standing jump impulse.
     boolean jumpPressed = isKeyDown(window, keyBindings.get(KeyBindings.Action.JUMP));
     boolean sprintPressed = isKeyDown(window, keyBindings.get(KeyBindings.Action.SPRINT));
     boolean descendPressed = isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT);
 
-    if (jumpPressed && !jumpWasPressed && grounded && !torsoSubmerged) {
+    if (jumpPressed && !jumpWasPressed && grounded && !swimming) {
         verticalVelocity = JUMP_SPEED;
         grounded = false;
     }
+    // Keep climbing while leaving the water; at the surface, held Space
+    // provides gentle lift long enough to reach a one-block shore ledge.
+    if (jumpPressed && swimAssist) grounded = false;
 
     jumpWasPressed = jumpPressed;
 
@@ -666,16 +752,15 @@ private void updateMovement(
     if (!grounded) {
         float previousFeetY = feetY;
 
-        if (torsoSubmerged) {
-            // Space is held-thrust, not a jump impulse. Releasing it lets the player sink.
-            float thrust=jumpPressed?8.2f:(descendPressed?-7.0f:-3.2f);
-            verticalVelocity += (thrust+current[1]*2.0f)*dt;
-            verticalVelocity *= (float)Math.exp(-3.5f*dt);
-            verticalVelocity=Math.max(-2.0f,Math.min(jumpPressed?3.0f:0.2f,verticalVelocity));
-            grounded=false;
+        if (swimAssist) {
+            float thrust = jumpPressed ? (torsoSubmerged ? 13.5f : 18f) :
+                    (descendPressed ? -8f : -3.8f);
+            verticalVelocity += (thrust + current[1] * 2f) * dt;
+            verticalVelocity *= (float)Math.exp(-2.6f*dt);
+            verticalVelocity = Math.max(-2.5f, Math.min(jumpPressed ? 3.4f : 0.2f,verticalVelocity));
+            grounded = false;
         } else {
-            verticalVelocity -= (wetFeet ? GRAVITY*.55f : GRAVITY)*dt;
-            if(wetFeet)verticalVelocity=Math.max(verticalVelocity,-4f);
+            verticalVelocity -= GRAVITY * dt;
         }
 
         float nextFeetY = feetY + verticalVelocity * dt;
@@ -933,6 +1018,9 @@ private void updateCameraPosition() {
     );
 }
 
+private boolean sprintIsDown(long window) {
+    return isKeyDown(window, keyBindings.get(KeyBindings.Action.SPRINT));
+}
 private boolean isKeyDown(long window, int key) {
     return GLFW.glfwGetKey(window, key) == GLFW.GLFW_PRESS;
 }

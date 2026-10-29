@@ -5,6 +5,7 @@ import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinDef.HWND;
 import com.wildforge.content.ContentLoader;
 import com.wildforge.core.DisplayModeController;
+import com.wildforge.core.DeveloperCommands;
 import com.wildforge.core.FrameTiming;
 import com.wildforge.core.GameSettings;
 import com.wildforge.core.InputController;
@@ -12,6 +13,7 @@ import com.wildforge.core.KeyBindings;
 import com.wildforge.core.SaveManager;
 import com.wildforge.lang.LanguageManager;
 import com.wildforge.player.Player;
+import com.wildforge.player.GameMode;
 import com.wildforge.render.HudRenderer;
 import com.wildforge.render.Renderer;
 import com.wildforge.world.TerrainMesh;
@@ -44,6 +46,13 @@ public final class Main implements InputController.Callbacks {
     private boolean fovSliderDragging;
     private boolean renderDistanceSliderDragging;
     private boolean debugOverlay;
+    private boolean consoleOpen;
+    private boolean skipConsoleTriggerCharacter;
+    private boolean suppressWorldCreateCharacter;
+    private final StringBuilder consoleInput = new StringBuilder();
+    private String consoleFeedback = "";
+    private long consoleFeedbackNanos;
+    private final java.util.ArrayDeque<String> consoleHistory = new java.util.ArrayDeque<>();
     private final com.wildforge.core.FrameStats frameStats = new com.wildforge.core.FrameStats();
     private boolean uiScaleSliderDragging;
     // Physical track is held constant while the entire UI changes size.
@@ -82,6 +91,14 @@ public final class Main implements InputController.Callbacks {
     private Long requestedNewSeed;
     private final StringBuilder worldNameEntry = new StringBuilder("New World");
     private boolean editingWorldName = false;
+    private GameMode selectedNewGameMode=GameMode.SURVIVAL;
+    private GameMode pendingCreateGameMode;
+    private boolean selectedNewCheats = false;
+    private boolean pendingNewCheats = false;
+    private boolean activeWorldCheats = false;
+    private final StringBuilder creativeSearch = new StringBuilder();
+    private int creativePage = 0;
+    private int creativeCategory = 0;
     private String newWorldNamePending;
     private boolean focusRetryPending = true;
     private static long stableSeed(String text){
@@ -96,6 +113,8 @@ public final class Main implements InputController.Callbacks {
         try{requestedNewSeed=input.isEmpty()?new java.security.SecureRandom().nextLong():Long.parseLong(input);}
         catch(NumberFormatException ex){requestedNewSeed=stableSeed(input);}
         newWorldNamePending=worldNameEntry.toString().trim();
+        pendingCreateGameMode=selectedNewGameMode;
+        pendingNewCheats=selectedNewCheats;
         beginLoadingSave(saveManager.nextAvailableSlot());
     }
 
@@ -189,7 +208,18 @@ public final class Main implements InputController.Callbacks {
         inputController = new InputController(window, this);
         inputController.install();
         glfwSetCharCallback(window,(handle, codepoint) -> {
+            if(consoleOpen && screenMode==HudRenderer.ScreenMode.PLAYING) {
+                if(skipConsoleTriggerCharacter) {skipConsoleTriggerCharacter=false;return;}
+                if (codepoint>=32 && codepoint<127 && consoleInput.length()<128)
+                    consoleInput.appendCodePoint(codepoint);
+                return;
+            }
+            if(screenMode==HudRenderer.ScreenMode.PLAYING && player.isInventoryOpen() && player.getGameMode()==GameMode.CREATIVE){
+                if(creativeSearch.length()<28 && codepoint>=32 && codepoint<127){creativeSearch.appendCodePoint(codepoint);creativePage=0;}
+                return;
+            }
             if(screenMode != HudRenderer.ScreenMode.WORLD_CREATE)return;
+            if(suppressWorldCreateCharacter){suppressWorldCreateCharacter=false;return;}
             StringBuilder target = editingWorldName ? worldNameEntry : seedEntry;
             if(target.length()<32 && codepoint>=32 && codepoint<127){
                 target.appendCodePoint(codepoint);updateSeedText();
@@ -214,10 +244,39 @@ public final class Main implements InputController.Callbacks {
         System.out.println("Inventory: Hold left click and drag items");
         System.out.println("Inventory right click: Take half or place one");
         System.out.println("Escape: Pause/resume");
+        System.out.println("F3: Debug screen; / or T: Developer console; /help for commands");
     }
 
     @Override
     public void onKey(long handle, int key, int scancode, int action, int mods) {
+        if(consoleOpen && screenMode==HudRenderer.ScreenMode.PLAYING) {
+            if(action==GLFW_PRESS || action==GLFW_REPEAT) {
+                if(key==GLFW_KEY_ENTER || key==GLFW_KEY_KP_ENTER) {
+                    String command=consoleInput.toString().trim();
+                    if(!command.isEmpty()) {
+                        consoleFeedback=DeveloperCommands.execute(command,player,terrain,activeWorldCheats);
+                        consoleFeedbackNanos=System.nanoTime();
+                        consoleHistory.addFirst(command);
+                        while(consoleHistory.size()>16)consoleHistory.removeLast();
+                    }
+                    closeConsole();
+                } else if(key==GLFW_KEY_ESCAPE) {closeConsole();escapeWasDown=true;}
+                else if(key==GLFW_KEY_BACKSPACE && consoleInput.length()>0)
+                    consoleInput.deleteCharAt(consoleInput.length()-1);
+                else if(key==GLFW_KEY_UP && !consoleHistory.isEmpty()) {
+                    consoleInput.setLength(0);consoleInput.append(consoleHistory.peekFirst());
+                }
+            }
+            return;
+        }
+        if(screenMode==HudRenderer.ScreenMode.PLAYING && action==GLFW_PRESS &&
+           (key==GLFW_KEY_SLASH || key==GLFW_KEY_T) && !player.isInventoryOpen()) {
+            consoleOpen=true;consoleInput.setLength(0);
+            skipConsoleTriggerCharacter=true;
+            // GLFW delivers a character callback after the slash/T keypress.
+            player.releaseMouse(window);
+            return;
+        }
         if (key == GLFW_KEY_F3 && action == GLFW_PRESS
                 && screenMode == HudRenderer.ScreenMode.PLAYING) {
             debugOverlay = !debugOverlay;
@@ -229,7 +288,18 @@ public final class Main implements InputController.Callbacks {
                 if(key==GLFW_KEY_BACKSPACE){StringBuilder entry=editingWorldName?worldNameEntry:seedEntry;if(entry.length()>0){entry.deleteCharAt(entry.length()-1);updateSeedText();}}
                 else if(key==GLFW_KEY_ESCAPE){screenMode=HudRenderer.ScreenMode.SAVE_SELECT;statusMessage="";escapeWasDown=true;}
                 else if(key==GLFW_KEY_TAB){editingWorldName=!editingWorldName;}
+                
+                
                 else if(key==GLFW_KEY_ENTER || key==GLFW_KEY_KP_ENTER){createWorldFromMenu();}
+            }
+            return;
+        }
+        if(screenMode==HudRenderer.ScreenMode.PLAYING && player.isInventoryOpen() && player.getGameMode()==GameMode.CREATIVE) {
+            if(action==GLFW_PRESS || action==GLFW_REPEAT) {
+                if(key==GLFW_KEY_BACKSPACE && creativeSearch.length()>0) {creativeSearch.deleteCharAt(creativeSearch.length()-1);creativePage=0;}
+                else if(key==GLFW_KEY_TAB) {creativeCategory=(creativeCategory+1)%4;creativePage=0;}
+                else if(key==GLFW_KEY_PAGE_DOWN || key==GLFW_KEY_RIGHT) creativePage=Math.min(creativeMaxPage(),creativePage+1);
+                else if(key==GLFW_KEY_PAGE_UP || key==GLFW_KEY_LEFT) creativePage=Math.max(0,creativePage-1);
             }
             return;
         }
@@ -271,6 +341,9 @@ public final class Main implements InputController.Callbacks {
 
     @Override
     public void onScroll(long handle, double xOffset, double yOffset) {
+        if(screenMode==HudRenderer.ScreenMode.PLAYING && player.isInventoryOpen() && player.getGameMode()==GameMode.CREATIVE){
+            creativePage=Math.max(0,Math.min(creativeMaxPage(),creativePage+(yOffset<0?1:-1)));return;
+        }
         if (screenMode == HudRenderer.ScreenMode.PLAYING
                 && !player.isInventoryOpen()
                 && player.isMouseCaptured()) {
@@ -283,7 +356,7 @@ public final class Main implements InputController.Callbacks {
         if (focused) {
             // Inventory is a cursor-driven screen even when ScreenMode is PLAYING.
             // Returning from another monitor must not grab the pointer again.
-            if (screenMode == HudRenderer.ScreenMode.PLAYING && !player.isInventoryOpen()) {
+            if (screenMode == HudRenderer.ScreenMode.PLAYING && !player.isInventoryOpen() && !consoleOpen) {
                 player.captureMouse(handle);
             } else {
                 player.releaseMouse(handle);
@@ -349,7 +422,9 @@ public final class Main implements InputController.Callbacks {
                 if(nx>0.25 && nx<0.75){
                     if(ny>0.35 && ny<0.46){editingWorldName=true;return;}
                     if(ny>0.48 && ny<0.60){editingWorldName=false;return;}
-                    if(ny>0.68 && ny<0.82){
+                    if(ny>0.605 && ny<0.655){selectedNewGameMode=GameMode.values()[(selectedNewGameMode.ordinal()+1)%GameMode.values().length];return;}
+                    if(ny>=0.655 && ny<0.715){selectedNewCheats=!selectedNewCheats;return;}
+                    if(ny>0.73 && ny<0.84){
                         if(nx<0.5){createWorldFromMenu();}else{screenMode=HudRenderer.ScreenMode.SAVE_SELECT;statusMessage="";}
                         return;
                     }
@@ -358,6 +433,7 @@ public final class Main implements InputController.Callbacks {
             return;
         }
         if (screenMode == HudRenderer.ScreenMode.PLAYING && player.isInventoryOpen()) {
+            if(player.getGameMode()==GameMode.CREATIVE) { handleCreativeMouseButton(handle,button,action); return; }
             handleInventoryMouseButton(handle, button, action);
             return;
         }
@@ -407,10 +483,17 @@ public final class Main implements InputController.Callbacks {
         }
     }
 
+    private void closeConsole() {
+        consoleOpen=false;
+        skipConsoleTriggerCharacter=false;
+        if(screenMode==HudRenderer.ScreenMode.PLAYING && !player.isInventoryOpen())
+            player.captureMouse(window);
+    }
     private void handleEscapeKey() {
         boolean escapeDown = glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
 
         if (escapeDown && !escapeWasDown) {
+            if(consoleOpen) { closeConsole(); escapeWasDown=true; return; }
             if (screenMode == HudRenderer.ScreenMode.PLAYING) {
                 if (player.isInventoryOpen()) {
                     player.setInventoryOpen(false);
@@ -471,7 +554,7 @@ public final class Main implements InputController.Callbacks {
                 case DELETE_TWO -> confirmDeleteVisibleSave(1);
                 case DELETE_THREE -> confirmDeleteVisibleSave(2);
                 case NEW_GAME -> {
-                    seedEntry.setLength(0);worldNameEntry.setLength(0);worldNameEntry.append("New World");editingWorldName=false;updateSeedText();
+                    seedEntry.setLength(0);worldNameEntry.setLength(0);worldNameEntry.append("New World");editingWorldName=false;selectedNewGameMode=GameMode.SURVIVAL;selectedNewCheats=false;updateSeedText();
                     screenMode=HudRenderer.ScreenMode.WORLD_CREATE;
                 }
                 case PREVIOUS_PAGE -> {
@@ -757,7 +840,7 @@ public final class Main implements InputController.Callbacks {
     private void resumeGame() {
         screenMode = HudRenderer.ScreenMode.PLAYING;
         statusMessage = "";
-        player.captureMouse(window);
+        if(!consoleOpen) player.captureMouse(window);
     }
 
     private void beginSaveAndQuit() {
@@ -789,6 +872,7 @@ public final class Main implements InputController.Callbacks {
 
     private void loadWorld() {
         loadPending = false;
+        consoleOpen=false; consoleFeedback=""; consoleInput.setLength(0);
         try {
             if(requestedNewSeed != null){
                 terrain.newWorld(requestedNewSeed);
@@ -798,6 +882,11 @@ public final class Main implements InputController.Callbacks {
             player = new Player(terrain, worldItems, gameContent);
             player.setKeyBindings(settings.keyBindings());
             saveManager.loadPlayer(activeSaveSlot, player, terrain);
+            if(pendingCreateGameMode!=null){
+                player.setGameMode(pendingCreateGameMode);pendingCreateGameMode=null;
+                activeWorldCheats=pendingNewCheats;
+                saveManager.saveCheatsEnabled(activeSaveSlot,activeWorldCheats);
+            } else activeWorldCheats=saveManager.cheatsEnabled(activeSaveSlot);
             terrain.streamAround(player.getX(),player.getZ());
             worldLoaded = true;
             preloadingWorld = true;
@@ -844,6 +933,29 @@ public final class Main implements InputController.Callbacks {
             screenMode = HudRenderer.ScreenMode.PAUSED;
             quitAfterSave = false;
             returnToMainMenuAfterSave = false;
+        }
+    }
+
+    private int creativeMaxPage() {
+        return Math.max(0,(com.wildforge.ui.CreativeCatalog.items(creativeSearch.toString(),creativeCategory).size()-1)/36);
+    }
+    private void handleCreativeMouseButton(long handle, int button, int action) {
+        if(action!=GLFW_PRESS) return;
+        glfwGetWindowSize(handle,windowWidth,windowHeight);
+        glfwGetFramebufferSize(handle,framebufferWidth,framebufferHeight);
+        if(windowWidth[0]<=0 || windowHeight[0]<=0)return;
+        float px=(float)(mouseX*framebufferWidth[0]/windowWidth[0]);
+        float py=(float)(mouseY*framebufferHeight[0]/windowHeight[0]);
+        int hit=renderer.creativeInventoryHit(px,py,framebufferWidth[0],framebufferHeight[0]);
+        if(hit== -2)creativePage=Math.max(0,creativePage-1);
+        else if(hit== -3)creativePage=Math.min(creativeMaxPage(),creativePage+1);
+        else if(hit<=-10 && hit>=-13){creativeCategory=-10-hit;creativePage=0;}
+        else if(hit>=0){
+            var items=com.wildforge.ui.CreativeCatalog.items(creativeSearch.toString(),creativeCategory);
+            int pageCount=Math.max(1,(items.size()+35)/36);
+            creativePage=Math.min(creativePage,pageCount-1);
+            int at=creativePage*36+hit;
+            if(at<items.size())player.creativeSelect(items.get(at),button==GLFW_MOUSE_BUTTON_RIGHT?1:64);
         }
     }
 
@@ -984,6 +1096,10 @@ public final class Main implements InputController.Callbacks {
                 hudMouseY *= (float) framebufferHeight[0] / windowHeight[0];
             }
 
+            renderer.setDeveloperOverlay(player,terrain,
+                    consoleOpen,consoleInput.toString(),
+                    System.nanoTime()-consoleFeedbackNanos<8_000_000_000L?consoleFeedback:"");
+            renderer.setCreativeInventoryState(creativeSearch.toString(),creativePage,creativeCategory);
             renderer.renderUi(
                     framebufferWidth[0],
                     framebufferHeight[0],
@@ -1000,7 +1116,7 @@ public final class Main implements InputController.Callbacks {
                     settings,
                     pendingDeleteLabel,
                     optionsPage,
-                    worldNameEntry.toString(),seedEntry.toString(),editingWorldName
+                    worldNameEntry.toString(),seedEntry.toString(),editingWorldName,selectedNewGameMode,selectedNewCheats
             );
 
             glfwSwapBuffers(window);

@@ -41,6 +41,9 @@ public final class BlockInteraction {
      * Mines the targeted breakable block and spawns its drop in the world.
      */
     public void mineBlock(TerrainMesh terrain, Camera camera) {
+        mineBlock(terrain,camera,false);
+    }
+    public void mineBlock(TerrainMesh terrain, Camera camera, boolean creative) {
         if (terrain == null || camera == null) {
             return;
         }
@@ -54,6 +57,7 @@ public final class BlockInteraction {
         if (block == null ? !hit.block.isBreakable() : !block.isBreakable()) return;
 
         if (!terrain.setBlock(hit.x, hit.y, hit.z, BlockType.AIR)) return;
+        if (creative) return; // Instant break; Creative does not generate drops.
         if (block == null) {
             ItemType drop = hit.block.getDropItem();
             if (drop != null && hit.block.getDropCount() > 0) {
@@ -76,6 +80,11 @@ public final class BlockInteraction {
      * Places the selected hotbar item's block in the adjacent raycast cell.
      * Placement is rejected if the cell is occupied or overlaps the player.
      */
+    public void placeBlock(TerrainMesh terrain, Camera camera,
+                           float playerX,float playerZ,float playerFeetY,
+                           float playerRadius,float playerHeight) {
+        placeBlock(terrain,camera,playerX,playerZ,playerFeetY,playerRadius,playerHeight,false);
+    }
     public void placeBlock(
             TerrainMesh terrain,
             Camera camera,
@@ -83,7 +92,7 @@ public final class BlockInteraction {
             float playerZ,
             float playerFeetY,
             float playerRadius,
-            float playerHeight
+            float playerHeight, boolean creative
     ) {
         if (terrain == null || camera == null) {
             return;
@@ -138,7 +147,7 @@ public final class BlockInteraction {
         }
         if (terrain.setBlock(bx, by, bz, blockToPlace)) {
             worldItems.onBlockPlaced(bx, by, bz);
-            inventory.removeItem(itemType, 1);
+            if (!creative) inventory.removeItem(itemType, 1);
         }
     }
 

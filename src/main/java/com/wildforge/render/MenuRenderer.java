@@ -461,7 +461,8 @@ final class MenuRenderer {
     }
 
     void drawCreateWorldScreen(List<Float> data,List<Float> dimData,List<Float> skinData,
-            int width,int height,String name,String seed,boolean editingName,String message){
+            int width,int height,String name,String seed,boolean editingName,String message,
+            com.wildforge.player.GameMode newGameMode,boolean cheatsEnabled){
         rect(dimData,0,0,width,height,0.025f,0.035f,0.055f,0.84f);
         float left=width*0.23f, panelWidth=width*0.54f;
         uiSkin.menuPanel(skinData,left,height*0.17f,panelWidth,height*0.68f);
@@ -483,8 +484,9 @@ final class MenuRenderer {
         menuText(data,"WORLD SEED  -  OPTIONAL",width*0.5f,height*0.463f,1.4f,0.9f,0.85f,0.72f,1f);
         menuText(data,(seed==null||seed.isEmpty()?"RANDOM SEED":seed)+(!editingName?"_":""),
                 width*0.5f,height*0.515f,1.7f,0.96f,0.96f,0.96f,1f);
-        menuText(data,"CLICK A FIELD TO EDIT  |  TAB TO SWITCH",width*0.5f,height*0.623f,1.2f,0.72f,0.76f,0.8f,1f);
-        float by=height*0.695f,bh=height*0.115f;
+        menuText(data,"GAME MODE: " + newGameMode.name() + "  [CLICK TO CHANGE]",width*0.5f,height*0.626f,1.4f,0.9f,0.85f,0.72f,1f);
+        menuText(data,"CHEATS: " + (cheatsEnabled?"ON":"OFF") + "  [CLICK TO CHANGE]",width*0.5f,height*0.685f,1.3f,cheatsEnabled?.66f:.9f,.85f,.72f,1f);
+        float by=height*0.737f,bh=height*0.095f;
         rect(data,width*0.27f,by,width*0.225f,bh,0.19f,0.30f,0.24f,1f);
         rect(data,width*0.505f,by,width*0.225f,bh,0.23f,0.22f,0.24f,1f);
         menuText(data,"CREATE WORLD",width*0.3825f,by+bh*0.36f,1.8f,0.94f,0.98f,0.87f,1f);

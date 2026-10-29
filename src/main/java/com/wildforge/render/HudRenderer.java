@@ -67,12 +67,51 @@ public final class HudRenderer {
 
     private final UiSkin uiSkin;
     private final InventoryRenderer inventory;
+    private String creativeSearch="";
+    private int creativePage=0,creativeCategory=0;
+    public void setCreativeInventoryState(String query,int page,int category){
+        creativeSearch=query==null?"":query;
+        creativePage=Math.max(0,page);creativeCategory=Math.max(0,Math.min(3,category));
+    }
+    public int creativeInventoryHit(float x,float y,int w,int h){
+        if(w<=0||h<=0)return -1;
+        float scale=effectiveUiScale(w,h);
+        return com.wildforge.ui.CreativeCatalog.hit(x/scale,y/scale,virtualSize(w,scale),virtualSize(h,scale));
+    }
     private final MenuRenderer menu;
     private final UiBatchRenderer batches;
     private boolean showCrosshair = true;
     private boolean showFps;
     private int measuredFps;
     private boolean debugOverlay;
+    private boolean consoleOpen;
+    private String consoleInput="",consoleFeedback="";
+    private String debugBiome="",debugMode="",debugFacing="";
+    private long debugSeed;
+    private int debugX,debugY,debugZ,debugFluidQueue;
+    private boolean debugFlying;
+    private long debugHeapUsed,debugHeapMax;
+    private int lastBiomeX=Integer.MIN_VALUE,lastBiomeZ=Integer.MIN_VALUE;
+    private long lastBiomeSampleNanos;
+    public void setDeveloperOverlay(Player player, com.wildforge.world.TerrainMesh terrain,
+                                    boolean open,String input,String feedback){
+        consoleOpen=open;consoleInput=input==null?"":input;
+        consoleFeedback=feedback==null?"":feedback;
+        if (player==null || terrain==null || !debugOverlay)return;
+        debugX=(int)Math.floor(player.getX());debugY=(int)Math.floor(player.getFeetY());debugZ=(int)Math.floor(player.getZ());
+        if (Math.abs(debugX-lastBiomeX)>8 || Math.abs(debugZ-lastBiomeZ)>8 ||
+                System.nanoTime()-lastBiomeSampleNanos>1_000_000_000L) {
+            debugBiome=terrain.biomeNameAt(debugX,debugZ);
+            lastBiomeX=debugX;lastBiomeZ=debugZ;
+            lastBiomeSampleNanos=System.nanoTime();
+        }
+        debugMode=player.getGameMode().name();debugFlying=player.isFlying();
+        debugSeed=terrain.seed();debugFluidQueue=terrain.activeFluidUpdates();
+        org.joml.Vector3f look=player.getCamera().getLookDirection();
+        debugFacing=Math.abs(look.x)>Math.abs(look.z)?(look.x>0?"EAST":"WEST"):(look.z>0?"SOUTH":"NORTH");
+        Runtime runtime=Runtime.getRuntime();
+        debugHeapUsed=runtime.totalMemory()-runtime.freeMemory();debugHeapMax=runtime.maxMemory();
+    }
     private int debugLoaded, debugPending, debugDistance;
     private int debugMeshes,debugLodJobs,debugLodReady,debugGpu,debugUploads;
     private long debugStorageBytes,debugUploadMicros;
@@ -146,7 +185,8 @@ public final class HudRenderer {
             boolean hasNextSavePage,
             GameSettings settings,
             String deleteWorldLabel,
-            int optionsPage, String worldName, String worldSeed, boolean editingWorldName) {
+            int optionsPage, String worldName, String worldSeed, boolean editingWorldName,
+            com.wildforge.player.GameMode newGameMode, boolean cheatsEnabled) {
 
         if (width <= 0 || height <= 0) {
             return;
@@ -188,24 +228,38 @@ public final class HudRenderer {
                         0.96f, 0.86f, 0.66f, 1f);
             }
             if (debugOverlay) {
-                rect(data,10f,showFps?53f:10f,355f,188f,0.04f,0.05f,0.06f,0.78f);
-                float y0=showFps?63f:20f;
-                menuText(data,"DEBUG F3  FPS " + measuredFps,145f,y0,1.7f,0.9f,0.9f,0.72f,1f);
-                menuText(data,"AVG " + debugAverageFps + " FPS  FRAME " + formatMs(debugAverageMs) + " MS  P95 " + formatMs(debugP95Ms) + " MS  MAX " + formatMs(debugWorstMs) + " MS",185f,y0+24f,1.05f,0.9f,0.9f,0.72f,1f);
-                menuText(data,"CHUNKS " + debugLoaded + " / " + ((2*debugDistance+1)*(2*debugDistance+1)),145f,y0+49f,1.5f,0.9f,0.9f,0.72f,1f);
-                menuText(data,"GENERATING " + debugPending + "  VIEW " + debugDistance,185f,y0+74f,1.5f,0.9f,0.9f,0.72f,1f);
-                menuText(data,"MESH JOBS " + debugMeshes + "  LOD JOBS " + debugLodJobs + "  READY " + debugLodReady,185f,y0+99f,1.25f,0.9f,0.9f,0.72f,1f);
-                menuText(data,"GPU MESHES " + debugGpu + "  UPLOADS " + debugUploads,185f,y0+124f,1.25f,0.9f,0.9f,0.72f,1f);
-                menuText(data,"UPLOAD CPU " + (debugUploadMicros/1000f) + " MS  BLOCK DATA " + (debugStorageBytes/1048576L) + " MIB",185f,y0+149f,1.15f,0.9f,0.9f,0.72f,1f);
+                float y0=showFps?58f:15f;
+                rect(data,5f,y0,390f,235f,0.04f,0.05f,0.06f,0.72f);
+                float px=198f;
+                menuText(data,"WILDFORGE 0.1 / DEBUG [F3]",px,y0+7f,1.5f,.94f,.94f,.78f,1f);
+                menuText(data,"FPS " + measuredFps + " AVG " + debugAverageFps + " P95 " + formatMs(debugP95Ms) + "MS",px,y0+29f,1.18f,.94f,.94f,.78f,1f);
+                menuText(data,"FRAME " + formatMs(debugAverageMs) + " MS MAX " + formatMs(debugWorstMs) + " MS",px,y0+47f,1.18f,.94f,.94f,.78f,1f);
+                menuText(data,"XYZ " + debugX + " / " + debugY + " / " + debugZ + "  " + debugFacing,px,y0+69f,1.25f,.94f,.94f,.78f,1f);
+                menuText(data,"CHUNK " + Math.floorDiv(debugX,16) + " / " + Math.floorDiv(debugZ,16) + "  VIEW " + debugDistance,px,y0+87f,1.15f,.94f,.94f,.78f,1f);
+                menuText(data,"BIOME " + debugBiome,px,y0+106f,1.07f,.94f,.94f,.78f,1f);
+                menuText(data,"MODE " + debugMode + (debugFlying?"  FLYING":""),px,y0+126f,1.15f,.94f,.94f,.78f,1f);
+                menuText(data,"CHUNKS " + debugLoaded + " / " + ((2*debugDistance+1)*(2*debugDistance+1)) + "  GEN " + debugPending,px,y0+146f,1.08f,.94f,.94f,.78f,1f);
+                menuText(data,"MESH " + debugMeshes + " LOD " + debugLodJobs + " GPU " + debugGpu + " FLUID " + debugFluidQueue,px,y0+164f,1.07f,.94f,.94f,.78f,1f);
+                menuText(data,"MEM " + (debugHeapUsed/1048576) + " / " + (debugHeapMax/1048576) + " MIB",px,y0+182f,1.15f,.94f,.94f,.78f,1f);
+                menuText(data,"SEED " + debugSeed,px,y0+202f,.95f,.94f,.94f,.78f,1f);
+            }
+            if(consoleOpen || !consoleFeedback.isBlank()) {
+                float bottom=height-86f;
+                rect(data,8f,bottom,Math.min(width-16f,585f),consoleOpen?75f:48f,.04f,.05f,.07f,.80f);
+                if(!consoleFeedback.isBlank()) menuText(data,consoleFeedback,Math.min(width*.5f,290f),bottom+7f,1.05f,.92f,.89f,.71f,1f);
+                if(consoleOpen) menuText(data,"/" + consoleInput + "_",Math.min(width*.5f,290f),bottom+42f,1.4f,1f,1f,1f,1f);
             }
 
             if (player.isInventoryOpen()) {
-                inventory.drawInventory(
+                if(player.getGameMode()==com.wildforge.player.GameMode.CREATIVE) {
+                    inventory.drawCreative(data,dimData,skinData,iconData,countData,tooltipData,tooltipSkin,
+                        width,height,mouseX,mouseY,player,creativeSearch,creativePage,creativeCategory);
+                } else inventory.drawInventory(
                         data, dimData, skinData, iconData, countData,
                         width, height, player, settings);
 
                 // Draw the held stack above the inventory and cursor.
-                ItemStack cursorStack = player.getCursorStack();
+                ItemStack cursorStack = player.getGameMode()==com.wildforge.player.GameMode.CREATIVE?null:player.getCursorStack();
                 if (cursorStack != null) {
                     float x = mouseX - SLOT_SIZE / 2f;
                     float y = mouseY - SLOT_SIZE / 2f;
@@ -216,7 +270,7 @@ public final class HudRenderer {
                     drawNumber(countData, x, y, cursorStack.getCount());
                 }
 
-                int hoveredSlot =
+                int hoveredSlot = player.getGameMode()==com.wildforge.player.GameMode.CREATIVE ? -1 :
                         InventoryLayout.slotAtVirtual(mouseX, mouseY, width, height);
                 if (hoveredSlot >= 0) {
                     ItemStack hoveredStack =
@@ -243,7 +297,7 @@ public final class HudRenderer {
                     settings, deleteWorldLabel, optionsPage);
         } else if(screenMode==ScreenMode.WORLD_CREATE){
             menu.drawCreateWorldScreen(data,dimData,skinData,width,height,
-                    worldName,worldSeed,editingWorldName,statusMessage);
+                    worldName,worldSeed,editingWorldName,statusMessage,newGameMode,cheatsEnabled);
         } else {
             menu.drawStatusScreen(data, dimData, skinData,
                     width, height, screenMode, statusMessage);

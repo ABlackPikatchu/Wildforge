@@ -114,6 +114,7 @@ public final class TerrainMesh {
         applySavedEdits(c);
         chunks.put(key(cx, cz), c);
         resumeEditedFlows(c);
+        activateGeneratedRiverFalls(c);
         rebuild(c);
         c.compact();
         version++;
@@ -176,6 +177,10 @@ public final class TerrainMesh {
         return chunks.containsKey(key(Math.floorDiv(worldX,CHUNK_SIZE),Math.floorDiv(worldZ,CHUNK_SIZE)));
     }
 
+    public String biomeNameAt(int worldX,int worldZ) {
+        return generator.surface(worldX,worldZ).biome().name().replace('_',' ');
+    }
+    public int activeFluidUpdates(){return fluidQueue.size();}
     public long seed(){return seed;}
     public void resetWorld(){legacyVerticalMigration=false;cancelGeneration();edits.clear();fluidLevels.clear();seed=DEFAULT_SEED;initializeGenerator();chunks.clear();streamed=false;generateSpawnChunk(16,27);version++;}
     /** Nonblocking player-centered streaming: one worker produces raw columns, main thread owns meshes. */
@@ -221,6 +226,7 @@ public final class TerrainMesh {
                 c.compact();
                 chunks.put(entry.getKey(),c);
                 resumeEditedFlows(c);
+                activateGeneratedRiverFalls(c);
                 markMeshDirty(c.cx,c.cz);
                 markMeshDirty(c.cx-1,c.cz);markMeshDirty(c.cx+1,c.cz);
                 markMeshDirty(c.cx,c.cz-1);markMeshDirty(c.cx,c.cz+1);
@@ -543,6 +549,34 @@ public final class TerrainMesh {
     private static float fluidSurfaceHeight(int level) {
         return level>=7?.94f:.20f+.105f*Math.max(1,level);
     }
+    /** Activate a few generated waterfall cells when a column becomes resident.
+     * Oceans and still lakes stay inert; do not seed fluid ticks for every source block.
+     * This also handles streams present in a freshly created world.
+     */
+    private void activateGeneratedRiverFalls(Chunk c) {
+        int scheduled = 0;
+        // Sample a coarse grid to avoid 256 expensive noise lookups per loaded chunk.
+        for (int lx=0;lx<CHUNK_SIZE && scheduled<24;lx+=2)
+            for (int lz=0;lz<CHUNK_SIZE && scheduled<24;lz+=2) {
+                int wx=c.cx*CHUNK_SIZE+lx,wz=c.cz*CHUNK_SIZE+lz;
+                WorldGenerator.Surface surface=generator.surface(wx,wz);
+                if (surface.waterBody()!=WorldGenerator.WaterBody.RIVER) continue;
+                // Only wake exposed flow drops, not entire static water columns.
+                for(int y=Math.min(WORLD_HEIGHT-2,surface.waterSurfaceY()+12);
+                    y>=Math.max(1,surface.waterSurfaceY()-2) && scheduled<24;y--) {
+                    byte waterId = c.get(index(lx,y,lz));
+                    if (waterId!=BlockType.FLOWING_WATER.id &&
+                        !(waterId==BlockType.WATER.id && y>=surface.waterSurfaceY()-1))continue;
+                    if (getBlockAt(wx,y-1,wz)!=BlockType.AIR &&
+                        getBlockAt(wx+1,y,wz)!=BlockType.AIR &&
+                        getBlockAt(wx-1,y,wz)!=BlockType.AIR &&
+                        getBlockAt(wx,y,wz+1)!=BlockType.AIR &&
+                        getBlockAt(wx,y,wz-1)!=BlockType.AIR) continue;
+                    scheduleFluid(wx,y,wz);
+                    scheduled++;
+                }
+            }
+    }
     private void resumeEditedFlows(Chunk c) {
         // Only edited flowing cells resume; naturally generated oceans and pools stay inert.
         Map<Integer,Byte> changed=edits.get(key(c.cx,c.cz));
@@ -603,24 +637,36 @@ public final class TerrainMesh {
             tryFluid(task.x,task.y,task.z-1,flow,next);
         }
     }
-    /** Horizontal and downward current, in approximate blocks/second. No current in calm oceans. */
+    /** Currents follow falling water and higher-to-lower liquid levels.
+     * Solid shore banks are impermeable, NOT high-pressure water sources.
+     * Source oceans surrounded by equal-level water therefore stay calm.
+     */
     public float[] waterCurrentAt(int x,int y,int z) {
-        BlockType center=getBlockAt(x,y,z);
-        if(!center.isWater())return new float[]{0f,0f,0f};
-        int own=getFluidLevelAt(x,y,z);
-        float left=fluidPressure(x-1,y,z),right=fluidPressure(x+1,y,z);
-        float north=fluidPressure(x,y,z-1),south=fluidPressure(x,y,z+1);
-        // Higher fluid pressure pushes toward the lower-pressure neighbor.
-        float vx=left-right,vz=north-south;
-        if(own>0 && (left+right+north+south)<.1f) {vx=0f;vz=0f;}
-        float length=(float)Math.sqrt(vx*vx+vz*vz);
-        if(length>0.001f){vx=vx/length*.85f;vz=vz/length*.85f;}
-        float vy=getBlockAt(x,y-1,z)==BlockType.AIR?-.80f:0f;
-        return new float[]{vx,vy,vz};
+        if (!getBlockAt(x,y,z).isWater()) return new float[]{0f,0f,0f};
+        float[] vxz=new float[2];
+        accumulateWaterFlow(x,y,z, 1,0,vxz);
+        accumulateWaterFlow(x,y,z,-1,0,vxz);
+        accumulateWaterFlow(x,y,z,0, 1,vxz);
+        accumulateWaterFlow(x,y,z,0,-1,vxz);
+        float length=(float)Math.hypot(vxz[0],vxz[1]);
+        if(length>0.001f) {vxz[0]=vxz[0]/length*.75f;vxz[1]=vxz[1]/length*.75f;}
+        return new float[]{vxz[0], getBlockAt(x,y-1,z)==BlockType.AIR?-.85f:0f,vxz[1]};
     }
-    private float fluidPressure(int x,int y,int z) {
-        BlockType b=getBlockAt(x,y,z);
-        return b.isWater()?getFluidLevelAt(x,y,z):(b.isSolid()?7f:0f);
+    private void accumulateWaterFlow(int x,int y,int z,int dx,int dz,float[] result) {
+        BlockType adjacent=getBlockAt(x+dx,y,z+dz);
+        if (adjacent.isSolid() || !isColumnLoaded(x+dx,z+dz)) return;
+        int own=getFluidLevelAt(x,y,z);
+        float push=0f;
+        if(adjacent.isWater()) {
+            int next=getFluidLevelAt(x+dx,y,z+dz);
+            push=Math.max(0,own-next);
+        } else if(adjacent==BlockType.AIR &&
+                (getBlockAt(x+dx,y-1,z+dz)==BlockType.AIR ||
+                 getBlockAt(x+dx,y-1,z+dz).isWater())) {
+            push=.65f; // Currents toward open downward outlets, not solid banks.
+        }
+        result[0]+=dx*push;
+        result[1]+=dz*push;
     }
     private boolean tryFluid(int x,int y,int z,BlockType flow,int strength) {
         if(y<=0||y>=WORLD_HEIGHT-1||strength<1)return false;
@@ -903,8 +949,14 @@ public final class TerrainMesh {
             BlockType sampled=BlockType.fromId(id);
             wet[tx][tz]=sampled.isFluid();
             layer[tx][tz]=sampled.getTopTextureLayer();
-            ground[tx][tz]=Math.max(0,Math.min(WORLD_HEIGHT-1,surf.surfaceY()));
-            groundLayer[tx][tz]=BlockType.fromId(c.get(index(tx*step,ground[tx][tz],tz*step))).getTopTextureLayer();
+            // Read the actual exposed seabed; caves can remove the expected
+            // top block and shouldn't turn distant underwater terrain into air.
+            int bed=Math.max(0,Math.min(WORLD_HEIGHT-1,surf.surfaceY()));
+            int lower=Math.max(0,bed-12);
+            while(bed>lower && !BlockType.fromId(c.get(index(tx*step,bed,tz*step))).isSolid()) bed--;
+            ground[tx][tz]=bed;
+            BlockType bedType=BlockType.fromId(c.get(index(tx*step,bed,tz*step)));
+            groundLayer[tx][tz]=(bedType.isSolid()?bedType:BlockType.STONE).getTopTextureLayer();
         }
         FloatArrayBuilder out=new FloatArrayBuilder();
         FloatArrayBuilder water=new FloatArrayBuilder();

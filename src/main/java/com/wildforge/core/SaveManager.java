@@ -97,6 +97,19 @@ public final class SaveManager {
         catch(IOException ignored){}
         return "WORLD " + (slot+1);
     }
+    /** Existing worlds default to cheats disabled. World rules are separate from terrain/player saves. */
+    public boolean cheatsEnabled(int slot) {
+        try { requireValidSlot(slot);
+            return Files.isRegularFile(rulesPath(slot)) &&
+                Files.readString(rulesPath(slot)).trim().equals("cheats=true"); }
+        catch (IOException ex) { return false; }
+    }
+    public void saveCheatsEnabled(int slot, boolean enabled) throws IOException {
+        requireValidSlot(slot);
+        Files.createDirectories(saveDirectory);
+        Files.writeString(rulesPath(slot), "cheats=" + enabled + "\n");
+    }
+    private Path rulesPath(int slot) { return saveDirectory.resolve("world_" + ((long)slot+1) + ".rules"); }
     private Path namePath(int slot){return saveDirectory.resolve("world_"+((long)slot+1)+".name");}
 
     public void save(int slot, TerrainMesh terrain, Player player)
@@ -190,6 +203,7 @@ public final class SaveManager {
         Files.deleteIfExists(worldPath(slot));
         Files.deleteIfExists(playerPath(slot));
         Files.deleteIfExists(namePath(slot));
+        Files.deleteIfExists(rulesPath(slot));
         if (slot == 0) {
             Files.deleteIfExists(legacySavePath);
         }
