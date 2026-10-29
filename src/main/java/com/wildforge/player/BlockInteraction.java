@@ -4,7 +4,7 @@ package com.wildforge.player;
 import com.wildforge.content.BlockDefinition;
 import com.wildforge.content.ContentLoader;
 import com.wildforge.content.ItemDefinition;
-import com.wildforge.content.LegacyContentBridge;
+import com.wildforge.content.RegistryContentAdapter;
 import com.wildforge.inventory.Inventory;
 import com.wildforge.item.ItemStack;
 import com.wildforge.item.ItemType;
@@ -20,7 +20,7 @@ public final class BlockInteraction {
 
     private final Inventory inventory;
     private final WorldItemManager worldItems;
-    private final LegacyContentBridge content;
+    private final RegistryContentAdapter content;
 
     public BlockInteraction(Inventory inventory, WorldItemManager worldItems) {
         this(inventory, worldItems, null);
@@ -35,7 +35,7 @@ public final class BlockInteraction {
 
         this.inventory = inventory;
         this.worldItems = worldItems;
-        this.content = gameContent == null ? null : new LegacyContentBridge(gameContent);
+        this.content = gameContent == null ? null : new RegistryContentAdapter(gameContent);
     }
 
     /**
@@ -67,7 +67,7 @@ public final class BlockInteraction {
             }
         } else {
             for (BlockDefinition.Drop drop : block.getDrops()) {
-                ItemType item = content.legacyItem(drop.item());
+                ItemType item = content.itemType(drop.item());
                 // The current world-item system supports enum-backed items only.
                 if (item == null) throw new IllegalStateException(
                         "Drop item is not supported by the legacy inventory: " + drop.item());
@@ -124,7 +124,7 @@ public final class BlockInteraction {
         } else {
             ItemDefinition item = content.item(itemType);
             blockToPlace = item.getPlacesBlock() == null ? null
-                    : content.legacyBlock(item.getPlacesBlock());
+                    : content.blockType(item.getPlacesBlock());
         }
         if (blockToPlace == null || blockToPlace == BlockType.AIR) {
             return;

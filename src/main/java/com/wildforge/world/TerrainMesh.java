@@ -12,16 +12,20 @@ import com.wildforge.worldgen.BiomeDistribution;
 import com.wildforge.worldgen.SeededNoise;
 import com.wildforge.worldgen.CaveCarvers;
 import com.wildforge.worldgen.CaveBiomePainter;
+import com.wildforge.worldgen.StrataGenerator;
+import com.wildforge.worldgen.OreFeatureGenerator;
+import com.wildforge.worldgen.AquiferSampler;
+import com.wildforge.worldgen.CaveDecorationCatalog;
+import com.wildforge.worldgen.MarineSedimentCatalog;
+import com.wildforge.worldgen.CaveWallCatalog;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-/** Bounded, player-centered chunk cache with persistent sparse edits and v1 imports. */
+/** Bounded, player-centered chunk cache with persistent sparse edits and fresh-world generation. */
 public final class TerrainMesh implements AutoCloseable {
     public static final int CHUNK_SIZE=16, WORLD_HEIGHT=512, SECTION_HEIGHT=16, SECTION_COUNT=WORLD_HEIGHT/SECTION_HEIGHT;
-    // Legacy constants are retained only for old save import and source compatibility.
-    public static final int WORLD_CHUNKS=4, WORLD_SIZE=64;
     public static final int FLOATS_PER_VERTEX=7;
     // Fluid sections use a separate mesh stream (section + FLUID_SECTION_OFFSET).
     // No block IDs or save indexes change.
@@ -30,7 +34,7 @@ public final class TerrainMesh implements AutoCloseable {
     private static final long DEFAULT_SEED=0x57494C44464F5247L;
     /** Generator revision is independent of the binary save format. Never change an
      * old revision's semantics silently; reject incompatible future saves. */
-    public static final int WORLDGEN_REVISION=7;
+    public static final int WORLDGEN_REVISION=8;
     private int worldgenRevision=WORLDGEN_REVISION;
     public int worldgenRevision(){return worldgenRevision;}
     private final ChunkSource chunkSource = new ChunkSource();
@@ -39,6 +43,12 @@ public final class TerrainMesh implements AutoCloseable {
     private SpawnFinder.Spawn initialSpawn;
     private BiomeDistribution distribution;
     private SeededNoise depositNoise;
+    private StrataGenerator strata;
+    private OreFeatureGenerator oreFeatures;
+    private AquiferSampler aquifers;
+    private CaveDecorationCatalog caveDecorations;
+    private CaveWallCatalog caveWalls;
+    private MarineSedimentCatalog marineSediments;
     private long seed=DEFAULT_SEED;
     // Fluid scheduling is transient world simulation state; TerrainMesh retains
     // sparse, on-disk fluid levels and provides the authoritative cell mutations.
@@ -58,8 +68,6 @@ public final class TerrainMesh implements AutoCloseable {
     // Sparse, persistent levels for FLOWING_* cells only. Source blocks are always level 7.
     // Indexing matches edits (chunk key + column-major block index), so unloaded fluids retain state.
     private final HashMap<Long,HashMap<Integer,Byte>> fluidLevels = new HashMap<>();
-    private boolean legacyVerticalMigration=false;
-    public boolean needsLegacyPlayerHeightShift(){return legacyVerticalMigration;}
     private int version=0, renderDistance=8, simulationDistance=5;
     // Raw world generation is owned by ChunkSource. Section/LOD worker lifecycle,
     // revisions and stale result handling are owned by ChunkMeshScheduler.
@@ -98,7 +106,18 @@ public final class TerrainMesh implements AutoCloseable {
     private static long key(int x,int z){return ChunkCoordinates.pack(x,z);}
     private static int index(int x,int y,int z){return ChunkCoordinates.localIndex(x,y,z);}
     private void initializeGenerator(){
-        try { generator=new WorldGenerator(seed,WorldGenConfigLoader.loadBuiltIn(worldgenRevision), worldgenRevision); distribution=new BiomeDistribution(seed); depositNoise=new SeededNoise(seed); }
+        try {
+            var terrainSettings=WorldGenConfigLoader.loadBuiltIn();
+            generator=new WorldGenerator(seed,terrainSettings,worldgenRevision);
+            distribution=new BiomeDistribution(seed);
+            depositNoise=new SeededNoise(seed);
+            strata=StrataGenerator.loadBuiltIn(seed,terrainSettings.seaLevel());
+            oreFeatures=OreFeatureGenerator.loadBuiltIn(seed);
+            aquifers=new AquiferSampler(seed,terrainSettings);
+            caveDecorations=CaveDecorationCatalog.loadBuiltIn();
+            caveWalls=CaveWallCatalog.loadBuiltIn();
+            marineSediments=MarineSedimentCatalog.loadBuiltIn();
+        }
         catch(IOException e){ throw new IllegalStateException("Worldgen profile unavailable; run generateContent",e); }
     }
     public TerrainMesh(){initializeGenerator();generateSpawnChunk(16,27);}
@@ -143,9 +162,9 @@ public final class TerrainMesh implements AutoCloseable {
         return withinSimulation(x,z) && isColumnLoaded(x,z);
     }
     public long seed(){return seed;}
-    /** Chosen at new-world creation; null for loaded legacy worlds. */
+    /** Chosen at new-world creation; may be null for loaded worlds. */
     public SpawnFinder.Spawn initialSpawn(){return initialSpawn;}
-    public void resetWorld(){initialSpawn=null;legacyVerticalMigration=false;cancelGeneration();edits.clear();fluidLevels.clear();seed=DEFAULT_SEED;worldgenRevision=WORLDGEN_REVISION;initializeGenerator();generateSpawnChunk(16,27);version++;}
+    public void resetWorld(){initialSpawn=null;cancelGeneration();edits.clear();fluidLevels.clear();seed=DEFAULT_SEED;worldgenRevision=WORLDGEN_REVISION;initializeGenerator();generateSpawnChunk(16,27);version++;}
     /** Nonblocking player-centered streaming: one worker produces raw columns, main thread owns meshes. */
     public void streamAround(float x,float z){
         int cx=Math.floorDiv((int)Math.floor(x),CHUNK_SIZE);
@@ -315,27 +334,31 @@ public final class TerrainMesh implements AutoCloseable {
             // Sample only the upper terrain band; deep rock remains inexpensive.
             int highest=Math.min(WORLD_HEIGHT-2,top+8);
             for(int y=0;y<=highest;y++){
-                if(y>3 && !generator.isSolidTerrain(wx,y,wz,top,slope))continue;
-                if(y>3 && generator.isCave(wx,y,wz,top))continue;
+                if(y>0 && !generator.isSolidTerrain(wx,y,wz,top,slope))continue;
+                if(y>=5 && generator.isCave(wx,y,wz,top))continue;
                 // Rock overhangs above the original height receive rock faces,
                 // rather than floating copies of biome topsoil.
                 // Ordinary stone dominates the crust. Deeper strata transition to
                 // darker slate; biome-specific rock occurs as sparse coherent lenses.
-                BlockType rock=naturalRock(wx,y,wz,top,geologicalRock);
-                BlockType b=y==0?BlockType.BEDROCK:y>top?rock:y==top?topBlock:y>=top-soilDepth?filler:rock;
+                BlockType rock=strata.rockAt(wx,y,wz,geologicalRock);
+                // Bedrock is the first irreversible terrain stage, never an ore or biome accent.
+                BlockType b=strata.bedrockAt(wx,y,wz)?BlockType.BEDROCK:
+                        y>top?rock:y==top?topBlock:y>=top-soilDepth?filler:rock;
                 c.blocks[index(lx,y,lz)]=b.id;
             }
         }
+        // Hard floor seal: no cave/noise pass may erase randomized bedrock.
         // Directed regional tunnels and ravines supplement existing 3D noise caves.
         new CaveCarvers(seed).carve(c.blocks,cx,cz,generator);
         // Paint exposed cave surfaces after ALL carving, before features and ores.
-        CaveBiomePainter.paint(c.blocks, cx, cz, generator, WORLD_HEIGHT);
-        // Populate only cells belonging to this chunk. Candidates are sampled in
-        // world coordinates, including adjacent cells whose crowns overlap us.
-        populateFeatures(c);
-        generateOreVeins(c);
+        CaveBiomePainter.paint(c.blocks, cx, cz, generator, WORLD_HEIGHT,caveWalls);
+        // Generation order: base density -> surface -> carvers -> cave materials
+        // -> ores -> aquifers/oceans -> cave features -> trees/plants -> snow.
+        // World-positioned features cross seams without relying on chunk order.
+        oreFeatures.generate(c.blocks,c.cx,c.cz,WORLD_HEIGHT,generator);
         placeNaturalFluids(c);
         populateCaveDecorations(c);
+        populateFeatures(c);
         populateSnowCover(c);
         // Edits are applied when the completed chunk is installed on the main thread.
         return c;
@@ -385,30 +408,14 @@ public final class TerrainMesh implements AutoCloseable {
                 // Never inject an upstream-height water pillar over a downstream bank;
                 // active fluid simulation handles free waterfalls at actual openings.
             }
-            // Rare underground water-table pockets, inside already carved caves.
-            // Shared world-coordinate region cells keep chunk seams consistent.
-            int rx=Math.floorDiv(wx,96),rz=Math.floorDiv(wz,96);
-            long region=rockHash(rx,13,rz);
-            boolean aquifer=(region&15L)==0L && surface.rainfall()>0.42;
-            boolean lavaPocket=(rockHash(rx,71,rz)&31L)==0L;
-            if(!aquifer&&!lavaPocket)continue;
-            // Previous sea-75 placed the water table below the simulated range
-            // when sea level was 64, silently disabling underground water.
-            int aquiferLevel=Math.max(24,Math.min(sea-12,WORLD_HEIGHT-120));
-            for(int y=8;y<=Math.max(aquiferLevel,28);y++) {
-                boolean water=aquifer&&y>=16&&y<=aquiferLevel;
-                boolean lava=!water&&lavaPocket&&y<=22;
-                if(!water&&!lava)continue;
-                int at=index(lx,y,lz);
-                // Require a solid basin floor and a roof or deep overburden:
-                // open shafts must not become artificial vertical waterfalls.
-                if(c.blocks[at]!=BlockType.AIR.id || c.blocks[at-1]==BlockType.AIR.id)continue;
-                int ceiling=Math.min(WORLD_HEIGHT-2,Math.min(y+5,surface.surfaceY()-18));
-                for(int fy=y;fy<=ceiling;fy++) {
-                    int fluidIndex=index(lx,fy,lz);
-                    if(c.blocks[fluidIndex]!=BlockType.AIR.id)break;
-                    c.blocks[fluidIndex]=water?BlockType.WATER.id:BlockType.LAVA.id;
-                }
+            // Only fill air already carved into caves. Aquifer field uses XYZ
+            // and local water tables, so open mineshaft-like water columns disappear.
+            int top=Math.min(surface.surfaceY()-17,sea-10);
+            for(int y=5;y<top;y++) {
+                int idx=index(lx,y,lz);
+                if(c.blocks[idx]!=BlockType.AIR.id)continue;
+                BlockType fluid=aquifers.fluidAt(wx,y,wz,surface);
+                if(fluid!=BlockType.AIR)c.blocks[idx]=fluid.id;
             }
         }
     }
@@ -640,30 +647,6 @@ public final class TerrainMesh implements AutoCloseable {
         version++;
     }
 
-    /** Main host rock for 512-block worlds. No new block IDs or save migration.
-     * Low-cost world-space hash gives broad strata and small geological lenses.
-     * Deep sections are slate-rich, with stone still present and rare host-rock veins.
-     */
-    private static BlockType naturalRock(int x,int y,int z,int top,BlockType accent) {
-        // Stratification is mostly altitude-dependent; slight spatial variation
-        // prevents a perfectly horizontal line at the deep-rock boundary.
-        int deepBoundary=126 + (int)(rockHash(Math.floorDiv(x,32),0,Math.floorDiv(z,32)) & 23L)-12;
-        long province=rockHash(Math.floorDiv(x,18),Math.floorDiv(y,12),Math.floorDiv(z,18));
-        int roll=(int)((province>>>24)&255L);
-        if(y<deepBoundary-28) {
-            if(roll<14 && accent!=BlockType.AIR) return accent;
-            return roll<190 ? BlockType.SLATE : BlockType.STONE;
-        }
-        if(y<deepBoundary+16) {
-            int slateChance=Math.max(0,Math.min(190,(deepBoundary+16-y)*4));
-            if(roll<slateChance)return BlockType.SLATE;
-            if(roll>244 && accent!=BlockType.AIR)return accent;
-            return BlockType.STONE;
-        }
-        // Surface geology affects only a small fraction of upper host rock.
-        if(roll<24 && accent!=BlockType.AIR)return accent;
-        return BlockType.STONE;
-    }
     /** Marine palettes are local to the ocean type and only cover a thin exposed seabed. */
     private BlockType seabedAt(int x,int z,int y,int sea,int slope,WorldGenerator.Surface surface) {
         if(surface.waterBody()==WorldGenerator.WaterBody.RIVER)
@@ -671,20 +654,7 @@ public final class TerrainMesh implements AutoCloseable {
         if(surface.waterBody()==WorldGenerator.WaterBody.LAKE)
             return slope>4?BlockType.GRAVEL:BlockType.CLAY;
         WorldGenerator.OceanBiome ocean=generator.oceanBiomeAt(x,z,surface);
-        BlockType[] palette; int[] weights;
-        switch(ocean) {
-            case TEMPERATE -> {palette=new BlockType[]{BlockType.OCEAN_SILTY_SAND,BlockType.OCEAN_SHELL_GRIT,BlockType.OCEAN_COLD_GRAVEL,BlockType.OCEAN_ALGAE_STONE};weights=new int[]{40,25,20,15};}
-            case DEEP -> {palette=new BlockType[]{BlockType.OCEAN_DARK_SILT,BlockType.OCEAN_BASALT_PEBBLES,BlockType.OCEAN_COLD_GRAVEL,BlockType.OCEAN_ALGAE_STONE};weights=new int[]{55,20,15,10};}
-            case WARM -> {palette=new BlockType[]{BlockType.OCEAN_CORAL_SAND,BlockType.OCEAN_SHELL_GRIT,BlockType.OCEAN_REEF_LIMESTONE,BlockType.OCEAN_DEAD_CORAL_RUBBLE};weights=new int[]{45,25,20,10};}
-            case COLD -> {palette=new BlockType[]{BlockType.OCEAN_COLD_GRAVEL,BlockType.OCEAN_ALGAE_STONE,BlockType.OCEAN_SILTY_SAND,BlockType.OCEAN_BASALT_PEBBLES};weights=new int[]{45,25,20,10};}
-            case FROZEN -> {palette=new BlockType[]{BlockType.OCEAN_COLD_GRAVEL,BlockType.OCEAN_BASALT_PEBBLES,BlockType.OCEAN_DARK_SILT,BlockType.OCEAN_ALGAE_STONE};weights=new int[]{45,30,15,10};}
-            case REEF -> {palette=new BlockType[]{BlockType.OCEAN_REEF_LIMESTONE,BlockType.OCEAN_CORAL_SAND,BlockType.OCEAN_DEAD_CORAL_RUBBLE,BlockType.OCEAN_SHELL_GRIT};weights=new int[]{40,30,20,10};}
-            case KELP -> {palette=new BlockType[]{BlockType.OCEAN_ALGAE_STONE,BlockType.OCEAN_COLD_GRAVEL,BlockType.OCEAN_SILTY_SAND,BlockType.OCEAN_DARK_SILT};weights=new int[]{40,25,20,15};}
-            case ABYSSAL -> {palette=new BlockType[]{BlockType.OCEAN_ABYSSAL_SILT,BlockType.OCEAN_BASALT_PEBBLES,BlockType.OCEAN_DARK_SILT};weights=new int[]{65,25,10};}
-            case ESTUARY -> {palette=new BlockType[]{BlockType.OCEAN_SILTY_SAND,BlockType.OCEAN_DARK_SILT,BlockType.OCEAN_SHELL_GRIT,BlockType.OCEAN_ALGAE_STONE};weights=new int[]{45,25,20,10};}
-            case VOLCANIC -> {palette=new BlockType[]{BlockType.OCEAN_BASALT_PEBBLES,BlockType.OCEAN_ABYSSAL_SILT,BlockType.OCEAN_DEAD_CORAL_RUBBLE,BlockType.OCEAN_ALGAE_STONE};weights=new int[]{55,20,15,10};}
-            default -> throw new IllegalStateException();
-        }
+        java.util.List<MarineSedimentCatalog.Entry> palette=marineSediments.forOcean(ocean);
         // Continuous multi-scale noise with soft weighted competition. Independent
         // coherent fields avoid visible square patch boundaries at 9-block intervals.
         // Use small-scale variation only as a perturbation, not a cell selector.
@@ -694,14 +664,14 @@ public final class TerrainMesh implements AutoCloseable {
         double warpZ=depositNoise.fbm2(x/115.0,z/115.0,3,0x7bd2L)*15.0;
         double u=(x+warpX)/25.0,v=(z+warpZ)/25.0;
         double best=Double.NEGATIVE_INFINITY;
-        BlockType selected=palette[0];
-        for(int i=0;i<palette.length;i++) {
+        BlockType selected=palette.get(0).block();
+        for(int i=0;i<palette.size();i++) {
             long salt=0x523eaL+0x9E3779B97F4A7C15L*i;
             double coarse=depositNoise.fbm2(u,v,3,salt);
             double detail=depositNoise.fbm2(u*2.7,v*2.7,2,salt^0x72feL);
             // Weight remains meaningful without overwhelming local variation.
-            double score=0.75*Math.log(weights[i])+2.6*coarse+0.30*detail;
-            if(score>best){best=score;selected=palette[i];}
+            double score=0.75*Math.log(palette.get(i).weight())+2.6*coarse+0.30*detail;
+            if(score>best){best=score;selected=palette.get(i).block();}
         }
         return selected;
     }
@@ -871,13 +841,8 @@ public final class TerrainMesh implements AutoCloseable {
                 var context=generator.caveSampler().contextAt(wx,y,wz,surf);
                 var biome=generator.caveSampler().choose(wx,y,wz,context);
                 if(biome==null)continue;
-                BlockType decor=switch(biome) {
-                    case ROOTLACE_HOLLOWS,SEEPSTONE_GROTTOS -> ceiling ? BlockType.HANGING_ROOTS : BlockType.MUSHROOM_PLANT;
-                    case HOLLOWSTONE_VAULTS,SALTVEIL_CHAMBERS -> ceiling?BlockType.STALACTITE:BlockType.STALAGMITE;
-                    case CRYSTAL_SEAM_CHAMBERS -> floor?BlockType.CRYSTAL_CLUSTER:null;
-                    case SPORELIGHT_HOLLOWS -> floor?BlockType.SPORECAP_FUNGUS:BlockType.HANGING_ROOTS;
-                    default -> null;
-                };
+                CaveDecorationCatalog.Rule feature=caveDecorations.get(biome);
+                BlockType decor=floor?feature.floor():feature.ceiling();
                 if(decor!=null)c.set(i,decor.id);
             }
         }
@@ -899,70 +864,13 @@ public final class TerrainMesh implements AutoCloseable {
      * including adjacent cells, so deposits remain continuous across chunk boundaries.
      * A fixed number of candidates per anchor gives predictable upper bounds on work.
      */
-    private void generateOreVeins(ChunkColumn c) {
-        final int spacing=16, band=24;
-        for(int ax=c.cx-1;ax<=c.cx+1;ax++) for(int az=c.cz-1;az<=c.cz+1;az++) {
-            for(int ay=0;ay<=WORLD_HEIGHT/band;ay++) for(int type=0;type<5;type++) {
-                long salt=0x4f524553L+type*0x54abL;
-                // Rates are probabilities of a deposit, not inverse rarity.
-                // Diamond/gold should be genuinely rarer than coal/iron.
-                double chance=switch(type){case 0->.60;case 1->.43;case 2->.18;case 3->.09;default->.026;};
-                int ox=ax*spacing+(int)(depositNoise.unit(ax,ay,az,salt+1)*spacing);
-                int oy=ay*band+(int)(depositNoise.unit(ax,ay,az,salt+2)*band);
-                int oz=az*spacing+(int)(depositNoise.unit(ax,ay,az,salt+3)*spacing);
-                if(oy<5 || oy>WORLD_HEIGHT-8)continue;
-                int sea=generator.settings().seaLevel();
-                if(type==0 && oy>sea+48 || type==1 && oy>sea+24
-                        || type==2 && (oy<14||oy>sea-6)
-                        || type==3 && (oy<8||oy>sea-45)
-                        || type==4 && oy>sea-105)continue;
-                // Soft host-province preference, not hard filtering: mixed rock
-                // retains occasional discoveries outside the most favorable province.
-                com.wildforge.worldgen.Geology province=generator.geologyAt(ox,oz);
-                double bonus=switch(type) {
-                    case 0 -> province==com.wildforge.worldgen.Geology.SHALE || province==com.wildforge.worldgen.Geology.SANDSTONE ? 1.25 : .9;
-                    case 1 -> province==com.wildforge.worldgen.Geology.GRANITE || province==com.wildforge.worldgen.Geology.SHALE ? 1.18 : 1.0;
-                    case 2 -> province==com.wildforge.worldgen.Geology.GRANITE ? 1.22 : .9;
-                    case 3 -> province==com.wildforge.worldgen.Geology.VOLCANIC || province==com.wildforge.worldgen.Geology.BASALT ? 1.38 : .85;
-                    default -> province==com.wildforge.worldgen.Geology.GRANITE || province==com.wildforge.worldgen.Geology.BASALT ? 1.25 : .9;
-                };
-                if(depositNoise.unit(ax,ay,az,salt)>=Math.min(.95,chance*bonus))continue;
-                BlockType ore=switch(type){case 0->BlockType.COAL_ORE;case 1->BlockType.IRON_ORE;
-                    case 2->BlockType.SILVER_ORE;case 3->BlockType.GOLD_ORE;default->BlockType.DIAMOND_ORE;};
-                int length=switch(type){case 0->4+(int)(depositNoise.unit(ax,ay,az,salt+4)*11);
-                    case 1->3+(int)(depositNoise.unit(ax,ay,az,salt+4)*7);
-                    case 2->2+(int)(depositNoise.unit(ax,ay,az,salt+4)*5);
-                    case 3->2+(int)(depositNoise.unit(ax,ay,az,salt+4)*4);
-                    default->1+(int)(depositNoise.unit(ax,ay,az,salt+4)*3);};
-                int vx=ox,vy=oy,vz=oz;
-                for(int n=0;n<length;n++) {
-                    if(vx>=c.cx*16 && vx<(c.cx+1)*16 && vz>=c.cz*16 && vz<(c.cz+1)*16 && vy>1 && vy<WORLD_HEIGHT-1){
-                        int idx=index(vx-c.cx*16,vy,vz-c.cz*16);
-                        BlockType host=BlockType.fromId(c.blocks[idx]);
-                        if(validOreHost(host,type))c.blocks[idx]=ore.id;
-                    }
-                    // A connected 6-neighbour walk, not isolated dice-rolled ore specks.
-                    int direction=(int)(depositNoise.unit(ox+n,oy+n,oz-n,salt+5)*6);
-                    switch(direction){case 0->vx++;case 1->vx--;case 2->vy++;case 3->vy--;case 4->vz++;default->vz--;}
-                }
-            }
-        }
-    }
-    private static boolean validOreHost(BlockType block,int type) {
-        return switch(type) {
-            case 0 -> block==BlockType.STONE||block==BlockType.SHALE||block==BlockType.SANDSTONE||block==BlockType.SILTSTONE;
-            case 1 -> block==BlockType.STONE||block==BlockType.GRANITE||block==BlockType.ANDESITE||block==BlockType.SHALE||block==BlockType.GABBRO;
-            case 2,4 -> block==BlockType.STONE||block==BlockType.GRANITE||block==BlockType.GABBRO||block==BlockType.DIORITE||block==BlockType.SLATE;
-            default -> block==BlockType.STONE||block==BlockType.GRANITE||block==BlockType.GABBRO||block==BlockType.SHALE;
-        };
-    }
     public BlockType getBlockAt(int x,int y,int z){
         if(y<0||y>=WORLD_HEIGHT)return BlockType.AIR;
         ChunkColumn c=chunkSource.get(key(Math.floorDiv(x,CHUNK_SIZE),Math.floorDiv(z,CHUNK_SIZE)));
         if(c==null)return BlockType.AIR;
         return BlockType.fromId(c.get(index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE))));
     }
-    /** Logical-state API; legacy byte column storage remains the save encoding. */
+    /** Logical-state API; compact byte IDs remain the current chunk encoding. */
     public BlockState getBlockStateAt(int x,int y,int z) {
         return BlockState.fromLegacy(getBlockAt(x,y,z));
     }
@@ -1126,82 +1034,62 @@ public final class TerrainMesh implements AutoCloseable {
             catch(AtomicMoveNotSupportedException e){Files.move(temp,p,StandardCopyOption.REPLACE_EXISTING);}
         }finally{Files.deleteIfExists(temp);}
     }
+    /** Only v5 saves made with this generator revision are supported.
+     * v6/v7 terrain has different noise and cannot be silently mixed with v8.
+     * Back up old saves and start a new world when switching to this fresh generator.
+     */
     public void loadFrom(Path path)throws IOException{
         HashMap<Long,HashMap<Integer,Byte>> incoming=new HashMap<>();
-        HashMap<Long,HashMap<Integer,Byte>> incomingFluidLevels=new HashMap<>();
-        long newSeed=DEFAULT_SEED;boolean migrateLegacy=false;int incomingRevision=WORLDGEN_REVISION;
+        HashMap<Long,HashMap<Integer,Byte>> levels=new HashMap<>();
+        long newSeed;
         try(DataInputStream in=new DataInputStream(new BufferedInputStream(Files.newInputStream(path)))){
             if(in.readInt()!=MAGIC)throw new IOException("Not a Wildforge world save");
-            int v=in.readInt();
-            migrateLegacy=v<3;
-            if(v==1){
-                int width=in.readInt(),height=in.readInt(),depth=in.readInt();
-                if(width!=64||height!=32||depth!=64)throw new IOException("Unexpected legacy world dimensions");
-                for(int x=0;x<64;x++)for(int y=0;y<32;y++)for(int z=0;z<64;z++){
-                    byte b=in.readByte();if(!BlockType.isValidId(b))throw new IOException("Invalid legacy block id");
-                    int cx=x/16,cz=z/16,i=index(x%16,y+160,z%16);
-                    incoming.computeIfAbsent(key(cx,cz),k->new HashMap<>()).put(i,b);
+            int version=in.readInt();
+            if(version!=SAVE_VERSION)throw new IOException("Old save format version "+version+
+                    " is not supported by fresh-world generation; back up the old save and create a new world");
+            newSeed=in.readLong();
+            int height=in.readInt(),revision=in.readInt();
+            if(height!=WORLD_HEIGHT||revision!=WORLDGEN_REVISION)
+                throw new IOException("This world uses generator revision "+revision+
+                        "; fresh Wildforge requires revision "+WORLDGEN_REVISION+
+                        ". Create a new world; old terrain will not be reinterpreted");
+            int chunks=in.readInt();
+            if(chunks<0||chunks>1000000)throw new IOException("Invalid chunk count");
+            for(int n=0;n<chunks;n++){
+                long k=in.readLong();int count=in.readInt();
+                if(count<0||count>CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT)
+                    throw new IOException("Invalid edit count");
+                HashMap<Integer,Byte> editsAt=new HashMap<>();
+                for(int i=0;i<count;i++){
+                    int at=in.readInt();byte id=in.readByte();
+                    if(at<0||at>=CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT||!BlockType.isValidId(id)
+                            ||editsAt.putIfAbsent(at,id)!=null)throw new IOException("Invalid or duplicate edit");
                 }
-            }else if(v==2 || v==3 || v==4 || v==5){
-                newSeed=in.readLong();
-                if(v>=3){int savedHeight=in.readInt();if(savedHeight!=WORLD_HEIGHT)throw new IOException("Unsupported saved world height: "+savedHeight);}
-                if(v>=5) {
-                    incomingRevision=in.readInt();
-                    if(incomingRevision==5) {
-                        // v5->v6 uses the same numeric blocks and sparse-edit layout.
-                        // Accept the world and upgrade its generator revision at the
-                        // next save. Unmodified terrain may change: advise backup.
-                        System.err.println("[Wildforge] Upgrading worldgen 5 -> 6. Back up your world: "
-                                + "unmodified rivers and seabeds may regenerate differently.");
-                        incomingRevision=6;
-                    } else if(incomingRevision!=6 && incomingRevision!=WORLDGEN_REVISION)
-                        throw new IOException("World generator revision "+incomingRevision+
-                                " is incompatible with this build ("+WORLDGEN_REVISION+"). Back up the save and use a matching version.");
+                if(incoming.putIfAbsent(k,editsAt)!=null)throw new IOException("Duplicate chunk record");
+            }
+            int regions=in.readInt();
+            if(regions<0||regions>1000000)throw new IOException("Invalid fluid region count");
+            for(int n=0;n<regions;n++){
+                long k=in.readLong();int size=in.readInt();
+                if(size<0||size>CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT)throw new IOException("Invalid fluid count");
+                HashMap<Integer,Byte> values=new HashMap<>();
+                Map<Integer,Byte> editsAt=incoming.get(k);
+                for(int i=0;i<size;i++){
+                    int index=in.readInt(),level=in.readUnsignedByte();
+                    byte id=editsAt==null?-1:editsAt.getOrDefault(index,(byte)-1);
+                    if(index<0||index>=CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT||level<1||level>7||
+                       (id!=BlockType.FLOWING_WATER.id&&id!=BlockType.FLOWING_LAVA.id)||
+                        values.putIfAbsent(index,(byte)level)!=null)
+                        throw new IOException("Invalid flowing fluid entry");
                 }
-                int count=in.readInt();
-                if(count<0||count>1000000)throw new IOException("Invalid chunk count");
-                for(int n=0;n<count;n++){
-                    long k=in.readLong();int size=in.readInt();
-                    if(size<0||size>CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT)throw new IOException("Invalid edit count");
-                    HashMap<Integer,Byte> changes=incoming.computeIfAbsent(k,ignore->new HashMap<>());
-                    for(int j=0;j<size;j++){
-                        int idx=in.readInt();byte b=in.readByte();
-                        int limit=CHUNK_SIZE*CHUNK_SIZE*(v==2?256:WORLD_HEIGHT);
-                        if(idx<0||idx>=limit||!BlockType.isValidId(b))throw new IOException("Invalid edit");
-                        // Upgrade v2 column-major edits to new 512-block columns,
-                        // shifting legacy surfaces upward by 160 blocks.
-                        int upgraded=v==2?(idx/256)*WORLD_HEIGHT+(idx%256)+160:idx;
-                        changes.put(upgraded,b);
-                    }
-                }
-                if(v>=4) {
-                    int regions=in.readInt();
-                    if(regions<0||regions>1000000)throw new IOException("Invalid fluid region count");
-                    for(int n=0;n<regions;n++) {
-                        long k=in.readLong();int countLevels=in.readInt();
-                        if(countLevels<0||countLevels>CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT)
-                            throw new IOException("Invalid fluid-level count");
-                        HashMap<Integer,Byte> levels=incomingFluidLevels.computeIfAbsent(k,ignore->new HashMap<>());
-                        Map<Integer,Byte> changes=incoming.get(k);
-                        for(int j=0;j<countLevels;j++) {
-                            int idx=in.readInt(),level=in.readUnsignedByte();
-                            if(idx<0||idx>=CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT||level<1||level>7||
-                               changes==null||!(changes.getOrDefault(idx,(byte)-1)==BlockType.FLOWING_WATER.id||
-                               changes.getOrDefault(idx,(byte)-1)==BlockType.FLOWING_LAVA.id))
-                                throw new IOException("Invalid fluid level or missing flowing block");
-                            if(levels.putIfAbsent(idx,(byte)level)!=null)
-                                throw new IOException("Duplicate fluid-level entry");
-                        }
-                    }
-                }
-            }else throw new IOException("Unsupported world save version: "+v);
-            if(in.read()!=-1)throw new IOException("World save has trailing data");
+                if(levels.putIfAbsent(k,values)!=null)throw new IOException("Duplicate fluid region");
+            }
+            if(in.read()!=-1)throw new IOException("World save has trailing bytes");
         }
-        // Commit only after complete validation.
-        legacyVerticalMigration=migrateLegacy;
         initialSpawn=null;
-        cancelGeneration();seed=newSeed;worldgenRevision=incomingRevision;initializeGenerator();edits.clear();edits.putAll(incoming);
-        fluidLevels.clear();fluidLevels.putAll(incomingFluidLevels);
+        cancelGeneration();seed=newSeed;worldgenRevision=WORLDGEN_REVISION;initializeGenerator();
+        edits.clear();edits.putAll(incoming);
+        fluidLevels.clear();fluidLevels.putAll(levels);
         generateSpawnChunk(16,27);version++;
     }
     private void face(

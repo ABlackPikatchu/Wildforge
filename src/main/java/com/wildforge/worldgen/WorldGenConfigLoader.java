@@ -2,51 +2,30 @@ package com.wildforge.worldgen;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 
-/** Loads generated worldgen profile data from the game classpath. */
+/** Reads the single authoritative new-world height profile, no offsets or legacy revisions. */
 public final class WorldGenConfigLoader {
     public static final String RESOURCE = "data/wildforge/worldgen/overworld.json";
-
-    private WorldGenConfigLoader() { }
-
+    private WorldGenConfigLoader() {}
     public static WorldGenSettings loadBuiltIn() throws IOException {
-        return loadBuiltIn(7);
-    }
-
-    /** Revision 6 retains its historical metadata; new worlds use the actual
-     * 0..511 chunk coordinate space rather than an unreachable negative floor. */
-    public static WorldGenSettings loadBuiltIn(int generatorRevision) throws IOException {
-        if (generatorRevision!=6 && generatorRevision!=7)
-            throw new IOException("Unsupported generator revision " + generatorRevision);
-        try (InputStream stream = WorldGenConfigLoader.class.getClassLoader().getResourceAsStream(RESOURCE)) {
-            if (stream == null) throw new IOException("Missing generated worldgen profile: " + RESOURCE);
-            try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
-                JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
-                return new WorldGenSettings(
-                        generatorRevision==6?json.get("min_y").getAsInt():0,
-                        511,
-                        json.get("sea_level").getAsInt() + 160,
-                        json.get("continent_scale").getAsDouble(),
-                        json.get("hills_scale").getAsDouble(),
-                        json.get("mountains_scale").getAsDouble(),
-                        json.get("detail_scale").getAsDouble(),
-                        json.get("climate_scale").getAsDouble(),
-                        json.get("river_scale").getAsDouble(),
-                        json.get("cave_scale").getAsDouble(),
-                        json.get("ocean_threshold").getAsDouble(),
-                        json.get("mountain_threshold").getAsDouble(),
-                        json.get("cave_threshold").getAsDouble(),
-                        json.get("tree_density").getAsDouble(),
-                        json.get("plant_density").getAsDouble());
-            }
-        } catch (RuntimeException e) {
-            throw new IOException("Invalid generated worldgen profile: " + RESOURCE, e);
-        }
+        try (InputStream stream=WorldGenConfigLoader.class.getClassLoader().getResourceAsStream(RESOURCE)) {
+            if(stream==null)throw new IOException("Missing generated worldgen profile: "+RESOURCE);
+            JsonObject j=JsonParser.parseReader(new InputStreamReader(stream,StandardCharsets.UTF_8)).getAsJsonObject();
+            WorldGenSettings settings=new WorldGenSettings(j.get("min_y").getAsInt(), j.get("max_y").getAsInt(),
+                    j.get("sea_level").getAsInt(), j.get("continent_scale").getAsDouble(),
+                    j.get("hills_scale").getAsDouble(),j.get("mountains_scale").getAsDouble(),
+                    j.get("detail_scale").getAsDouble(),j.get("climate_scale").getAsDouble(),
+                    j.get("river_scale").getAsDouble(),j.get("cave_scale").getAsDouble(),
+                    j.get("ocean_threshold").getAsDouble(),j.get("mountain_threshold").getAsDouble(),
+                    j.get("cave_threshold").getAsDouble(),j.get("tree_density").getAsDouble(),
+                    j.get("plant_density").getAsDouble());
+            if(settings.minY()!=0||settings.maxY()!=511)
+                throw new IOException("Runtime chunk storage expects Y 0..511, got "+settings.minY()+".."+settings.maxY());
+            return settings;
+        }catch(RuntimeException ex){throw new IOException("Invalid worldgen settings",ex);}
     }
 }

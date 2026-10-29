@@ -1,0 +1,71 @@
+{
+  "schema": "wildforge-ore-features-v2",
+  "ores": [
+    {
+      "block": "coal_ore",
+      "min_relative_sea": -62,
+      "max_relative_sea": 210,
+      "peak_relative_sea": 38,
+      "shape": "high",
+      "chance": 0.63,
+      "min_size": 4,
+      "max_size": 14,
+      "discard_exposed": true
+    },
+    {
+      "block": "iron_ore",
+      "min_relative_sea": -208,
+      "max_relative_sea": -7,
+      "peak_relative_sea": -48,
+      "shape": "triangle",
+      "chance": 0.46,
+      "min_size": 3,
+      "max_size": 10,
+      "discard_exposed": false
+    },
+    {
+      "block": "iron_ore",
+      "min_relative_sea": 38,
+      "max_relative_sea": 260,
+      "peak_relative_sea": 125,
+      "shape": "high",
+      "chance": 0.38,
+      "min_size": 2,
+      "max_size": 8,
+      "discard_exposed": false
+    },
+    {
+      "block": "silver_ore",
+      "min_relative_sea": -186,
+      "max_relative_sea": -12,
+      "peak_relative_sea": -95,
+      "shape": "triangle",
+      "chance": 0.22,
+      "min_size": 2,
+      "max_size": 7,
+      "discard_exposed": false
+    },
+    {
+      "block": "gold_ore",
+      "min_relative_sea": -210,
+      "max_relative_sea": -31,
+      "peak_relative_sea": -80,
+      "shape": "triangle",
+      "chance": 0.15,
+      "min_size": 2,
+      "max_size": 6,
+      "discard_exposed": false
+    },
+    {
+      "block": "diamond_ore",
+      "min_relative_sea": -218,
+      "max_relative_sea": -40,
+      "peak_relative_sea": -204,
+      "shape": "deep",
+      "chance": 0.085,
+      "min_size": 1,
+      "max_size": 5,
+      "discard_exposed": true
+    }
+  ]
+}

@@ -338,7 +338,6 @@ public void loadFrom(Path path, TerrainMesh terrain) throws IOException {
         loadedX = input.readFloat();
         loadedZ = input.readFloat();
         loadedFeetY = input.readFloat();
-        if (terrain.needsLegacyPlayerHeightShift()) loadedFeetY += 160.0f;
         loadedVerticalVelocity = input.readFloat();
         loadedYaw = input.readFloat();
         loadedPitch = input.readFloat();

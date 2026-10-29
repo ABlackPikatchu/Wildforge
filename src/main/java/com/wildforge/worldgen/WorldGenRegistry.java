@@ -15,7 +15,7 @@ import java.util.Objects;
 
 /**
  * Unified, validated registry for the generated worldgen catalogs.
- * The legacy fixed-size TerrainMesh is intentionally NOT replaced here.
+ * All fresh worlds use one generated 0..511 dimension profile.
  */
 public record WorldGenRegistry(
         WorldGenSettings terrain,
@@ -42,6 +42,13 @@ public record WorldGenRegistry(
                 UndergroundBiomeCatalog.loadBuiltIn(),
                 UndergroundGenSettings.loadBuiltIn());
         validateTextures(data);
+        // Fail during content verification rather than on the first generated chunk.
+        StrataGenerator.loadBuiltIn(0L,data.terrain().seaLevel());
+        OreFeatureGenerator.loadBuiltIn(0L);
+        CaveDecorationCatalog.loadBuiltIn();
+        CaveWallCatalog.loadBuiltIn();
+        MarineSedimentCatalog.loadBuiltIn();
+        TreeSpeciesCatalog.loadBuiltIn();
         return data;
     }
 

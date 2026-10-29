@@ -53,6 +53,12 @@ public final class ContentDataGenerator {
         generator.registerBuiltInContent();
         generator.write(Path.of(args[0]));
         generator.writeWorldgenConfig(Path.of(args[0]));
+        generator.writeGeologyConfig(Path.of(args[0]));
+        generator.writeOreConfig(Path.of(args[0]));
+        generator.writeCaveDecorations(Path.of(args[0]));
+        generator.writeCaveWalls(Path.of(args[0]));
+        generator.writeMarineSediments(Path.of(args[0]));
+        generator.writeTreeSpecies(Path.of(args[0]));
         generator.writeTextureManifest(Path.of(args[0]), Path.of("src/main/resources/textures"));
         BiomeDataGenerator.write(Path.of(args[0]), Path.of("src/main/resources/textures"));
         UndergroundBiomeDataGenerator.write(
@@ -565,9 +571,9 @@ public final class ContentDataGenerator {
         Path directory = destination.resolve("data/wildforge/worldgen");
         Files.createDirectories(directory);
         JsonObject json = new JsonObject();
-        json.addProperty("min_y", -64);
-        json.addProperty("max_y", 191);
-        json.addProperty("sea_level", 64);
+        json.addProperty("min_y", 0);
+        json.addProperty("max_y", 511);
+        json.addProperty("sea_level", 224);
         json.addProperty("continent_scale", 1400.0);
         json.addProperty("hills_scale", 260.0);
         json.addProperty("mountains_scale", 310.0);
@@ -575,13 +581,166 @@ public final class ContentDataGenerator {
         json.addProperty("climate_scale", 780.0);
         json.addProperty("river_scale", 500.0);
         json.addProperty("cave_scale", 43.0);
-        json.addProperty("ocean_threshold", -0.13);
+        json.addProperty("ocean_threshold", -0.20);
         json.addProperty("mountain_threshold", 0.12);
         json.addProperty("cave_threshold", 0.075);
         json.addProperty("tree_density", 0.85);
         json.addProperty("plant_density", 0.55);
         Files.writeString(directory.resolve("overworld.json"),
                 GSON.toJson(json) + "\n", StandardCharsets.UTF_8);
+    }
+
+    /** Minecraft-inspired stone/deep-rock and randomized unbreakable floor rules. */
+    private void writeGeologyConfig(Path destination) throws IOException {
+        Path dir=destination.resolve("data/wildforge/worldgen");
+        Files.createDirectories(dir);
+        JsonObject json=new JsonObject();
+        json.addProperty("bedrock_layers",5);
+        json.addProperty("deep_rock_relative_sea",-64);
+        json.addProperty("deep_rock_transition",8);
+        json.addProperty("accent_percent",5);
+        Files.writeString(dir.resolve("strata.json"),GSON.toJson(json)+"\n",StandardCharsets.UTF_8);
+    }
+
+    /** Ore placement is authored here; biome feature passes consume the JSON.
+     * Heights are RELATIVE to the world sea level, so a taller world scales cleanly.
+     * A profile is attempted once per 16x16x24 deposit band.
+     */
+    private void writeOreConfig(Path destination) throws IOException {
+        Path dir=destination.resolve("data/wildforge/worldgen");
+        Files.createDirectories(dir);
+        JsonObject root=new JsonObject();
+        root.addProperty("schema","wildforge-ore-features-v2");
+        JsonArray ores=new JsonArray();
+        ore(ores,"coal_ore",-62,210,38,"high",.63,4,14,true);
+        ore(ores,"iron_ore",-208,-7,-48,"triangle",.46,3,10,false);
+        ore(ores,"iron_ore",38,260,125,"high",.38,2,8,false);
+        ore(ores,"silver_ore",-186,-12,-95,"triangle",.22,2,7,false);
+        ore(ores,"gold_ore",-210,-31,-80,"triangle",.15,2,6,false);
+        ore(ores,"diamond_ore",-218,-40,-204,"deep",.085,1,5,true);
+        root.add("ores",ores);
+        Files.writeString(dir.resolve("ores.json"),GSON.toJson(root)+"\n",StandardCharsets.UTF_8);
+    }
+    private static void ore(JsonArray list,String block,int min,int max,int peak,String shape,
+                            double chance,int minimum,int maximum,boolean discardExposed) {
+        JsonObject json=new JsonObject();
+        json.addProperty("block",block);json.addProperty("min_relative_sea",min);
+        json.addProperty("max_relative_sea",max);json.addProperty("peak_relative_sea",peak);
+        json.addProperty("shape",shape);json.addProperty("chance",chance);
+        json.addProperty("min_size",minimum);json.addProperty("max_size",maximum);
+        json.addProperty("discard_exposed",discardExposed);
+        list.add(json);
+    }
+
+    /** Every underground biome has a data-authored floor and ceiling feature.
+     * Blocks are validated against the built-in registered IDs before writing.
+     */
+    /** Every ocean classification has a weighted local bedrock/sediment palette. */
+    private void writeMarineSediments(Path destination) throws IOException {
+        Path directory=destination.resolve("data/wildforge/worldgen");
+        Files.createDirectories(directory);
+        JsonObject root=new JsonObject();
+        root.addProperty("schema","wildforge-marine-sediments-v1");
+        JsonObject oceans=new JsonObject();
+        marinePalette(oceans,"temperate","ocean_silty_sand:40","ocean_shell_grit:25","ocean_cold_gravel:20","ocean_algae_stone:15");
+        marinePalette(oceans,"deep","ocean_dark_silt:55","ocean_basalt_pebbles:20","ocean_cold_gravel:15","ocean_algae_stone:10");
+        marinePalette(oceans,"warm","ocean_coral_sand:45","ocean_shell_grit:25","ocean_reef_limestone:20","ocean_dead_coral_rubble:10");
+        marinePalette(oceans,"cold","ocean_cold_gravel:45","ocean_algae_stone:25","ocean_silty_sand:20","ocean_basalt_pebbles:10");
+        marinePalette(oceans,"frozen","ocean_cold_gravel:45","ocean_basalt_pebbles:30","ocean_dark_silt:15","ocean_algae_stone:10");
+        marinePalette(oceans,"reef","ocean_reef_limestone:40","ocean_coral_sand:30","ocean_dead_coral_rubble:20","ocean_shell_grit:10");
+        marinePalette(oceans,"kelp","ocean_algae_stone:40","ocean_cold_gravel:25","ocean_silty_sand:20","ocean_dark_silt:15");
+        marinePalette(oceans,"abyssal","ocean_abyssal_silt:65","ocean_basalt_pebbles:25","ocean_dark_silt:10");
+        marinePalette(oceans,"estuary","ocean_silty_sand:45","ocean_dark_silt:25","ocean_shell_grit:20","ocean_algae_stone:10");
+        marinePalette(oceans,"volcanic","ocean_basalt_pebbles:55","ocean_abyssal_silt:20","ocean_dead_coral_rubble:15","ocean_algae_stone:10");
+        root.add("oceans",oceans);
+        Files.writeString(directory.resolve("marine_sediments.json"),GSON.toJson(root)+"\n",StandardCharsets.UTF_8);
+    }
+    private static void marinePalette(JsonObject oceans,String ocean,String... entries){
+        JsonArray materials=new JsonArray();
+        for(String entry:entries){
+            String[] pair=entry.split(":",2);
+            JsonObject j=new JsonObject();j.addProperty("block",pair[0]);j.addProperty("weight",Integer.parseInt(pair[1]));
+            materials.add(j);
+        }
+        oceans.add(ocean,materials);
+    }
+
+    private void writeCaveWalls(Path destination) throws IOException {
+        Path directory=destination.resolve("data/wildforge/worldgen");
+        Files.createDirectories(directory);
+        JsonObject root=new JsonObject();root.addProperty("schema","wildforge-cave-walls-v1");
+        JsonObject biomes=new JsonObject();
+        caveWalls(biomes,"rootlace_hollows","moss_block rich_humus","exposed_root_stone");
+        caveWalls(biomes,"seepstone_grottos","moss_block wet_rock","wet_rock");
+        caveWalls(biomes,"underflow_channels","silt riverbed_sediment","waterworn_stone");
+        caveWalls(biomes,"hollowstone_vaults","limestone_rubble","calcite flowstone");
+        caveWalls(biomes,"coalshade_galleries","compacted_sediment","fossil_shale");
+        caveWalls(biomes,"saltveil_chambers","salt_crust","gypsum");
+        caveWalls(biomes,"frostvault_crevasses","packed_snow","glacial_ice");
+        caveWalls(biomes,"ironfault_chasms","fault_breccia","fractured_slate");
+        caveWalls(biomes,"crystal_seam_chambers","mineral_matrix","mineral_matrix");
+        caveWalls(biomes,"sporelight_hollows","mycelial_mat","mossy_rock wet_rock");
+        caveWalls(biomes,"cindervein_tubes","rope_lava_stone","cracked_basalt");
+        caveWalls(biomes,"stillwater_abyss","submerged_scree","wet_slate");
+        root.add("biomes",biomes);
+        Files.writeString(directory.resolve("cave_walls.json"),GSON.toJson(root)+"\n",StandardCharsets.UTF_8);
+    }
+    private static void caveWalls(JsonObject biomes,String biome,String floors,String walls){
+        JsonObject json=new JsonObject();JsonArray floor=new JsonArray(),wall=new JsonArray();
+        for(String item:floors.split(" "))floor.add(item);
+        for(String item:walls.split(" "))wall.add(item);
+        json.add("floor",floor);json.add("wall",wall);biomes.add(biome,json);
+    }
+
+    /** Tree heights are tuned as species traits; individual biomes select species in biome JSON. */
+    private void writeTreeSpecies(Path destination) throws IOException {
+        Path directory=destination.resolve("data/wildforge/worldgen");
+        Files.createDirectories(directory);
+        JsonObject root=new JsonObject();root.addProperty("schema","wildforge-tree-species-v1");
+        JsonObject trees=new JsonObject();
+        treeSpecies(trees,"oak",9,16);
+        treeSpecies(trees,"maple",9,16);
+        treeSpecies(trees,"pine",12,22);
+        treeSpecies(trees,"willow",8,15);
+        treeSpecies(trees,"cypress",13,23);
+        treeSpecies(trees,"birch",9,17);
+        treeSpecies(trees,"spruce",12,25);
+        treeSpecies(trees,"acacia",7,13);
+        treeSpecies(trees,"alder",8,16);
+        treeSpecies(trees,"mangrove",6,12);
+        treeSpecies(trees,"palm",9,19);
+        root.add("trees",trees);
+        Files.writeString(directory.resolve("trees.json"),GSON.toJson(root)+"\n",StandardCharsets.UTF_8);
+    }
+    private static void treeSpecies(JsonObject all,String name,int min,int max){
+        JsonObject entry=new JsonObject();entry.addProperty("min_height",min);entry.addProperty("max_height",max);
+        all.add(name,entry);
+    }
+
+    private void writeCaveDecorations(Path destination) throws IOException {
+        Path directory=destination.resolve("data/wildforge/worldgen");
+        Files.createDirectories(directory);
+        JsonObject root=new JsonObject();
+        root.addProperty("schema","wildforge-cave-decorations-v1");
+        JsonObject entries=new JsonObject();
+        caveDecor(entries,"rootlace_hollows","mushroom_plant","hanging_roots");
+        caveDecor(entries,"seepstone_grottos","cave_moss","stalactite");
+        caveDecor(entries,"underflow_channels","riverbed_sediment","lichen_patch");
+        caveDecor(entries,"hollowstone_vaults","stalagmite","stalactite");
+        caveDecor(entries,"coalshade_galleries","coal_dust_deposit","fossil_shale");
+        caveDecor(entries,"saltveil_chambers","gypsum","stalactite");
+        caveDecor(entries,"frostvault_crevasses","packed_snow","glacial_ice");
+        caveDecor(entries,"ironfault_chasms","fault_breccia","stalactite");
+        caveDecor(entries,"crystal_seam_chambers","crystal_cluster","quartz_vein");
+        caveDecor(entries,"sporelight_hollows","sporecap_fungus","hanging_roots");
+        caveDecor(entries,"cindervein_tubes","magma_crust","stalactite");
+        caveDecor(entries,"stillwater_abyss","submerged_scree","wet_slate");
+        root.add("biomes",entries);
+        Files.writeString(directory.resolve("cave_decorations.json"),GSON.toJson(root)+"\n",StandardCharsets.UTF_8);
+    }
+    private static void caveDecor(JsonObject entries,String biome,String floor,String ceiling){
+        JsonObject rule=new JsonObject();rule.addProperty("floor",floor);rule.addProperty("ceiling",ceiling);
+        entries.add(biome,rule);
     }
 
     /**

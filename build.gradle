@@ -59,7 +59,7 @@ tasks.withType(JavaCompile).configureEach {
 // Lightweight integration verification without adding a JUnit dependency.
 tasks.register('contentCheck', JavaExec) {
     group = 'verification'
-    description = 'Validate all built-in JSON content and legacy save IDs'
+    description = 'Validate built-in registries and compact numeric content IDs'
     dependsOn tasks.named('testClasses')
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'com.wildforge.content.ContentSmokeTest'
@@ -155,7 +155,7 @@ tasks.named('check') {
 // Hydrology 2C: fluid levels must survive saves, chunk edits and v3 migration.
 tasks.register('fluidCheck', JavaExec) {
     group = 'verification'
-    description = 'Check fluid levels, v4 saves, v3 compatibility and invalid input'
+    description = 'Check fluid levels and invalid inputs for the current save model'
     dependsOn tasks.named('testClasses')
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'com.wildforge.world.FluidPersistenceSmokeTest'
@@ -388,3 +388,13 @@ tasks.register('spawnCheck', JavaExec) {
     mainClass = 'com.wildforge.worldgen.SpawnFinderPhase4SmokeTest'
 }
 tasks.named('check') { dependsOn tasks.named('spawnCheck') }
+
+// Phase 5: world-composition invariants, standalone from OpenGL.
+tasks.register('worldCompositionCheck', JavaExec) {
+    group = 'verification'
+    description = 'Check bedrock gradient, rock strata, ore profiles, cave geometry, aquifers and marine palette completeness'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.worldgen.WorldCompositionSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('worldCompositionCheck') }

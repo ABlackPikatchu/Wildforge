@@ -39,32 +39,13 @@ public final class FluidPersistenceSmokeTest {
             check(loaded.getFluidLevelAt(x+2,y,z)==3,"Lava level survives reload");
             check(loaded.getFluidLevelAt(x+3,y,z)==1,"Cleared metadata doesn't survive");
 
-            // A v3 save had block IDs but no levels: legacy waterfall height is preserved.
-            Path old=dir.resolve("world-v3.wfs");
-            try(DataInputStream in=new DataInputStream(Files.newInputStream(save));
-                DataOutputStream out=new DataOutputStream(Files.newOutputStream(old))) {
-                out.writeInt(in.readInt());
-                check(in.readInt()==5,"Expected version 5");out.writeInt(3);
-                out.writeLong(in.readLong());out.writeInt(in.readInt());
-                check(in.readInt()==TerrainMesh.WORLDGEN_REVISION,"Wrong generator revision");
-                int chunks=in.readInt();out.writeInt(chunks);
-                for(int n=0;n<chunks;n++) {
-                    out.writeLong(in.readLong());int count=in.readInt();out.writeInt(count);
-                    for(int j=0;j<count;j++){out.writeInt(in.readInt());out.writeByte(in.readByte());}
-                }
-            }
-            TerrainMesh legacy=new TerrainMesh();legacy.loadFrom(old);
-            check(legacy.getFluidLevelAt(x,y,z)==6,"v3 flows use legacy visual level 6");
-            check(legacy.getFluidLevelAt(x+1,y,z)==7,"v3 source blocks remain full");
-
-            // Version 4 has no generator revision header, but fluid levels are retained.
+            // No implicit reinterpretation of old generator/save formats.
             byte[] raw=Files.readAllBytes(save);
-            java.nio.ByteBuffer oldV4=java.nio.ByteBuffer.allocate(raw.length-4)
-                    .order(java.nio.ByteOrder.BIG_ENDIAN);
-            oldV4.putInt(0x57464F52).putInt(4).put(raw,8,12).put(raw,24,raw.length-24);
-            Path v4=dir.resolve("world-v4.wfs");Files.write(v4,oldV4.array());
-            TerrainMesh fromV4=new TerrainMesh();fromV4.loadFrom(v4);
-            check(fromV4.getFluidLevelAt(x,y,z)==6,"v4 fluid levels survive migration");
+            byte[] oldFormat=raw.clone();
+            java.nio.ByteBuffer.wrap(oldFormat).putInt(4,3);
+            Path old=dir.resolve("world-v3.wfs");Files.write(old,oldFormat);
+            try {loaded.loadFrom(old);throw new AssertionError("Old save format should fail");}
+            catch(IOException expected) {check(loaded.getFluidLevelAt(x,y,z)==6,"Rejected old save changed world");}
 
             // Future incompatible generator revisions fail before replacing live data.
             byte[] mismatch=raw.clone();
@@ -78,7 +59,7 @@ public final class FluidPersistenceSmokeTest {
             Path bad=dir.resolve("corrupt-v5.wfs");Files.write(bad,corrupt);
             try {loaded.loadFrom(bad);throw new AssertionError("Invalid levels must be rejected");}
             catch(IOException expected) {check(loaded.getFluidLevelAt(x,y,z)==6,"Failed load must not alter live world");}
-            System.out.println("Fluid persistence checks passed: v5 levels, v4/v3 upgrade, edits, corruption");
+            System.out.println("Fluid persistence checks passed: v5 levels, old-format rejection, edits, corruption");
         } finally {
             try(var paths=Files.walk(dir)) {
                 for(Path f:paths.sorted(java.util.Comparator.reverseOrder()).toList())Files.deleteIfExists(f);

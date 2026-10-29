@@ -20,7 +20,6 @@ import java.util.regex.Pattern;
 /** Owns save-slot paths and persistence operations for Wildforge. */
 public final class SaveManager {
     private final Path saveDirectory;
-    private final Path legacySavePath;
 
     public SaveManager() {
         this(Path.of("saves"));
@@ -30,7 +29,6 @@ public final class SaveManager {
     public SaveManager(Path saveDirectory) {
         if (saveDirectory == null) throw new IllegalArgumentException("Save directory cannot be null");
         this.saveDirectory = saveDirectory;
-        this.legacySavePath = saveDirectory.resolve("wildforge.world");
     }
     private static final Pattern WORLD_FILE = Pattern.compile("world_(\\d+)\\.wfs");
     private static final Pattern PLAYER_FILE = Pattern.compile("player_(\\d+)\\.wfp");
@@ -60,9 +58,6 @@ public final class SaveManager {
         Path worldPath = worldPath(slot);
         if (Files.isRegularFile(worldPath)) {
             terrain.loadFrom(worldPath);
-        } else if (slot == 0 && Files.isRegularFile(legacySavePath)) {
-            // Keep compatibility with the original single-world save.
-            terrain.loadFrom(legacySavePath);
         } else if (Files.isRegularFile(playerPath(slot))) {
             // A partial save is not the same thing as a newly created world.
             throw new IOException("Incomplete world save: world data is missing for slot " + (slot + 1));
@@ -84,13 +79,12 @@ public final class SaveManager {
         if (Files.isRegularFile(path)) {
             player.loadFrom(path, terrain);
         } else if (Files.isRegularFile(worldPath(slot))) {
-            // Old single-world saves (wildforge.world) legitimately have no player file.
-            // Numbered world saves are always expected to have their matching player file.
+            // Fresh-world saves require matching world and player files.
             throw new IOException("Incomplete world save: player data is missing for slot " + (slot + 1));
         }
     }
 
-    /** Legacy worlds have no dropped-item data. A malformed item file is never silently ignored. */
+    /** A malformed item file is never silently ignored. */
     public void loadItems(int slot, WorldItemManager items, TerrainMesh terrain) throws IOException {
         requireValidSlot(slot);
         recoverSlot(slot);
@@ -108,7 +102,7 @@ public final class SaveManager {
                 List.of(worldPath(slot), playerPath(slot), itemPath(slot)));
     }
 
-    /** Optional display name stored separately from world and player data (legacy-safe). */
+    /** Optional display name stored separately from world and player data. */
     public void saveWorldName(int slot,String name) throws IOException {
         requireValidSlot(slot);
         Files.createDirectories(saveDirectory);
@@ -156,10 +150,9 @@ public final class SaveManager {
         ));
     }
 
-    /** Sorted list of every discovered save slot, preserving legacy slot 0 compatibility. */
+    /** Sorted list of every discovered numbered save slot. */
     public List<SaveSlotSummary> listSlots() {
         Set<Integer> slots = new LinkedHashSet<>();
-        boolean legacyWorldExists = Files.isRegularFile(legacySavePath);
 
         if (Files.isDirectory(saveDirectory)) {
             try (var paths = Files.list(saveDirectory)) {
@@ -185,10 +178,6 @@ public final class SaveManager {
             }
         }
 
-        if (legacyWorldExists) {
-            slots.add(0);
-        }
-
         List<SaveSlotSummary> result = new ArrayList<>();
         for (Integer slot : slots.stream().sorted().toList()) {
             try { recoverSlot(slot); }
@@ -196,8 +185,7 @@ public final class SaveManager {
                 // Preserve a visible incomplete slot instead of hiding corruption.
                 System.err.println("[Wildforge] Save recovery failed for world " + (slot + 1) + ": " + ex.getMessage());
             }
-            boolean hasWorld = Files.isRegularFile(worldPath(slot))
-                    || (slot == 0 && legacyWorldExists);
+            boolean hasWorld = Files.isRegularFile(worldPath(slot));
             boolean hasPlayer = Files.isRegularFile(playerPath(slot));
             if (hasWorld || hasPlayer || Files.isRegularFile(journalPath(slot)))
                 result.add(new SaveSlotSummary(slot, hasWorld, hasPlayer));
@@ -225,7 +213,7 @@ public final class SaveManager {
         return Files.isRegularFile(worldPath(slot))
                 || Files.isRegularFile(playerPath(slot))
                 || Files.isRegularFile(journalPath(slot))
-                || (slot == 0 && Files.isRegularFile(legacySavePath));
+;
     }
 
 
@@ -243,9 +231,6 @@ public final class SaveManager {
         Files.deleteIfExists(journalPath(slot));
         Files.deleteIfExists(namePath(slot));
         Files.deleteIfExists(rulesPath(slot));
-        if (slot == 0) {
-            Files.deleteIfExists(legacySavePath);
-        }
     }
 
     private static int parseSlotIndex(String oneBasedValue) {

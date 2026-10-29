@@ -351,7 +351,7 @@ public enum BlockType {
         return result;
     }
 
-    static BlockType fromId(byte id) {
+    public static BlockType fromId(byte id) {
         BlockType type = BY_ID[Byte.toUnsignedInt(id)];
         return type == null ? AIR : type;
     }

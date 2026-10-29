@@ -1,0 +1,53 @@
+{
+  "schema": "wildforge-cave-decorations-v1",
+  "biomes": {
+    "rootlace_hollows": {
+      "floor": "mushroom_plant",
+      "ceiling": "hanging_roots"
+    },
+    "seepstone_grottos": {
+      "floor": "cave_moss",
+      "ceiling": "stalactite"
+    },
+    "underflow_channels": {
+      "floor": "riverbed_sediment",
+      "ceiling": "lichen_patch"
+    },
+    "hollowstone_vaults": {
+      "floor": "stalagmite",
+      "ceiling": "stalactite"
+    },
+    "coalshade_galleries": {
+      "floor": "coal_dust_deposit",
+      "ceiling": "fossil_shale"
+    },
+    "saltveil_chambers": {
+      "floor": "gypsum",
+      "ceiling": "stalactite"
+    },
+    "frostvault_crevasses": {
+      "floor": "packed_snow",
+      "ceiling": "glacial_ice"
+    },
+    "ironfault_chasms": {
+      "floor": "fault_breccia",
+      "ceiling": "stalactite"
+    },
+    "crystal_seam_chambers": {
+      "floor": "crystal_cluster",
+      "ceiling": "quartz_vein"
+    },
+    "sporelight_hollows": {
+      "floor": "sporecap_fungus",
+      "ceiling": "hanging_roots"
+    },
+    "cindervein_tubes": {
+      "floor": "magma_crust",
+      "ceiling": "stalactite"
+    },
+    "stillwater_abyss": {
+      "floor": "submerged_scree",
+      "ceiling": "wet_slate"
+    }
+  }
+}

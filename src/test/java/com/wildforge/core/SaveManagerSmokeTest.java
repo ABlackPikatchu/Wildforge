@@ -17,7 +17,7 @@ public final class SaveManagerSmokeTest {
         Path root = Files.createTempDirectory("wildforge-save-audit-");
         try {
             verify(root);
-            System.out.println("Wildforge save checks passed: multiple worlds, legacy saves, "
+            System.out.println("Wildforge save checks passed: multiple worlds, modern saves, "
                     + "orphan protection, deletion, held inventory stacks, paging");
         } finally {
             try (var paths = Files.walk(root)) {
@@ -75,10 +75,11 @@ public final class SaveManagerSmokeTest {
         expectIOException(() -> manager.loadPlayer(9, player, terrain),
                 "Orphan numbered world must fail player loading");
 
-        // Original unnumbered world files did not have a player counterpart.
+        // Obsolete single-world files must not be treated as current save slots.
         Files.copy(root.resolve("world_4.wfs"), root.resolve("wildforge.world"));
-        manager.loadTerrain(0, terrain);
-        manager.loadPlayer(0, player, terrain);
+        check(!manager.slotExists(0),"Old unnumbered worlds are not imported");
+        expectIOException(() -> manager.loadPlayer(9, player, terrain),
+                "Fresh saves require a matching player file");
 
         // The version 1 player format cannot store a held cursor stack.
         player.clickInventorySlot(Player.HOTBAR_START_INDEX, false);
@@ -91,7 +92,7 @@ public final class SaveManagerSmokeTest {
 
         manager.deleteWorld(3);
         check(Files.isRegularFile(root.resolve("wildforge.world")),
-                "Deleting a numbered world must preserve the legacy world");
+                "Unrecognized old files must not be deleted by new save-slot actions");
     }
 
     private static void expectIOException(CheckedRunnable action, String explanation)

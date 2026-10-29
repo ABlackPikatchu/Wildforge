@@ -1,0 +1,106 @@
+{
+  "schema": "wildforge-cave-walls-v1",
+  "biomes": {
+    "rootlace_hollows": {
+      "floor": [
+        "moss_block",
+        "rich_humus"
+      ],
+      "wall": [
+        "exposed_root_stone"
+      ]
+    },
+    "seepstone_grottos": {
+      "floor": [
+        "moss_block",
+        "wet_rock"
+      ],
+      "wall": [
+        "wet_rock"
+      ]
+    },
+    "underflow_channels": {
+      "floor": [
+        "silt",
+        "riverbed_sediment"
+      ],
+      "wall": [
+        "waterworn_stone"
+      ]
+    },
+    "hollowstone_vaults": {
+      "floor": [
+        "limestone_rubble"
+      ],
+      "wall": [
+        "calcite",
+        "flowstone"
+      ]
+    },
+    "coalshade_galleries": {
+      "floor": [
+        "compacted_sediment"
+      ],
+      "wall": [
+        "fossil_shale"
+      ]
+    },
+    "saltveil_chambers": {
+      "floor": [
+        "salt_crust"
+      ],
+      "wall": [
+        "gypsum"
+      ]
+    },
+    "frostvault_crevasses": {
+      "floor": [
+        "packed_snow"
+      ],
+      "wall": [
+        "glacial_ice"
+      ]
+    },
+    "ironfault_chasms": {
+      "floor": [
+        "fault_breccia"
+      ],
+      "wall": [
+        "fractured_slate"
+      ]
+    },
+    "crystal_seam_chambers": {
+      "floor": [
+        "mineral_matrix"
+      ],
+      "wall": [
+        "mineral_matrix"
+      ]
+    },
+    "sporelight_hollows": {
+      "floor": [
+        "mycelial_mat"
+      ],
+      "wall": [
+        "mossy_rock",
+        "wet_rock"
+      ]
+    },
+    "cindervein_tubes": {
+      "floor": [
+        "rope_lava_stone"
+      ],
+      "wall": [
+        "cracked_basalt"
+      ]
+    },
+    "stillwater_abyss": {
+      "floor": [
+        "submerged_scree"
+      ],
+      "wall": [
+        "wet_slate"
+      ]
+    }
+  }
+}

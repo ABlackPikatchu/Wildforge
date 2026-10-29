@@ -98,15 +98,15 @@ public final class ContentSmokeTest {
                 "Coal must not match the stone blocks tag");
         check(!tags.containsItem("wildforge:missing", "wildforge:coal"),
                 "Missing tags must not accidentally match items");
-        LegacyContentBridge bridge = new LegacyContentBridge(content);
+        RegistryContentAdapter bridge = new RegistryContentAdapter(content);
         check(bridge.block(com.wildforge.world.BlockType.STONE).getNumericId() == 3,
                 "Legacy blocks must resolve to matching JSON entries");
         check(bridge.item(ItemType.COAL).getId().equals(ResourceId.parse("wildforge:coal")),
                 "Legacy items must resolve to matching JSON entries");
-        check(bridge.legacyBlock(ResourceId.parse("wildforge:stone"))
+        check(bridge.blockType(ResourceId.parse("wildforge:stone"))
                 == com.wildforge.world.BlockType.STONE,
                 "JSON stone must map back to the existing world enum");
-        check(bridge.legacyItem(ResourceId.parse("wildforge:stone_block")) == ItemType.STONE_BLOCK,
+        check(bridge.itemType(ResourceId.parse("wildforge:stone_block")) == ItemType.STONE_BLOCK,
                 "JSON stone item must map back to the existing inventory enum");
         // Content is not yet fully registry-driven: every enum texture layer
         // must exist and have the expected size before OpenGL tries to load it.

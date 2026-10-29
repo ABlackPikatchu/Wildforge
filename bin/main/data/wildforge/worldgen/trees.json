@@ -1,0 +1,49 @@
+{
+  "schema": "wildforge-tree-species-v1",
+  "trees": {
+    "oak": {
+      "min_height": 9,
+      "max_height": 16
+    },
+    "maple": {
+      "min_height": 9,
+      "max_height": 16
+    },
+    "pine": {
+      "min_height": 12,
+      "max_height": 22
+    },
+    "willow": {
+      "min_height": 8,
+      "max_height": 15
+    },
+    "cypress": {
+      "min_height": 13,
+      "max_height": 23
+    },
+    "birch": {
+      "min_height": 9,
+      "max_height": 17
+    },
+    "spruce": {
+      "min_height": 12,
+      "max_height": 25
+    },
+    "acacia": {
+      "min_height": 7,
+      "max_height": 13
+    },
+    "alder": {
+      "min_height": 8,
+      "max_height": 16
+    },
+    "mangrove": {
+      "min_height": 6,
+      "max_height": 12
+    },
+    "palm": {
+      "min_height": 9,
+      "max_height": 19
+    }
+  }
+}

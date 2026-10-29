@@ -1,0 +1,181 @@
+{
+  "schema": "wildforge-marine-sediments-v1",
+  "oceans": {
+    "temperate": [
+      {
+        "block": "ocean_silty_sand",
+        "weight": 40
+      },
+      {
+        "block": "ocean_shell_grit",
+        "weight": 25
+      },
+      {
+        "block": "ocean_cold_gravel",
+        "weight": 20
+      },
+      {
+        "block": "ocean_algae_stone",
+        "weight": 15
+      }
+    ],
+    "deep": [
+      {
+        "block": "ocean_dark_silt",
+        "weight": 55
+      },
+      {
+        "block": "ocean_basalt_pebbles",
+        "weight": 20
+      },
+      {
+        "block": "ocean_cold_gravel",
+        "weight": 15
+      },
+      {
+        "block": "ocean_algae_stone",
+        "weight": 10
+      }
+    ],
+    "warm": [
+      {
+        "block": "ocean_coral_sand",
+        "weight": 45
+      },
+      {
+        "block": "ocean_shell_grit",
+        "weight": 25
+      },
+      {
+        "block": "ocean_reef_limestone",
+        "weight": 20
+      },
+      {
+        "block": "ocean_dead_coral_rubble",
+        "weight": 10
+      }
+    ],
+    "cold": [
+      {
+        "block": "ocean_cold_gravel",
+        "weight": 45
+      },
+      {
+        "block": "ocean_algae_stone",
+        "weight": 25
+      },
+      {
+        "block": "ocean_silty_sand",
+        "weight": 20
+      },
+      {
+        "block": "ocean_basalt_pebbles",
+        "weight": 10
+      }
+    ],
+    "frozen": [
+      {
+        "block": "ocean_cold_gravel",
+        "weight": 45
+      },
+      {
+        "block": "ocean_basalt_pebbles",
+        "weight": 30
+      },
+      {
+        "block": "ocean_dark_silt",
+        "weight": 15
+      },
+      {
+        "block": "ocean_algae_stone",
+        "weight": 10
+      }
+    ],
+    "reef": [
+      {
+        "block": "ocean_reef_limestone",
+        "weight": 40
+      },
+      {
+        "block": "ocean_coral_sand",
+        "weight": 30
+      },
+      {
+        "block": "ocean_dead_coral_rubble",
+        "weight": 20
+      },
+      {
+        "block": "ocean_shell_grit",
+        "weight": 10
+      }
+    ],
+    "kelp": [
+      {
+        "block": "ocean_algae_stone",
+        "weight": 40
+      },
+      {
+        "block": "ocean_cold_gravel",
+        "weight": 25
+      },
+      {
+        "block": "ocean_silty_sand",
+        "weight": 20
+      },
+      {
+        "block": "ocean_dark_silt",
+        "weight": 15
+      }
+    ],
+    "abyssal": [
+      {
+        "block": "ocean_abyssal_silt",
+        "weight": 65
+      },
+      {
+        "block": "ocean_basalt_pebbles",
+        "weight": 25
+      },
+      {
+        "block": "ocean_dark_silt",
+        "weight": 10
+      }
+    ],
+    "estuary": [
+      {
+        "block": "ocean_silty_sand",
+        "weight": 45
+      },
+      {
+        "block": "ocean_dark_silt",
+        "weight": 25
+      },
+      {
+        "block": "ocean_shell_grit",
+        "weight": 20
+      },
+      {
+        "block": "ocean_algae_stone",
+        "weight": 10
+      }
+    ],
+    "volcanic": [
+      {
+        "block": "ocean_basalt_pebbles",
+        "weight": 55
+      },
+      {
+        "block": "ocean_abyssal_silt",
+        "weight": 20
+      },
+      {
+        "block": "ocean_dead_coral_rubble",
+        "weight": 15
+      },
+      {
+        "block": "ocean_algae_stone",
+        "weight": 10
+      }
+    ]
+  }
+}
