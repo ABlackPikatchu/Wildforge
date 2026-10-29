@@ -71,6 +71,7 @@ public final class WorldGenSmokeTest {
             }
         }
 
+        HydrologyNetworkSmokeTest.main(new String[0]);
         System.out.println("Worldgen passed: 35 data-generated biomes, independent geology,"
                 + " hydrology, deterministic caves and slope-filtered decorations");
     }

@@ -358,7 +358,8 @@ public final class TerrainMesh {
             // Submerged surfaces are sediments, not living turf. Select in world
             // coordinates so underwater beds meet naturally across chunks.
             boolean submerged=top<generator.settings().seaLevel();
-            if(submerged || surface.waterBody()==WorldGenerator.WaterBody.RIVER)
+            if(submerged || surface.waterBody()==WorldGenerator.WaterBody.RIVER
+                    || surface.waterBody()==WorldGenerator.WaterBody.LAKE)
                 topBlock=seabedAt(wx,wz,top,generator.settings().seaLevel(),slope,surface);
             BlockType filler=distribution.under(surface.biome(),wx,wz,material(surface.fillerTexture(), BlockType.DIRT));
             if(submerged) filler=(surface.waterDepth()>22 ? BlockType.GRAVEL :
@@ -411,9 +412,31 @@ public final class TerrainMesh {
             WorldGenerator.Surface surface=generator.surface(wx,wz);
             if(surface.waterBody()!=WorldGenerator.WaterBody.LAND) {
                 int y0=Math.max(1,surface.surfaceY()+1);
-                for(int y=y0;y<=Math.min(sea,WORLD_HEIGHT-2);y++) {
+                // Inland streams and basin lakes have local levels above sea level.
+                // Unlike fluid ticks, generated water is inert until disturbed.
+                int surfaceLevel=surface.waterSurfaceY();
+                for(int y=y0;y<=Math.min(surfaceLevel,WORLD_HEIGHT-2);y++) {
                     int at=index(lx,y,lz);
                     if(c.blocks[at]==BlockType.AIR.id)c.blocks[at]=BlockType.WATER.id;
+                }
+                // On a sharp downhill step, extend a bounded sheet of flowing
+                // water from the upstream river level. Neighbor sampling uses
+                // world coordinates, so waterfalls continue across chunk seams.
+                if(surface.waterBody()==WorldGenerator.WaterBody.RIVER) {
+                    int upstream=surfaceLevel;
+                    for(int[] d : new int[][]{{1,0},{-1,0},{0,1},{0,-1}}) {
+                        WorldGenerator.Surface neighbor=generator.surface(wx+d[0],wz+d[1]);
+                        if(neighbor.waterBody()==WorldGenerator.WaterBody.RIVER)
+                            upstream=Math.max(upstream,neighbor.waterSurfaceY());
+                    }
+                    if(upstream>=surfaceLevel+4) {
+                        int fallTop=Math.min(WORLD_HEIGHT-2,Math.min(upstream-1,surfaceLevel+10));
+                        for(int y=surfaceLevel+1;y<=fallTop;y++) {
+                            int at=index(lx,y,lz);
+                            if(c.blocks[at]!=BlockType.AIR.id)break;
+                            c.blocks[at]=BlockType.FLOWING_WATER.id;
+                        }
+                    }
                 }
             }
             // Rare underground water-table pockets, inside already carved caves.
@@ -423,15 +446,23 @@ public final class TerrainMesh {
             boolean aquifer=(region&15L)==0L && surface.rainfall()>0.42;
             boolean lavaPocket=(rockHash(rx,71,rz)&31L)==0L;
             if(!aquifer&&!lavaPocket)continue;
-            int aquiferLevel=Math.min(sea-75,115);
-            for(int y=8;y<=Math.max(aquiferLevel,45);y++) {
-                boolean water=aquifer&&y>=63&&y<=aquiferLevel;
-                boolean lava=lavaPocket&&y<=35;
+            // Previous sea-75 placed the water table below the simulated range
+            // when sea level was 64, silently disabling underground water.
+            int aquiferLevel=Math.max(24,Math.min(sea-12,WORLD_HEIGHT-120));
+            for(int y=8;y<=Math.max(aquiferLevel,28);y++) {
+                boolean water=aquifer&&y>=16&&y<=aquiferLevel;
+                boolean lava=!water&&lavaPocket&&y<=22;
                 if(!water&&!lava)continue;
                 int at=index(lx,y,lz);
-                // A real floor is needed to form a pool instead of sky-blue holes.
+                // Require a solid basin floor and a roof or deep overburden:
+                // open shafts must not become artificial vertical waterfalls.
                 if(c.blocks[at]!=BlockType.AIR.id || c.blocks[at-1]==BlockType.AIR.id)continue;
-                c.blocks[at]=water?BlockType.WATER.id:BlockType.LAVA.id;
+                int ceiling=Math.min(WORLD_HEIGHT-2,Math.min(y+5,surface.surfaceY()-18));
+                for(int fy=y;fy<=ceiling;fy++) {
+                    int fluidIndex=index(lx,fy,lz);
+                    if(c.blocks[fluidIndex]!=BlockType.AIR.id)break;
+                    c.blocks[fluidIndex]=water?BlockType.WATER.id:BlockType.LAVA.id;
+                }
             }
         }
     }
@@ -523,6 +554,8 @@ public final class TerrainMesh {
         double d=broad*0.8+detail*0.2;
         if(surface.waterBody()==WorldGenerator.WaterBody.RIVER)
             return slope>5?BlockType.WATERWORN_STONE:d>.10?BlockType.GRAVEL:BlockType.RIVERBED_SEDIMENT;
+        if(surface.waterBody()==WorldGenerator.WaterBody.LAKE)
+            return slope>4?BlockType.GRAVEL:d<-.20?BlockType.CLAY:BlockType.RIVERBED_SEDIMENT;
         if(depth<=5) return d>.31?BlockType.GRAVEL:d<-.38?BlockType.CLAY:BlockType.SAND;
         if(depth<20) return slope>5?BlockType.WATERWORN_STONE:
                 d>.19?BlockType.GRAVEL:d<-.38?BlockType.CLAY:BlockType.SAND;
@@ -732,7 +765,7 @@ public final class TerrainMesh {
             int wx=ox+tx*step, wz=oz+tz*step;
             WorldGenerator.Surface surf=generator.surface(wx,wz);
             int h=surf.waterBody()!=WorldGenerator.WaterBody.LAND
-                ? Math.max(surf.surfaceY(),generator.settings().seaLevel()) : surf.surfaceY();
+                ? Math.max(surf.surfaceY(),surf.waterSurfaceY()) : surf.surfaceY();
             top[tx][tz]=h;
             byte id=c.get(index(tx*step,Math.max(0,Math.min(WORLD_HEIGHT-1,h)),tz*step));
             BlockType sampled=BlockType.fromId(id);
@@ -802,7 +835,7 @@ public final class TerrainMesh {
     private int distantSurfaceY(int x,int z) {
         WorldGenerator.Surface surface=generator.surface(x,z);
         return surface.waterBody()!=WorldGenerator.WaterBody.LAND
-                ? Math.max(surface.surfaceY(),generator.settings().seaLevel()) : surface.surfaceY();
+                ? Math.max(surface.surfaceY(),surface.waterSurfaceY()) : surface.surfaceY();
     }
     /** Choose one representation per column; section=-1 identifies a distant mesh.
      * Builds far meshes on a worker from private block snapshots. Until a far mesh is

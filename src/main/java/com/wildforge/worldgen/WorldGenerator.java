@@ -34,13 +34,13 @@ public final class WorldGenerator {
     public static final int TREE_CELL_SIZE = 8;
     public static final int PLANT_CELL_SIZE = 4;
 
-    public enum WaterBody { LAND, OCEAN, RIVER }
+    public enum WaterBody { LAND, OCEAN, RIVER, LAKE }
 
     public record Surface(int surfaceY, Biome biome, double temperature,
                           double rainfall, double continentalness, boolean river,
                           Geology geology, WaterBody waterBody, int waterDepth,
                           boolean coastal, String topTexture, String fillerTexture,
-                          String baseRockTexture) {
+                          String baseRockTexture, int waterSurfaceY) {
         /** Old code and data tools may still refer to moisture. */
         public double moisture() { return rainfall; }
     }
@@ -55,6 +55,7 @@ public final class WorldGenerator {
     private final BiomeCatalog biomes;
     private final UndergroundBiomeCatalog undergroundBiomes;
     private final UndergroundBiomeSampler undergroundSampler;
+    private final HydrologyNetwork hydrology;
 
     public WorldGenerator(long seed, WorldGenSettings settings) {
         this(seed, settings, BiomeCatalog.loadBuiltInUnchecked());
@@ -83,6 +84,7 @@ public final class WorldGenerator {
         this.undergroundSampler = new UndergroundBiomeSampler(seed, settings, undergroundBiomes,
                 Objects.requireNonNull(undergroundSettings, "undergroundSettings"));
         noise = new SeededNoise(seed);
+        hydrology = new HydrologyNetwork(seed, settings.seaLevel(), this::baseTerrainHeight);
     }
 
     public long seed() { return seed; }
@@ -129,7 +131,8 @@ public final class WorldGenerator {
                 z / settings.mountainsScale(), 3, MOUNTAIN));
         double highland = noise.fbm2(x / 1050.0, z / 1050.0, 3, UPLANDS);
         double detail = noise.fbm2(x / settings.detailScale(), z / settings.detailScale(), 3, DETAIL);
-        return new Geography(c, erosion, ridge, highland, detail, riverStrength(x,z));
+        return new Geography(c, erosion, ridge, highland, detail,
+                hydrology.sample(x,z,baseTerrainHeight(x,z)).drainage());
     }
 
     /** Large-scale geographic character, independent of surface block palette. */
@@ -156,6 +159,11 @@ public final class WorldGenerator {
     }
 
     private double terrainHeight(int x, int z) {
+        double base=baseTerrainHeight(x,z);
+        return hydrology.sample(x,z,base).groundY();
+    }
+
+    private double baseTerrainHeight(int x, int z) {
         double continent = continentalness(x, z);
         double sea = settings.seaLevel();
         double ocean = settings.oceanThreshold();
@@ -217,14 +225,8 @@ public final class WorldGenerator {
         double land = continentalHeight + foothills + ruggedLift + peaks + spurs + crags
                 + localRelief + plateauHeight - basinLowering;
 
-        // Incised valleys soften the surrounding terrain; don't create deep dry trenches
-        // across submerged shelves or excessively broad cuts on mountain slopes.
-        if (shoreline > 0.5 && land > sea + 3.0) {
-            double strength = riverStrength(x, z);
-            if (strength > 0.0) {
-                land -= strength * Math.min(12.0, 5.0 + Math.max(0.0, land - sea) * 0.12);
-            }
-        }
+        // HydrologyNetwork incises connected downhill streams separately. The
+        // base field must never call hydrology or trace routing becomes recursive.
         return clamp(land, settings.minY() + 5, settings.maxY() - 6);
     }
 
@@ -264,7 +266,8 @@ public final class WorldGenerator {
 
     public Surface surface(int x, int z) {
         double continent = continentalness(x, z);
-        int y = (int)Math.round(terrainHeight(x, z));
+        HydrologyNetwork.Sample drainage=hydrology.sample(x,z,baseTerrainHeight(x,z));
+        int y=(int)Math.round(drainage.groundY());
         double temperature = clamp(0.5
                 + noise.fbm2(x / settings.climateScale(), z / settings.climateScale(), 3, TEMP) * 0.48
                 - Math.max(0, y - settings.seaLevel()) * 0.0035
@@ -272,21 +275,23 @@ public final class WorldGenerator {
         double rainfall = clamp(0.5
                 + noise.fbm2((x + 8000) / settings.climateScale(),
                         (z - 8000) / settings.climateScale(), 3, MOISTURE) * 0.60, 0, 1);
-        int depth = Math.max(0, settings.seaLevel() - y);
-        boolean river = depth == 0 && riverStrength(x, z) > 0.45
-                && y <= settings.seaLevel() + 3;
-        WaterBody water = depth > 0 ? WaterBody.OCEAN : river ? WaterBody.RIVER : WaterBody.LAND;
+        int depth=Math.max(0,settings.seaLevel()-y);
+        WaterBody water=depth>0?WaterBody.OCEAN:drainage.wet() ?
+                drainage.kind()==HydrologyNetwork.Kind.LAKE?WaterBody.LAKE:WaterBody.RIVER:WaterBody.LAND;
+        boolean river=water==WaterBody.RIVER;
+        int waterY=water==WaterBody.OCEAN?settings.seaLevel():
+                water==WaterBody.LAND?y:drainage.waterY();
         boolean coastal = continent <= settings.oceanThreshold() + 0.11
                 && y >= settings.seaLevel() - 10 && y <= settings.seaLevel() + 23;
-        boolean floodplain = river || (y <= settings.seaLevel() + 22
-                && riverStrength(x, z) > 0.32);
+        boolean floodplain = river || water==WaterBody.LAKE ||
+                (drainage.drainage()>0.4 && y<=settings.seaLevel()+45);
         Geology geology = geologyAt(x, z);
         Biome biome = regionalBiome(x, z, temperature, rainfall,
                 y - settings.seaLevel(), geology, coastal, floodplain);
         BiomeProfile profile = biomes.get(biome);
         return new Surface(y, biome, temperature, rainfall, continent, river,
                 geology, water, depth, coastal,
-                profile.topTexture(), profile.fillerTexture(), geology.baseRockTexture());
+                profile.topTexture(), profile.fillerTexture(), geology.baseRockTexture(),waterY);
     }
 
     /** Irregular, seed-stable regional sites. Biome footprints vary in size (~120-400 blocks, adjacent matching regions can merge).
@@ -356,8 +361,8 @@ public final class WorldGenerator {
                 || (siteContinent <= settings.oceanThreshold() + 0.11
                     && regionY >= settings.seaLevel() - 10
                     && regionY <= settings.seaLevel() + 23);
-        boolean siteFloodplain = riverStrength(bestX, bestZ) > 0.32
-                && regionY <= settings.seaLevel() + 22;
+        boolean siteFloodplain = hydrology.sample(bestX,bestZ,baseTerrainHeight(bestX,bestZ)).drainage()>0.40
+                && regionY <= settings.seaLevel()+45;
         return selectLandformBiome(t, rain, regionY - settings.seaLevel(),
                 siteGeology, siteCoastal, siteFloodplain, siteLandform, bestX, bestZ);
     }

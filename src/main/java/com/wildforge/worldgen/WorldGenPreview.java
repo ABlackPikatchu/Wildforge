@@ -29,6 +29,7 @@ public final class WorldGenPreview {
         BufferedImage ridges = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         BufferedImage relief = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         BufferedImage landformTypes = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        BufferedImage waterways = new BufferedImage(width,height,BufferedImage.TYPE_INT_RGB);
         EnumMap<WorldGenerator.Landform, Integer> landformCounts = new EnumMap<>(WorldGenerator.Landform.class);
         EnumMap<Biome, Integer> counts = new EnumMap<>(Biome.class);
         EnumMap<Geology, Integer> geologicalCounts = new EnumMap<>(Geology.class);
@@ -55,11 +56,19 @@ public final class WorldGenPreview {
                 geologicalCounts.merge(surface.geology(), 1, Integer::sum);
 
                 Color color = new Color(generator.biomes().get(surface.biome()).mapColor());
+                Color waterColor=switch(surface.waterBody()) {
+                    case OCEAN -> new Color(28,81,150);
+                    case RIVER -> new Color(63,156,212);
+                    case LAKE -> new Color(53,122,175);
+                    case LAND -> new Color(175,170,141);
+                };
+                waterways.setRGB(px,pz,waterColor.getRGB());
                 if (surface.waterBody() == WorldGenerator.WaterBody.OCEAN) {
                     waterSamples++;
                     color = surface.waterDepth() > 18
                             ? new Color(32, 70, 128) : new Color(58, 118, 168);
-                } else if (surface.waterBody() == WorldGenerator.WaterBody.RIVER) {
+                } else if (surface.waterBody() == WorldGenerator.WaterBody.RIVER
+                        || surface.waterBody() == WorldGenerator.WaterBody.LAKE) {
                     color = new Color(75, 138, 170);
                 }
                 double shade = Math.max(.72, Math.min(1.13,
@@ -83,6 +92,7 @@ public final class WorldGenPreview {
         ImageIO.write(ridges, "png", destination.resolve("ridges_seed_"+seed+".png").toFile());
         ImageIO.write(relief, "png", destination.resolve("landforms_seed_"+seed+".png").toFile());
         ImageIO.write(landformTypes, "png", destination.resolve("landform_types_seed_"+seed+".png").toFile());
+        ImageIO.write(waterways, "png", destination.resolve("waterways_seed_"+seed+".png").toFile());
         System.out.println("Worldgen preview for seed " + seed);
         try {
             System.out.println("Suggested safe spawn: " + SpawnFinder.find(generator, 768));
