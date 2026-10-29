@@ -156,20 +156,45 @@ public final class DroppedItemEntity extends Entity {
 
         float dt = Math.min(deltaTime, 0.05f);
         age += dt;
+        float surface=waterSurfaceNearItem();
+        boolean wet=surface>y-HALF_SIZE;
+        if(wet) {
+            grounded=false;
+            float[] current=terrain.waterCurrentAt((int)Math.floor(x),(int)Math.floor(y),(int)Math.floor(z));
+            velocityX += current[0]*2.8f*dt;
+            velocityZ += current[2]*2.8f*dt;
+            // Buoyancy is spring-damped toward the visible fluid surface.
+            float target=surface-HALF_SIZE*.45f;
+            velocityY += ((target-y)*10f-velocityY*3.5f+current[1])*dt;
+            velocityY=Math.max(-2.2f,Math.min(2.2f,velocityY));
+            moveHorizontal(dt);
+            moveVertical(dt);
+            applyHorizontalDrag(dt,true);
+            return;
+        }
         moveHorizontal(dt);
 
         // A resting item should not fall a fraction of a block every frame
         // and then be snapped back onto the same floor repeatedly.
         if (grounded && velocityY == 0.0f && hasGroundSupport()) {
-            applyHorizontalDrag(dt);
+            applyHorizontalDrag(dt,false);
             return;
         }
         grounded = false;
         velocityY -= GRAVITY * dt;
         moveVertical(dt);
-        applyHorizontalDrag(dt);
+        applyHorizontalDrag(dt,false);
     }
 
+    private float waterSurfaceNearItem() {
+        float best=Float.NEGATIVE_INFINITY;
+        int bx=(int)Math.floor(x),bz=(int)Math.floor(z),by=(int)Math.floor(y);
+        for(int dy=-1;dy<=1;dy++) {
+            float height=terrain.fluidSurfaceAt(bx,by+dy,bz);
+            if(terrain.getBlockAt(bx,by+dy,bz).isWater()) best=Math.max(best,height);
+        }
+        return best;
+    }
     private boolean hasGroundSupport() {
         // Probe just below the item. Once it moves off a ledge, gravity resumes.
         return collidesAt(x, y - 0.002f, z);
@@ -194,9 +219,9 @@ public final class DroppedItemEntity extends Entity {
 
     }
 
-    private void applyHorizontalDrag(float dt) {
+    private void applyHorizontalDrag(float dt,boolean wet) {
         float drag = (float) Math.pow(
-                grounded ? GROUND_DRAG_PER_SECOND : AIR_DRAG_PER_SECOND, dt);
+                wet ? 0.17f : (grounded ? GROUND_DRAG_PER_SECOND : AIR_DRAG_PER_SECOND), dt);
         velocityX *= drag;
         velocityZ *= drag;
         if (grounded && velocityX * velocityX + velocityZ * velocityZ

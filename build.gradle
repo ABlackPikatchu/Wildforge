@@ -151,3 +151,15 @@ tasks.register('undergroundPreview', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('undergroundCheck')
 }
+
+// Hydrology 2C: fluid levels must survive saves, chunk edits and v3 migration.
+tasks.register('fluidCheck', JavaExec) {
+    group = 'verification'
+    description = 'Check fluid levels, v4 saves, v3 compatibility and invalid input'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.FluidPersistenceSmokeTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('fluidCheck')
+}

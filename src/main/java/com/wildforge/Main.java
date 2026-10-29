@@ -958,6 +958,7 @@ public final class Main implements InputController.Callbacks {
             if (screenMode == HudRenderer.ScreenMode.PLAYING) {
                 terrain.setDistances(settings.renderDistance(),settings.simulationDistance());
                 terrain.streamAround(player.getX(), player.getZ());
+                terrain.tickFluids(deltaTime); // fixed 20 Hz fluid simulation, independent of FPS
                 player.update(window, terrain, deltaTime);
                 if (screenMode == HudRenderer.ScreenMode.PLAYING) {
                     worldItems.update(deltaTime, player);

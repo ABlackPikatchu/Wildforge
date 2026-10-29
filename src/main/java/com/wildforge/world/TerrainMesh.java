@@ -22,7 +22,7 @@ public final class TerrainMesh {
     // Fluid sections use a separate mesh stream (section + FLUID_SECTION_OFFSET).
     // No block IDs or save indexes change.
     public static final int FLUID_SECTION_OFFSET=SECTION_COUNT;
-    private static final int MAGIC=0x57464F52, SAVE_VERSION=3;
+    private static final int MAGIC=0x57464F52, SAVE_VERSION=4;
     private static final long DEFAULT_SEED=0x57494C44464F5247L;
     private final LinkedHashMap<Long,Chunk> chunks = new LinkedHashMap<>();
     private final HashMap<Long,HashMap<Integer,Byte>> edits = new HashMap<>();
@@ -32,12 +32,25 @@ public final class TerrainMesh {
     private long seed=DEFAULT_SEED;
     // Active-only fluid scheduler: oceans are inert until a nearby cell changes.
     // Flow strength is bounded; source vs flowing fluid is stored as a block ID.
-    private record FluidTask(int x,int y,int z,BlockType type,int strength) {}
-    private final ArrayDeque<FluidTask> fluidQueue = new ArrayDeque<>();
-    private final HashMap<FluidPosition,Integer> activeFluidStrength = new HashMap<>();
+    private record FluidTask(int x,int y,int z,long readyTick) {}
+    private final PriorityQueue<FluidTask> fluidQueue = new PriorityQueue<>(
+        Comparator.comparingLong(FluidTask::readyTick)
+             .thenComparingInt(FluidTask::x).thenComparingInt(FluidTask::y).thenComparingInt(FluidTask::z));
+    private long fluidTick = 0;
+    private float fluidAccumulator = 0f;
+    private static final float FLUID_TICK_SECONDS = 0.05f;
+    private static final int WATER_DELAY_TICKS = 5; // 0.25 s per cell at 20 TPS
+    private static final int LAVA_DELAY_TICKS = 30; // 1.5 s per cell at 20 TPS
     private record FluidPosition(int x,int y,int z) {}
+    private final HashSet<FluidPosition> queuedFluidPositions = new HashSet<>();
+    // Sparse, persistent levels for FLOWING_* cells only. Source blocks are always level 7.
+    // Indexing matches edits (chunk key + column-major block index), so unloaded fluids retain state.
+    private final HashMap<Long,HashMap<Integer,Byte>> fluidLevels = new HashMap<>();
     private static final int FLUID_QUEUE_LIMIT = 8192;
-    private int fluidFrame=0;
+    // Generated waterfall blocks predate level metadata. Keep their existing
+    // near-full visual height instead of collapsing them to tiny puddles.
+    private static final byte LEGACY_FLOW_LEVEL = 6;
+
     private boolean legacyVerticalMigration=false;
     public boolean needsLegacyPlayerHeightShift(){return legacyVerticalMigration;}
     private int version=0, renderDistance=8, simulationDistance=5;
@@ -70,7 +83,9 @@ public final class TerrainMesh {
         });
     }
     private record MeshJob(Future<float[][]> future, int epoch, int generation) {}
-    private record MeshSnapshot(int cx, int cz, byte[] blocks, byte[] west, byte[] east, byte[] north, byte[] south, WorldGenerator generator) {}
+    private record MeshSnapshot(int cx, int cz, byte[] blocks, byte[] west, byte[] east, byte[] north, byte[] south,
+                                Map<Integer,Byte> flows, Map<Integer,Byte> westFlows, Map<Integer,Byte> eastFlows,
+                                Map<Integer,Byte> northFlows, Map<Integer,Byte> southFlows, WorldGenerator generator) {}
     private static ExecutorService newGenerationWorker() {
         return Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "Wildforge-Chunk-Generation");
@@ -79,7 +94,7 @@ public final class TerrainMesh {
         });
     }
     private void cancelGeneration() {
-        fluidQueue.clear();activeFluidStrength.clear();
+        fluidQueue.clear();queuedFluidPositions.clear();fluidAccumulator=0f;fluidTick=0;
         generationWorker.shutdownNow();
         pending.clear();
         generationWorker = newGenerationWorker();
@@ -98,6 +113,7 @@ public final class TerrainMesh {
         Chunk c = generate(cx, cz);
         applySavedEdits(c);
         chunks.put(key(cx, cz), c);
+        resumeEditedFlows(c);
         rebuild(c);
         c.compact();
         version++;
@@ -161,7 +177,7 @@ public final class TerrainMesh {
     }
 
     public long seed(){return seed;}
-    public void resetWorld(){legacyVerticalMigration=false;cancelGeneration();edits.clear();seed=DEFAULT_SEED;initializeGenerator();chunks.clear();streamed=false;generateSpawnChunk(16,27);version++;}
+    public void resetWorld(){legacyVerticalMigration=false;cancelGeneration();edits.clear();fluidLevels.clear();seed=DEFAULT_SEED;initializeGenerator();chunks.clear();streamed=false;generateSpawnChunk(16,27);version++;}
     /** Nonblocking player-centered streaming: one worker produces raw columns, main thread owns meshes. */
     public void streamAround(float x,float z){
         int cx=Math.floorDiv((int)Math.floor(x),CHUNK_SIZE);
@@ -204,6 +220,7 @@ public final class TerrainMesh {
                 applySavedEdits(c);
                 c.compact();
                 chunks.put(entry.getKey(),c);
+                resumeEditedFlows(c);
                 markMeshDirty(c.cx,c.cz);
                 markMeshDirty(c.cx-1,c.cz);markMeshDirty(c.cx+1,c.cz);
                 markMeshDirty(c.cx,c.cz-1);markMeshDirty(c.cx,c.cz+1);
@@ -276,7 +293,6 @@ public final class TerrainMesh {
             meshJobs.put(bestKey,new MeshJob(meshWorker.submit(() -> buildColumnMesh(snapshot)),epoch,generation));
         }
         // The queue is budgeted so fluid spread never stalls rendering.
-        processFluidUpdates(24);
         if(changed)version++;
     }
     private void markMeshDirty(int x,int z) {
@@ -295,7 +311,19 @@ public final class TerrainMesh {
         Chunk w=chunks.get(key(c.cx-1,c.cz)), e=chunks.get(key(c.cx+1,c.cz));
         Chunk n=chunks.get(key(c.cx,c.cz-1)), so=chunks.get(key(c.cx,c.cz+1));
         return new MeshSnapshot(c.cx,c.cz,c.copyBlocks(),w==null?null:w.copyBlocks(),
-            e==null?null:e.copyBlocks(),n==null?null:n.copyBlocks(),so==null?null:so.copyBlocks(),generator);
+            e==null?null:e.copyBlocks(),n==null?null:n.copyBlocks(),so==null?null:so.copyBlocks(),
+            flowSnapshot(c.cx,c.cz),flowSnapshot(c.cx-1,c.cz),flowSnapshot(c.cx+1,c.cz),
+            flowSnapshot(c.cx,c.cz-1),flowSnapshot(c.cx,c.cz+1),generator);
+    }
+    private Map<Integer,Byte> flowSnapshot(int cx,int cz) {
+        Map<Integer,Byte> values=fluidLevels.get(key(cx,cz));
+        return values==null?Map.of():Map.copyOf(values);
+    }
+    private static int snapshotFluidLevel(byte type,Map<Integer,Byte> levels,int index) {
+        if(type==BlockType.WATER.id||type==BlockType.LAVA.id)return 7;
+        if(type==BlockType.FLOWING_WATER.id||type==BlockType.FLOWING_LAVA.id)
+            return Byte.toUnsignedInt(levels.getOrDefault(index,LEGACY_FLOW_LEVEL));
+        return 0;
     }
     private float[][] buildColumnMesh(MeshSnapshot snap) {
         float[][] built=new float[SECTION_COUNT*2][];
@@ -467,57 +495,161 @@ public final class TerrainMesh {
         }
     }
 
+    /** Source blocks contain full fluid; flow levels are compact, persistent 1..7 values. */
+    public int getFluidLevelAt(int x,int y,int z) {
+        if(y<0||y>=WORLD_HEIGHT)return 0;
+        int cx=Math.floorDiv(x,CHUNK_SIZE),cz=Math.floorDiv(z,CHUNK_SIZE);
+        Chunk c=chunks.get(key(cx,cz));
+        if(c==null)return 0;
+        int i=index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE));
+        BlockType type=BlockType.fromId(c.get(i));
+        if(!type.isFluid())return 0;
+        if(type==BlockType.WATER||type==BlockType.LAVA)return 7;
+        return savedFlowLevel(key(cx,cz),i);
+    }
+    private int savedFlowLevel(long chunkKey,int index) {
+        Map<Integer,Byte> levels=fluidLevels.get(chunkKey);
+        return levels==null?LEGACY_FLOW_LEVEL:Byte.toUnsignedInt(levels.getOrDefault(index,LEGACY_FLOW_LEVEL));
+    }
+    private void storeFlowLevel(long chunkKey,int index,BlockType type,int level) {
+        if(type!=BlockType.FLOWING_WATER&&type!=BlockType.FLOWING_LAVA) {
+            HashMap<Integer,Byte> values=fluidLevels.get(chunkKey);
+            if(values!=null){values.remove(index);if(values.isEmpty())fluidLevels.remove(chunkKey);}
+        } else {
+            fluidLevels.computeIfAbsent(chunkKey,k->new HashMap<>()).put(index,(byte)Math.max(1,Math.min(7,level)));
+        }
+    }
+    /** Set a flowing block's level; useful for simulation tools and save regression tests. */
+    public boolean setFluidLevelAt(int x,int y,int z,int level) {
+        if(y<1||y>=WORLD_HEIGHT-1||level<1||level>7)return false;
+        int cx=Math.floorDiv(x,CHUNK_SIZE),cz=Math.floorDiv(z,CHUNK_SIZE);
+        Chunk c=chunks.get(key(cx,cz));if(c==null)return false;
+        int i=index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE));
+        BlockType b=BlockType.fromId(c.get(i));
+        if(b!=BlockType.FLOWING_WATER&&b!=BlockType.FLOWING_LAVA)return false;
+        if(getFluidLevelAt(x,y,z)==level)return false;
+        storeFlowLevel(key(cx,cz),i,b,level);
+        edits.computeIfAbsent(key(cx,cz),k->new HashMap<>()).put(i,b.id);
+        scheduleFluid(x,y,z);markFluidMeshDirty(x,z);version++;
+        return true;
+    }
+    /** Fractional fluid surface in world Y (or -infinity if dry). */
+    public float fluidSurfaceAt(int x,int y,int z) {
+        BlockType b=getBlockAt(x,y,z);
+        if(!b.isFluid())return Float.NEGATIVE_INFINITY;
+        // A fluid with another fluid immediately above it occupies its entire cell.
+        return y+(getBlockAt(x,y+1,z).isFluid()?1f:fluidSurfaceHeight(getFluidLevelAt(x,y,z)));
+    }
+    private static float fluidSurfaceHeight(int level) {
+        return level>=7?.94f:.20f+.105f*Math.max(1,level);
+    }
+    private void resumeEditedFlows(Chunk c) {
+        // Only edited flowing cells resume; naturally generated oceans and pools stay inert.
+        Map<Integer,Byte> changed=edits.get(key(c.cx,c.cz));
+        if(changed==null)return;
+        for(var change:changed.entrySet()) {
+            byte type=change.getValue();
+            if(type!=BlockType.FLOWING_WATER.id&&type!=BlockType.FLOWING_LAVA.id)continue;
+            int i=change.getKey(),y=i%WORLD_HEIGHT;
+            int column=i/WORLD_HEIGHT,lx=column/CHUNK_SIZE,lz=column%CHUNK_SIZE;
+            scheduleFluid(c.cx*CHUNK_SIZE+lx,y,c.cz*CHUNK_SIZE+lz);
+        }
+    }
+    private void markFluidMeshDirty(int x,int z) {
+        int cx=Math.floorDiv(x,CHUNK_SIZE),cz=Math.floorDiv(z,CHUNK_SIZE);
+        markMeshDirty(cx,cz);
+        if(Math.floorMod(x,CHUNK_SIZE)==0)markMeshDirty(cx-1,cz);
+        if(Math.floorMod(x,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx+1,cz);
+        if(Math.floorMod(z,CHUNK_SIZE)==0)markMeshDirty(cx,cz-1);
+        if(Math.floorMod(z,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx,cz+1);
+    }
     private void scheduleFluid(int x,int y,int z) {
         if(y<1||y>=WORLD_HEIGHT-1||fluidQueue.size()>=FLUID_QUEUE_LIMIT)return;
         BlockType b=getBlockAt(x,y,z);
         if(!b.isFluid())return;
-        int strength=(b==BlockType.WATER||b==BlockType.LAVA)?7:
-                activeFluidStrength.getOrDefault(new FluidPosition(x,y,z),1);
-        fluidQueue.addLast(new FluidTask(x,y,z,b,strength));
+        FluidPosition pos=new FluidPosition(x,y,z);
+        if(queuedFluidPositions.add(pos)) {
+            int delay=b.isLava()?LAVA_DELAY_TICKS:WATER_DELAY_TICKS;
+            fluidQueue.add(new FluidTask(x,y,z,fluidTick+delay));
+        }
+    }
+    /** Fixed-rate simulation, independent of FPS and bounded after long frame stalls. */
+    public void tickFluids(float elapsedSeconds) {
+        if(!Float.isFinite(elapsedSeconds)||elapsedSeconds<=0f)return;
+        fluidAccumulator+=Math.min(elapsedSeconds,0.20f);
+        int ticks=0;
+        while(fluidAccumulator>=FLUID_TICK_SECONDS && ticks++<4) {
+            fluidAccumulator-=FLUID_TICK_SECONDS;
+            fluidTick++;
+            processFluidUpdates(32);
+        }
     }
     private void processFluidUpdates(int budget) {
-        // Lava advances more slowly without checking inert lava pools every tick.
-        fluidFrame++;
         for(int processed=0;processed<budget&&!fluidQueue.isEmpty();processed++) {
-            FluidTask task=fluidQueue.removeFirst();
+            if(fluidQueue.peek().readyTick()>fluidTick)break;
+            FluidTask task=fluidQueue.remove();
+            queuedFluidPositions.remove(new FluidPosition(task.x,task.y,task.z));
             BlockType b=getBlockAt(task.x,task.y,task.z);
             if(!b.isFluid())continue;
-            if(b.isLava() && (fluidFrame&3)!=0) {
-                if(fluidQueue.size()<FLUID_QUEUE_LIMIT)fluidQueue.addLast(task);
-                continue;
-            }
+            int strength=getFluidLevelAt(task.x,task.y,task.z);
             BlockType flow=b.isWater()?BlockType.FLOWING_WATER:BlockType.FLOWING_LAVA;
-            if(tryFluid(task.x,task.y-1,task.z,flow,task.strength))continue;
-            if(task.strength<=1)continue;
-            int next=task.strength-1;
+            // Downward flow takes precedence; allow horizontal spreading once supported.
+            if(tryFluid(task.x,task.y-1,task.z,flow,strength))continue;
+            if(strength<=1)continue;
+            int next=strength-1;
             tryFluid(task.x+1,task.y,task.z,flow,next);
             tryFluid(task.x-1,task.y,task.z,flow,next);
             tryFluid(task.x,task.y,task.z+1,flow,next);
             tryFluid(task.x,task.y,task.z-1,flow,next);
         }
     }
+    /** Horizontal and downward current, in approximate blocks/second. No current in calm oceans. */
+    public float[] waterCurrentAt(int x,int y,int z) {
+        BlockType center=getBlockAt(x,y,z);
+        if(!center.isWater())return new float[]{0f,0f,0f};
+        int own=getFluidLevelAt(x,y,z);
+        float left=fluidPressure(x-1,y,z),right=fluidPressure(x+1,y,z);
+        float north=fluidPressure(x,y,z-1),south=fluidPressure(x,y,z+1);
+        // Higher fluid pressure pushes toward the lower-pressure neighbor.
+        float vx=left-right,vz=north-south;
+        if(own>0 && (left+right+north+south)<.1f) {vx=0f;vz=0f;}
+        float length=(float)Math.sqrt(vx*vx+vz*vz);
+        if(length>0.001f){vx=vx/length*.85f;vz=vz/length*.85f;}
+        float vy=getBlockAt(x,y-1,z)==BlockType.AIR?-.80f:0f;
+        return new float[]{vx,vy,vz};
+    }
+    private float fluidPressure(int x,int y,int z) {
+        BlockType b=getBlockAt(x,y,z);
+        return b.isWater()?getFluidLevelAt(x,y,z):(b.isSolid()?7f:0f);
+    }
     private boolean tryFluid(int x,int y,int z,BlockType flow,int strength) {
         if(y<=0||y>=WORLD_HEIGHT-1||strength<1)return false;
         int cx=Math.floorDiv(x,CHUNK_SIZE),cz=Math.floorDiv(z,CHUNK_SIZE);
-        Chunk c=chunks.get(key(cx,cz));if(c==null)return false;
+        long chunkKey=key(cx,cz);
+        Chunk c=chunks.get(chunkKey);if(c==null)return false;
         int pos=index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE));
         BlockType old=BlockType.fromId(c.get(pos));
         if(old.isFluid() && old.isWater()!=flow.isWater()) {
-            // Simplified water/lava reaction. Rock remains persistent in the save.
-            c.set(pos,BlockType.OBSIDIAN.id);
-            edits.computeIfAbsent(key(cx,cz),k->new HashMap<>()).put(pos,BlockType.OBSIDIAN.id);
-            markMeshDirty(cx,cz);version++;return true;
+            // Source lava cools to obsidian; a flowing lava cell produces cobblestone.
+            BlockType rock=(old==BlockType.LAVA||flow==BlockType.LAVA)?BlockType.OBSIDIAN:BlockType.COBBLESTONE;
+            c.set(pos,rock.id);
+            storeFlowLevel(chunkKey,pos,rock,0);
+            edits.computeIfAbsent(chunkKey,k->new HashMap<>()).put(pos,rock.id);
+            markFluidMeshDirty(x,z);version++;return true;
         }
-        if(old!=BlockType.AIR)return false;
-        c.set(pos,flow.id);
-        edits.computeIfAbsent(key(cx,cz),k->new HashMap<>()).put(pos,flow.id);
-        activeFluidStrength.put(new FluidPosition(x,y,z),strength);
-        if(fluidQueue.size()<FLUID_QUEUE_LIMIT)fluidQueue.addLast(new FluidTask(x,y,z,flow,strength));
-        markMeshDirty(cx,cz);
-        if(Math.floorMod(x,CHUNK_SIZE)==0)markMeshDirty(cx-1,cz);
-        if(Math.floorMod(x,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx+1,cz);
-        if(Math.floorMod(z,CHUNK_SIZE)==0)markMeshDirty(cx,cz-1);
-        if(Math.floorMod(z,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx,cz+1);
+        if(old.isFluid()) {
+            if(old==BlockType.WATER||old==BlockType.LAVA)return false; // Never overwrite a source.
+            if(getFluidLevelAt(x,y,z)>=strength)return false;
+            // Refresh a weaker existing flow without changing its block ID.
+            storeFlowLevel(chunkKey,pos,old,strength);
+            edits.computeIfAbsent(chunkKey,k->new HashMap<>()).put(pos,old.id);
+        } else if(old==BlockType.AIR) {
+            c.set(pos,flow.id);
+            edits.computeIfAbsent(chunkKey,k->new HashMap<>()).put(pos,flow.id);
+            storeFlowLevel(chunkKey,pos,flow,strength);
+        } else return false;
+        scheduleFluid(x,y,z);
+        markFluidMeshDirty(x,z);
         version++;return true;
     }
 
@@ -724,7 +856,7 @@ public final class TerrainMesh {
         if(c.get(i)==type.id)return false;
         BlockType previous=BlockType.fromId(c.get(i));
         c.set(i,type.id);
-        activeFluidStrength.remove(new FluidPosition(x,y,z));
+        storeFlowLevel(key(cx,cz),i,type,1);
         if(previous.isFluid()||type==BlockType.AIR||type.isFluid()) {
             scheduleFluid(x+1,y,z);scheduleFluid(x-1,y,z);
             scheduleFluid(x,y,z+1);scheduleFluid(x,y,z-1);
@@ -920,7 +1052,7 @@ public final class TerrainMesh {
         return result;
     }
     public void newWorld(long newSeed){
-        cancelGeneration();edits.clear();seed=newSeed;initializeGenerator();chunks.clear();streamed=false;
+        cancelGeneration();edits.clear();fluidLevels.clear();seed=newSeed;initializeGenerator();chunks.clear();streamed=false;
         generateSpawnChunk(16,27);version++;
     }
     public int getVersion(){return version;}
@@ -940,7 +1072,7 @@ public final class TerrainMesh {
         for(float[] section:c.sectionVertices)n+=section.length/FLOATS_PER_VERTEX;
         for(float[] section:c.fluidVertices)n+=section.length/FLOATS_PER_VERTEX;
     }return n;}
-    /** v2 stores seed and all edits, independent of which chunks are loaded. */
+    /** v4 stores sparse block edits plus persistent flowing-fluid strengths. */
     public void saveTo(Path path)throws IOException{
         Path p=path.toAbsolutePath();Files.createDirectories(p.getParent());Path temp=p.resolveSibling(p.getFileName()+".tmp");
         try{
@@ -950,13 +1082,22 @@ public final class TerrainMesh {
                     out.writeLong(entry.getKey());out.writeInt(entry.getValue().size());
                     for(var change:entry.getValue().entrySet()){out.writeInt(change.getKey());out.writeByte(change.getValue());}
                 }
+                out.writeInt(fluidLevels.size());
+                for(var entry:fluidLevels.entrySet()) {
+                    out.writeLong(entry.getKey());out.writeInt(entry.getValue().size());
+                    for(var cell:entry.getValue().entrySet()){
+                        out.writeInt(cell.getKey());out.writeByte(cell.getValue());
+                    }
+                }
             }
             try{Files.move(temp,p,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}
             catch(AtomicMoveNotSupportedException e){Files.move(temp,p,StandardCopyOption.REPLACE_EXISTING);}
         }finally{Files.deleteIfExists(temp);}
     }
     public void loadFrom(Path path)throws IOException{
-        HashMap<Long,HashMap<Integer,Byte>> incoming=new HashMap<>();long newSeed=DEFAULT_SEED;boolean migrateLegacy=false;
+        HashMap<Long,HashMap<Integer,Byte>> incoming=new HashMap<>();
+        HashMap<Long,HashMap<Integer,Byte>> incomingFluidLevels=new HashMap<>();
+        long newSeed=DEFAULT_SEED;boolean migrateLegacy=false;
         try(DataInputStream in=new DataInputStream(new BufferedInputStream(Files.newInputStream(path)))){
             if(in.readInt()!=MAGIC)throw new IOException("Not a Wildforge world save");
             int v=in.readInt();
@@ -969,9 +1110,9 @@ public final class TerrainMesh {
                     int cx=x/16,cz=z/16,i=index(x%16,y+160,z%16);
                     incoming.computeIfAbsent(key(cx,cz),k->new HashMap<>()).put(i,b);
                 }
-            }else if(v==2 || v==3){
+            }else if(v==2 || v==3 || v==4){
                 newSeed=in.readLong();
-                if(v==3){int savedHeight=in.readInt();if(savedHeight!=WORLD_HEIGHT)throw new IOException("Unsupported saved world height: "+savedHeight);}
+                if(v>=3){int savedHeight=in.readInt();if(savedHeight!=WORLD_HEIGHT)throw new IOException("Unsupported saved world height: "+savedHeight);}
                 int count=in.readInt();
                 if(count<0||count>1000000)throw new IOException("Invalid chunk count");
                 for(int n=0;n<count;n++){
@@ -988,13 +1129,51 @@ public final class TerrainMesh {
                         changes.put(upgraded,b);
                     }
                 }
+                if(v==4) {
+                    int regions=in.readInt();
+                    if(regions<0||regions>1000000)throw new IOException("Invalid fluid region count");
+                    for(int n=0;n<regions;n++) {
+                        long k=in.readLong();int countLevels=in.readInt();
+                        if(countLevels<0||countLevels>CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT)
+                            throw new IOException("Invalid fluid-level count");
+                        HashMap<Integer,Byte> levels=incomingFluidLevels.computeIfAbsent(k,ignore->new HashMap<>());
+                        Map<Integer,Byte> changes=incoming.get(k);
+                        for(int j=0;j<countLevels;j++) {
+                            int idx=in.readInt(),level=in.readUnsignedByte();
+                            if(idx<0||idx>=CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT||level<1||level>7||
+                               changes==null||!(changes.getOrDefault(idx,(byte)-1)==BlockType.FLOWING_WATER.id||
+                               changes.getOrDefault(idx,(byte)-1)==BlockType.FLOWING_LAVA.id))
+                                throw new IOException("Invalid fluid level or missing flowing block");
+                            if(levels.putIfAbsent(idx,(byte)level)!=null)
+                                throw new IOException("Duplicate fluid-level entry");
+                        }
+                    }
+                }
             }else throw new IOException("Unsupported world save version: "+v);
             if(in.read()!=-1)throw new IOException("World save has trailing data");
         }
         // Commit only after complete validation.
         legacyVerticalMigration=migrateLegacy;
         cancelGeneration();seed=newSeed;initializeGenerator();edits.clear();edits.putAll(incoming);
+        fluidLevels.clear();fluidLevels.putAll(incomingFluidLevels);
         chunks.clear();streamed=false;generateSpawnChunk(16,27);version++;
+    }
+    private static float fluidSideBase(byte current,byte[] neighbor,int idx,
+                                       Map<Integer,Byte> levels,boolean exposed,int y,float top) {
+        if(exposed)return y;
+        if(neighbor==null)return top;
+        byte other=neighbor[idx];
+        if(!fluidId(other))return top;
+        boolean same=(current==BlockType.WATER.id||current==BlockType.FLOWING_WATER.id)==
+                     (other==BlockType.WATER.id||other==BlockType.FLOWING_WATER.id);
+        if(!same)return top;
+        // When the neighboring column is also submerged, no interior side wall
+        // is needed. Avoid thousands of tiny faces throughout deep oceans.
+        if(y<WORLD_HEIGHT-1 && fluidId(neighbor[idx+1]) &&
+           ((neighbor[idx+1]==BlockType.WATER.id||neighbor[idx+1]==BlockType.FLOWING_WATER.id)==
+            (current==BlockType.WATER.id||current==BlockType.FLOWING_WATER.id)))return top;
+        float neighborY=y+fluidSurfaceHeight(snapshotFluidLevel(other,levels,idx));
+        return neighborY<top-.005f?neighborY:top;
     }
     private static boolean fluidId(byte id) {
         return id==BlockType.WATER.id||id==BlockType.LAVA.id||
@@ -1019,6 +1198,53 @@ public final class TerrainMesh {
     }
     // Never mix translucent fluids into the opaque / cutout terrain mesh.
     // Both streams use the same immutable neighbor snapshot and revision epoch.
+    private static byte snapshotBlock(MeshSnapshot snap,int x,int y,int z) {
+        if(y<0||y>=WORLD_HEIGHT)return BlockType.AIR.id;
+        byte[] blocks=snap.blocks();
+        if(x<0) {blocks=snap.west();x+=CHUNK_SIZE;}
+        else if(x>=CHUNK_SIZE){blocks=snap.east();x-=CHUNK_SIZE;}
+        if(z<0) {if(blocks!=snap.blocks())return BlockType.AIR.id;blocks=snap.north();z+=CHUNK_SIZE;}
+        else if(z>=CHUNK_SIZE){if(blocks!=snap.blocks())return BlockType.AIR.id;blocks=snap.south();z-=CHUNK_SIZE;}
+        return blocks==null?BlockType.AIR.id:blocks[index(x,y,z)];
+    }
+    private static int snapshotLevel(MeshSnapshot snap,int x,int y,int z,byte fluidId) {
+        byte[] blocks=snap.blocks();Map<Integer,Byte> levels=snap.flows();
+        if(x<0) {blocks=snap.west();levels=snap.westFlows();x+=CHUNK_SIZE;}
+        else if(x>=CHUNK_SIZE){blocks=snap.east();levels=snap.eastFlows();x-=CHUNK_SIZE;}
+        if(z<0) {if(blocks!=snap.blocks())return -1;blocks=snap.north();levels=snap.northFlows();z+=CHUNK_SIZE;}
+        else if(z>=CHUNK_SIZE){if(blocks!=snap.blocks())return -1;blocks=snap.south();levels=snap.southFlows();z-=CHUNK_SIZE;}
+        if(blocks==null||y<0||y>=WORLD_HEIGHT)return -1;
+        int i=index(x,y,z);byte id=blocks[i];
+        if(!fluidId(id)||((id==BlockType.WATER.id||id==BlockType.FLOWING_WATER.id)!=
+           (fluidId==BlockType.WATER.id||fluidId==BlockType.FLOWING_WATER.id)))return -1;
+        return snapshotFluidLevel(id,levels,i);
+    }
+    private static float fluidCornerHeight(MeshSnapshot snap,int lx,int y,int lz,
+                                           byte id,int cornerX,int cornerZ,float originalTop) {
+        if(originalTop>=y+.999f)return originalTop;
+        float sum=0f;int samples=0;
+        for(int sx=cornerX-1;sx<=cornerX;sx++)for(int sz=cornerZ-1;sz<=cornerZ;sz++) {
+            int xx=lx+sx,zz=lz+sz;
+            int level=snapshotLevel(snap,xx,y,zz,id);
+            if(level<0)continue;
+            float height=fluidSurfaceHeight(level);
+            if(snapshotLevel(snap,xx,y+1,zz,id)>=0)height=1f;
+            sum+=height;samples++;
+        }
+        return samples==0?originalTop:y+Math.min(1f,sum/samples);
+    }
+    /** Direction is packed in the unused integer part of fluid vertex shade. */
+    private static int fluidFlowCode(MeshSnapshot snap,int x,int y,int z,byte id) {
+        if(id!=BlockType.FLOWING_WATER.id)return 0;
+        int east=Math.max(0,snapshotLevel(snap,x+1,y,z,id));
+        int west=Math.max(0,snapshotLevel(snap,x-1,y,z,id));
+        int north=Math.max(0,snapshotLevel(snap,x,y,z-1,id));
+        int south=Math.max(0,snapshotLevel(snap,x,y,z+1,id));
+        int dx=west-east,dz=north-south;
+        if(Math.abs(dx)>=Math.abs(dz) && dx!=0)return dx>0?1:2;
+        if(dz!=0)return dz>0?3:4;
+        return 0;
+    }
     private float[][] buildSectionLayers(MeshSnapshot snap,int section){
         FloatArrayBuilder data=new FloatArrayBuilder();
         FloatArrayBuilder fluid=new FloatArrayBuilder();
@@ -1055,13 +1281,32 @@ public final class TerrainMesh {
                     // A water surface is below the voxel ceiling, while a fully
                     // submerged fluid cell fills its entire vertical slot.
                     // FLOWING_* IDs are the available coarse flow-state signal.
-                    float top = y + (showTop ? (id==BlockType.WATER.id||id==BlockType.LAVA.id ? .94f : .80f) : 1f);
-                    if(showSouth)face(fluid,x,y,z+1,x+1,y,z+1,x+1,top,z+1,x,top,z+1,block.textureForAxis(2),.86f);
-                    if(showNorth)face(fluid,x+1,y,z,x,y,z,x,top,z,x+1,top,z,block.textureForAxis(2),.78f);
-                    if(showEast)face(fluid,x+1,y,z+1,x+1,y,z,x+1,top,z,x+1,top,z+1,block.textureForAxis(0),.82f);
-                    if(showWest)face(fluid,x,y,z,x,y,z+1,x,top,z+1,x,top,z,block.textureForAxis(0),.82f);
-                    if(showTop)face(fluid,x,top,z+1,x+1,top,z+1,x+1,top,z,x,top,z,block.textureForAxis(1),1f);
-                    if(showBottom)face(fluid,x,y,z,x+1,y,z,x+1,y,z+1,x,y,z+1,block.getBottomTextureLayer(),.72f);
+                    int fluidLevel=snapshotFluidLevel(id,snap.flows(),column+y);
+                    float top = y + (showTop ? fluidSurfaceHeight(fluidLevel) : 1f);
+                    // Draw exposed vertical fluid face from the adjacent (possibly lower) water level.
+                    // The neighbor's flow metadata travels with the immutable mesh snapshot.
+                    float southBase=fluidSideBase(id,southSource,southColumn+y,
+                            lz==CHUNK_SIZE-1?snap.southFlows():snap.flows(),showSouth,y,top);
+                    float northBase=fluidSideBase(id,northSource,northColumn+y,
+                            lz==0?snap.northFlows():snap.flows(),showNorth,y,top);
+                    float eastBase=fluidSideBase(id,eastSource,eastColumn+y,
+                            lx==CHUNK_SIZE-1?snap.eastFlows():snap.flows(),showEast,y,top);
+                    float westBase=fluidSideBase(id,westSource,westColumn+y,
+                            lx==0?snap.westFlows():snap.flows(),showWest,y,top);
+                    // Shared 2x2 corner sampling makes adjacent flow levels form slopes,
+                    // instead of disconnected horizontal shelves and sheer square lips.
+                    float nw=fluidCornerHeight(snap,lx,y,lz,id,0,0,top);
+                    float ne=fluidCornerHeight(snap,lx,y,lz,id,1,0,top);
+                    float sw=fluidCornerHeight(snap,lx,y,lz,id,0,1,top);
+                    float se=fluidCornerHeight(snap,lx,y,lz,id,1,1,top);
+                    int flowDir=fluidFlowCode(snap,lx,y,lz,id);
+                    float anim=(block.isWater()?2f*flowDir:0f);
+                    if(southBase<Math.max(sw,se))face(fluid,x,southBase,z+1,x+1,southBase,z+1,x+1,se,z+1,x,sw,z+1,block.textureForAxis(2),.86f+anim);
+                    if(northBase<Math.max(nw,ne))face(fluid,x+1,northBase,z,x,northBase,z,x,nw,z,x+1,ne,z,block.textureForAxis(2),.78f+anim);
+                    if(eastBase<Math.max(ne,se))face(fluid,x+1,eastBase,z+1,x+1,eastBase,z,x+1,ne,z,x+1,se,z+1,block.textureForAxis(0),.82f+anim);
+                    if(westBase<Math.max(nw,sw))face(fluid,x,westBase,z,x,westBase,z+1,x,sw,z+1,x,nw,z,block.textureForAxis(0),.82f+anim);
+                    if(showTop)face(fluid,x,sw,z+1,x+1,se,z+1,x+1,ne,z,x,nw,z,block.textureForAxis(1),1f+anim);
+                    if(showBottom)face(fluid,x,y,z,x+1,y,z,x+1,y,z+1,x,y,z+1,block.getBottomTextureLayer(),.72f+anim);
                     continue;
                 }
                 if(showSouth)face(data,x,y,z+1,x+1,y,z+1,x+1,y+1,z+1,x,y+1,z+1,block.textureForAxis(2),.85f);

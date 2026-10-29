@@ -161,7 +161,7 @@ public final class Renderer {
     private static final int FULL_DETAIL_RADIUS=8;
     private int fogNearLocation, fogFarLocation, fogColorLocation;
     private int terrainCoverageLocation;
-    private int fluidPassLocation, waterTextureLayerLocation, lavaTextureLayerLocation;
+    private int fluidPassLocation, waterTextureLayerLocation, lavaTextureLayerLocation, fluidTimeLocation;
 
     private int outlineProgram;
     private int outlineMvpLocation = -1;
@@ -193,11 +193,13 @@ public final class Renderer {
                 "layout(location=3) in float aShade;\n" +
                 "uniform mat4 uMvp;\n" +
                 "out vec3 vTexCoord;\n" +
+                "out vec3 vWorldPosition;\n" +
                 "out float vShade;\n" +
                 "out float vDistance;\n" +
                 "uniform vec3 uCamera;\n" +
                 "void main(){\n" +
                 "  vTexCoord = vec3(aTexCoord, aTextureLayer);\n" +
+                "  vWorldPosition = aPosition;\n" +
                 "  vShade = aShade;\n" +
                 "  vDistance = distance(aPosition, uCamera);\n" +
                 "  gl_Position = uMvp * vec4(aPosition, 1.0);\n" +
@@ -206,6 +208,7 @@ public final class Renderer {
         String fragmentSource =
                 "#version 330 core\n" +
                 "in vec3 vTexCoord;\n" +
+                "in vec3 vWorldPosition;\n" +
                 "in float vShade;\n" +
                 "in float vDistance;\n" +
                 "uniform float uFogNear;\n" +
@@ -213,12 +216,25 @@ public final class Renderer {
                 "uniform vec3 uFogColor;\n" +
                 "uniform float uMeshCoverage;\n" +
                 "uniform float uFluidPass;\n" +
+                "uniform float uFluidTime;\n" +
                 "uniform float uWaterTextureLayer;\n" +
                 "uniform float uLavaTextureLayer;\n" +
                 "uniform sampler2DArray uBlockTextures;\n" +
                 "out vec4 fragColor;\n" +
                 "void main(){\n" +
-                "  vec4 texel = texture(uBlockTextures, vTexCoord);\n" +
+                "  float direction = uFluidPass > 0.5 ? floor(vShade / 2.0 + 0.001) : 0.0;\n" +
+                "  float lighting = uFluidPass > 0.5 ? mod(vShade, 2.0) : vShade;\n" +
+                "  vec2 uv = vTexCoord.xy;\n" +
+                "  if(uFluidPass > 0.5 && abs(vTexCoord.z-uWaterTextureLayer)<0.5){\n" +
+                "    vec2 flow=vec2(0.0);\n" +
+                "    if(direction > 0.5 && direction < 1.5)flow=vec2(1.0,0.0);\n" +
+                "    else if(direction < 2.5 && direction > 1.5)flow=vec2(-1.0,0.0);\n" +
+                "    else if(direction < 3.5 && direction > 2.5)flow=vec2(0.0,1.0);\n" +
+                "    else if(direction > 3.5)flow=vec2(0.0,-1.0);\n" +
+                "    vec2 ripple=vec2(sin(vWorldPosition.x*1.7+uFluidTime*1.5),cos(vWorldPosition.z*1.5+uFluidTime*1.3))*0.006;\n" +
+                "    uv=fract(uv+flow*uFluidTime*0.10+ripple);\n" +
+                "  }\n" +
+                "  vec4 texel = texture(uBlockTextures, vec3(uv,vTexCoord.z));\n" +
                 "  if(texel.a < 0.5) discard;\n" +
                 // Complementary screen-door dithering: full geometry uses the
                 // low samples and distant LOD the remaining samples.
@@ -234,7 +250,7 @@ public final class Renderer {
                 "    bool lava = abs(vTexCoord.z-uLavaTextureLayer)<0.5;\n" +
                 "    opacity = water ? 0.60 : (lava ? 0.94 : texel.a);\n" +
                 "  }\n" +
-                "  fragColor = vec4(mix(texel.rgb * vShade, uFogColor, fog), opacity);\n" +
+                "  fragColor = vec4(mix(texel.rgb * lighting, uFogColor, fog), opacity);\n" +
                 "}\n";
 
         int vertexShader = compileShader(GL_VERTEX_SHADER, vertexSource);
@@ -261,6 +277,7 @@ public final class Renderer {
         fogColorLocation=glGetUniformLocation(shaderProgram,"uFogColor");
         terrainCoverageLocation=glGetUniformLocation(shaderProgram,"uMeshCoverage");
         fluidPassLocation=glGetUniformLocation(shaderProgram,"uFluidPass");
+        fluidTimeLocation=glGetUniformLocation(shaderProgram,"uFluidTime");
         waterTextureLayerLocation=glGetUniformLocation(shaderProgram,"uWaterTextureLayer");
         lavaTextureLayerLocation=glGetUniformLocation(shaderProgram,"uLavaTextureLayer");
 
@@ -672,10 +689,13 @@ public final class Renderer {
         }
 
         glViewport(0, 0, width, height);
-        boolean underwater=terrain.getBlockAt(
-            (int)Math.floor(camera.getPosition().x),
-            (int)Math.floor(camera.getPosition().y),
-            (int)Math.floor(camera.getPosition().z)).isWater();
+        // A shallow flowing-water voxel does not submerge the camera unless
+        // its visible fluid surface is actually above the eye position.
+        int eyeX=(int)Math.floor(camera.getPosition().x);
+        int eyeY=(int)Math.floor(camera.getPosition().y);
+        int eyeZ=(int)Math.floor(camera.getPosition().z);
+        boolean underwater=terrain.getBlockAt(eyeX,eyeY,eyeZ).isWater() &&
+                camera.getPosition().y<terrain.fluidSurfaceAt(eyeX,eyeY,eyeZ);
         glClearColor(underwater?.055f:.48f,underwater?.235f:.68f,underwater?.33f:.88f,1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -744,6 +764,7 @@ public final class Renderer {
         glDepthMask(false);
         glDisable(GL_CULL_FACE); // visible from below the surface as well
         org.lwjgl.opengl.GL20.glUniform1f(fluidPassLocation,1f);
+        org.lwjgl.opengl.GL20.glUniform1f(fluidTimeLocation,(float)(System.nanoTime()*1.0e-9));
         for(var entry:visibleFluids)
             drawTerrainMesh(entry.getKey(),entry.getValue(),camera,frustum);
         glBindVertexArray(0);

@@ -616,27 +616,38 @@ private void updateMovement(
         grounded = false;
     }
 
-    // Water is non-solid, but movement needs drag and upward swim control.
-    boolean swimming = terrain.getBlockAt((int)Math.floor(x),
-            (int)Math.floor(feetY+0.75f),(int)Math.floor(z)).isWater();
+    // Check the ACTUAL surface of fluid, not just its block ID. Shallow flows
+    // should slow ankles, not submerge a player's head or trigger full swimming.
+    int waterX=(int)Math.floor(x),waterZ=(int)Math.floor(z);
+    float ankles=feetY+0.16f,waist=feetY+0.90f;
+    boolean wetFeet=terrain.fluidSurfaceAt(waterX,(int)Math.floor(ankles),waterZ)>ankles;
+    boolean torsoSubmerged=terrain.fluidSurfaceAt(waterX,(int)Math.floor(waist),waterZ)>waist;
+    boolean swimming=wetFeet||torsoSubmerged;
+    if(torsoSubmerged)grounded=false; // Water supports swimming, not a standing jump impulse.
     boolean jumpPressed = isKeyDown(window, keyBindings.get(KeyBindings.Action.JUMP));
+    boolean sprintPressed = isKeyDown(window, keyBindings.get(KeyBindings.Action.SPRINT));
+    boolean descendPressed = isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT);
 
-    if (jumpPressed && !jumpWasPressed && grounded) {
+    if (jumpPressed && !jumpWasPressed && grounded && !torsoSubmerged) {
         verticalVelocity = JUMP_SPEED;
         grounded = false;
     }
 
     jumpWasPressed = jumpPressed;
 
-    float distance = WALK_SPEED * (swimming ? 0.65f : 1.0f) * dt;
+    float swimSpeed=torsoSubmerged ? (sprintPressed?1.05f:.60f) : (wetFeet?.84f:1f);
+    float distance = WALK_SPEED * swimSpeed * (sprintPressed && !torsoSubmerged ? 1.55f : 1f) * dt;
+    float[] current=torsoSubmerged?terrain.waterCurrentAt(waterX,(int)Math.floor(waist),waterZ):new float[]{0f,0f,0f};
+    float totalX=moveX*distance+current[0]*dt;
+    float totalZ=moveZ*distance+current[2]*dt;
 
     int steps = Math.max(1, (int) Math.ceil(
             Math.max(
-                    Math.abs(moveX * distance),
-                    Math.abs(moveZ * distance)) / 0.04f));
+                    Math.abs(totalX),
+                    Math.abs(totalZ)) / 0.04f));
 
-    float stepX = moveX * distance / steps;
-    float stepZ = moveZ * distance / steps;
+    float stepX = totalX / steps;
+    float stepZ = totalZ / steps;
 
     for (int i = 0; i < steps; i++) {
         if (stepX != 0.0f) {
@@ -655,10 +666,16 @@ private void updateMovement(
     if (!grounded) {
         float previousFeetY = feetY;
 
-        verticalVelocity -= (swimming ? GRAVITY * 0.22f : GRAVITY) * dt;
-        if (swimming) {
-            verticalVelocity = Math.max(verticalVelocity, -2.8f);
-            if (jumpPressed) verticalVelocity = Math.max(verticalVelocity, 3.5f);
+        if (torsoSubmerged) {
+            // Space is held-thrust, not a jump impulse. Releasing it lets the player sink.
+            float thrust=jumpPressed?8.2f:(descendPressed?-7.0f:-3.2f);
+            verticalVelocity += (thrust+current[1]*2.0f)*dt;
+            verticalVelocity *= (float)Math.exp(-3.5f*dt);
+            verticalVelocity=Math.max(-2.0f,Math.min(jumpPressed?3.0f:0.2f,verticalVelocity));
+            grounded=false;
+        } else {
+            verticalVelocity -= (wetFeet ? GRAVITY*.55f : GRAVITY)*dt;
+            if(wetFeet)verticalVelocity=Math.max(verticalVelocity,-4f);
         }
 
         float nextFeetY = feetY + verticalVelocity * dt;

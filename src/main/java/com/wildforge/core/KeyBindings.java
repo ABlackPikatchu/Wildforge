@@ -22,7 +22,8 @@ public final class KeyBindings {
         HOTBAR_6("HOTBAR 6", GLFW.GLFW_KEY_6),
         HOTBAR_7("HOTBAR 7", GLFW.GLFW_KEY_7),
         HOTBAR_8("HOTBAR 8", GLFW.GLFW_KEY_8),
-        HOTBAR_9("HOTBAR 9", GLFW.GLFW_KEY_9);
+        HOTBAR_9("HOTBAR 9", GLFW.GLFW_KEY_9),
+        SPRINT("SPRINT", GLFW.GLFW_KEY_LEFT_CONTROL);
 
         private final String label;
         private final int defaultKey;
