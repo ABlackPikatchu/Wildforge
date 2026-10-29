@@ -116,7 +116,22 @@ public enum BlockType {
     ROTTEN_WOOD(103, 104, 1, true, true, 109, 108, 109),
     CRAFTING_TABLE(104, 105, 1, true, true, 111, 110, 111),
     FURNACE(105, 106, 1, true, true, 113, 112, 113),
-    CACTUS(106, 107, 1, true, true, 115, 114, 115);
+    CACTUS(106, 107, 1, true, true, 115, 114, 115),
+    WATER(107, 0, 0, false, false, 133, 133, 133),
+    LAVA(108, 0, 0, false, false, 134, 134, 134),
+    FLOWING_WATER(109, 0, 0, false, false, 133, 133, 133),
+    FLOWING_LAVA(110, 0, 0, false, false, 134, 134, 134),
+    // Axis variants are new save-stable block IDs.  They drop the original logs.
+    OAK_LOG_X(111,94,1,true,true,94,93,94),
+    OAK_LOG_Z(112,94,1,true,true,94,93,94),
+    PINE_LOG_X(113,96,1,true,true,97,96,97),
+    PINE_LOG_Z(114,96,1,true,true,97,96,97),
+    MAPLE_LOG_X(115,98,1,true,true,100,99,100),
+    MAPLE_LOG_Z(116,98,1,true,true,100,99,100),
+    WILLOW_LOG_X(117,100,1,true,true,103,102,103),
+    WILLOW_LOG_Z(118,100,1,true,true,103,102,103),
+    CYPRESS_LOG_X(119,102,1,true,true,106,105,106),
+    CYPRESS_LOG_Z(120,102,1,true,true,106,105,106);
 
     // Texture-array layer IDs. Keep these aligned with BlockTextures.
     public static final int GRASS_TOP_TEXTURE = 0;
@@ -181,6 +196,41 @@ public enum BlockType {
     public int getDropCount() {
         return dropCount;
     }
+
+    /** Face axis: 0 = X face, 1 = Y face, 2 = Z face. */
+    public int textureForAxis(int faceAxis) {
+        boolean xAxis = switch(this) {
+            case OAK_LOG_X,PINE_LOG_X,MAPLE_LOG_X,WILLOW_LOG_X,CYPRESS_LOG_X -> true;
+            default -> false;
+        };
+        boolean zAxis = switch(this) {
+            case OAK_LOG_Z,PINE_LOG_Z,MAPLE_LOG_Z,WILLOW_LOG_Z,CYPRESS_LOG_Z -> true;
+            default -> false;
+        };
+        if (xAxis || zAxis)
+            return (xAxis ? faceAxis==0 : faceAxis==2) ? topTextureLayer : sideTextureLayer;
+        return faceAxis==1 ? topTextureLayer : sideTextureLayer;
+    }
+    public boolean isLog() {return switch(this) {
+        case OAK_LOG,OAK_LOG_X,OAK_LOG_Z,PINE_LOG,PINE_LOG_X,PINE_LOG_Z,
+             MAPLE_LOG,MAPLE_LOG_X,MAPLE_LOG_Z,WILLOW_LOG,WILLOW_LOG_X,WILLOW_LOG_Z,
+             CYPRESS_LOG,CYPRESS_LOG_X,CYPRESS_LOG_Z -> true;
+        default -> false;
+    };}
+    public BlockType orientedLog(int axis) {
+        return switch(this) {
+            case OAK_LOG,OAK_LOG_X,OAK_LOG_Z -> axis==0?OAK_LOG_X:axis==2?OAK_LOG_Z:OAK_LOG;
+            case PINE_LOG,PINE_LOG_X,PINE_LOG_Z -> axis==0?PINE_LOG_X:axis==2?PINE_LOG_Z:PINE_LOG;
+            case MAPLE_LOG,MAPLE_LOG_X,MAPLE_LOG_Z -> axis==0?MAPLE_LOG_X:axis==2?MAPLE_LOG_Z:MAPLE_LOG;
+            case WILLOW_LOG,WILLOW_LOG_X,WILLOW_LOG_Z -> axis==0?WILLOW_LOG_X:axis==2?WILLOW_LOG_Z:WILLOW_LOG;
+            case CYPRESS_LOG,CYPRESS_LOG_X,CYPRESS_LOG_Z -> axis==0?CYPRESS_LOG_X:axis==2?CYPRESS_LOG_Z:CYPRESS_LOG;
+            default -> this;
+        };
+    }
+
+    public boolean isWater() { return this == WATER || this == FLOWING_WATER; }
+    public boolean isLava() { return this == LAVA || this == FLOWING_LAVA; }
+    public boolean isFluid() { return isWater() || isLava(); }
 
     public boolean isSolid() {
         return solid;

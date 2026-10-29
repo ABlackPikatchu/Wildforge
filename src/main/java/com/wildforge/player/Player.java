@@ -616,6 +616,9 @@ private void updateMovement(
         grounded = false;
     }
 
+    // Water is non-solid, but movement needs drag and upward swim control.
+    boolean swimming = terrain.getBlockAt((int)Math.floor(x),
+            (int)Math.floor(feetY+0.75f),(int)Math.floor(z)).isWater();
     boolean jumpPressed = isKeyDown(window, keyBindings.get(KeyBindings.Action.JUMP));
 
     if (jumpPressed && !jumpWasPressed && grounded) {
@@ -625,7 +628,7 @@ private void updateMovement(
 
     jumpWasPressed = jumpPressed;
 
-    float distance = WALK_SPEED * dt;
+    float distance = WALK_SPEED * (swimming ? 0.65f : 1.0f) * dt;
 
     int steps = Math.max(1, (int) Math.ceil(
             Math.max(
@@ -652,7 +655,11 @@ private void updateMovement(
     if (!grounded) {
         float previousFeetY = feetY;
 
-        verticalVelocity -= GRAVITY * dt;
+        verticalVelocity -= (swimming ? GRAVITY * 0.22f : GRAVITY) * dt;
+        if (swimming) {
+            verticalVelocity = Math.max(verticalVelocity, -2.8f);
+            if (jumpPressed) verticalVelocity = Math.max(verticalVelocity, 3.5f);
+        }
 
         float nextFeetY = feetY + verticalVelocity * dt;
         ground = getFootprintGround(terrain, x, z);

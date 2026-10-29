@@ -252,5 +252,19 @@
   "item.wildforge.diamond_hoe": "Diamond Hoe",
   "item.wildforge.diamond_pickaxe": "Diamond Pickaxe",
   "item.wildforge.diamond_shovel": "Diamond Shovel",
-  "item.wildforge.diamond_sword": "Diamond Sword"
+  "item.wildforge.diamond_sword": "Diamond Sword",
+  "block.wildforge.water": "Water",
+  "block.wildforge.lava": "Lava",
+  "block.wildforge.flowing_water": "Flowing Water",
+  "block.wildforge.flowing_lava": "Flowing Lava",
+  "block.wildforge.oak_log_x": "Oak Log (East–West)",
+  "block.wildforge.oak_log_z": "Oak Log (North–South)",
+  "block.wildforge.pine_log_x": "Pine Log (East–West)",
+  "block.wildforge.pine_log_z": "Pine Log (North–South)",
+  "block.wildforge.maple_log_x": "Maple Log (East–West)",
+  "block.wildforge.maple_log_z": "Maple Log (North–South)",
+  "block.wildforge.willow_log_x": "Willow Log (East–West)",
+  "block.wildforge.willow_log_z": "Willow Log (North–South)",
+  "block.wildforge.cypress_log_x": "Cypress Log (East–West)",
+  "block.wildforge.cypress_log_z": "Cypress Log (North–South)"
 }

@@ -17,9 +17,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Comparator;
 import org.joml.FrustumIntersection;
 
 import static org.lwjgl.opengl.GL11.GL_BACK;
+import static org.lwjgl.opengl.GL11.GL_BLEND;
+import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
+import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
+import static org.lwjgl.opengl.GL11.glBlendFunc;
+import static org.lwjgl.opengl.GL11.glDisable;
 import static org.lwjgl.opengl.GL11.GL_CCW;
 import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.GL_CULL_FACE;
@@ -34,6 +41,7 @@ import static org.lwjgl.opengl.GL11.glClear;
 import static org.lwjgl.opengl.GL11.glClearColor;
 import static org.lwjgl.opengl.GL11.glCullFace;
 import static org.lwjgl.opengl.GL11.glDrawArrays;
+import static org.lwjgl.opengl.GL11.glDepthMask;
 import static org.lwjgl.opengl.GL11.glEnable;
 import static org.lwjgl.opengl.GL11.glFrontFace;
 import static org.lwjgl.opengl.GL11.glLineWidth;
@@ -142,15 +150,18 @@ public final class Renderer {
     private int terrainMvpLocation = -1;
     private int textureSamplerLocation = -1;
 
-    private record GpuChunk(int vao, int vbo, int vertices, int revision) {}
+    private record GpuChunk(int vao, int vbo, int vertices, int revision, long firstVisibleNanos) {}
     private record MeshKey(int x,int section,int z) {}
     private final Map<MeshKey, GpuChunk> gpuChunks = new HashMap<>();
+    private final java.util.Set<Long> fullyUploadedColumns = new java.util.HashSet<>();
     private int terrainVersion = -1;
     private int lastTerrainUploads;
     private long lastTerrainUploadMicros;
     private int lodCameraChunkX=Integer.MIN_VALUE, lodCameraChunkZ=Integer.MIN_VALUE;
     private static final int FULL_DETAIL_RADIUS=8;
     private int fogNearLocation, fogFarLocation, fogColorLocation;
+    private int terrainCoverageLocation;
+    private int fluidPassLocation, waterTextureLayerLocation, lavaTextureLayerLocation;
 
     private int outlineProgram;
     private int outlineMvpLocation = -1;
@@ -200,13 +211,30 @@ public final class Renderer {
                 "uniform float uFogNear;\n" +
                 "uniform float uFogFar;\n" +
                 "uniform vec3 uFogColor;\n" +
+                "uniform float uMeshCoverage;\n" +
+                "uniform float uFluidPass;\n" +
+                "uniform float uWaterTextureLayer;\n" +
+                "uniform float uLavaTextureLayer;\n" +
                 "uniform sampler2DArray uBlockTextures;\n" +
                 "out vec4 fragColor;\n" +
                 "void main(){\n" +
                 "  vec4 texel = texture(uBlockTextures, vTexCoord);\n" +
                 "  if(texel.a < 0.5) discard;\n" +
+                // Complementary screen-door dithering: full geometry uses the
+                // low samples and distant LOD the remaining samples.
+                "  vec2 ip = mod(floor(gl_FragCoord.xy),4.0);\n" +
+                "  float noise = fract(dot(ip,vec2(0.375,0.625)));\n" +
+                "  if(uMeshCoverage >= 0.0 && noise >= uMeshCoverage) discard;\n" +
+                "  if(uMeshCoverage < 0.0 && noise < (1.0 + uMeshCoverage)) discard;\n" +
                 "  float fog = smoothstep(uFogNear, uFogFar, vDistance);\n" +
-                "  fragColor = vec4(mix(texel.rgb * vShade, uFogColor, fog), texel.a);\n" +
+                // Explicit fluid pass; no magic texture-array layer indices.
+                "  float opacity = texel.a;\n" +
+                "  if(uFluidPass > 0.5) {\n" +
+                "    bool water = abs(vTexCoord.z-uWaterTextureLayer)<0.5;\n" +
+                "    bool lava = abs(vTexCoord.z-uLavaTextureLayer)<0.5;\n" +
+                "    opacity = water ? 0.60 : (lava ? 0.94 : texel.a);\n" +
+                "  }\n" +
+                "  fragColor = vec4(mix(texel.rgb * vShade, uFogColor, fog), opacity);\n" +
                 "}\n";
 
         int vertexShader = compileShader(GL_VERTEX_SHADER, vertexSource);
@@ -231,11 +259,19 @@ public final class Renderer {
         fogNearLocation=glGetUniformLocation(shaderProgram,"uFogNear");
         fogFarLocation=glGetUniformLocation(shaderProgram,"uFogFar");
         fogColorLocation=glGetUniformLocation(shaderProgram,"uFogColor");
+        terrainCoverageLocation=glGetUniformLocation(shaderProgram,"uMeshCoverage");
+        fluidPassLocation=glGetUniformLocation(shaderProgram,"uFluidPass");
+        waterTextureLayerLocation=glGetUniformLocation(shaderProgram,"uWaterTextureLayer");
+        lavaTextureLayerLocation=glGetUniformLocation(shaderProgram,"uLavaTextureLayer");
 
         requireUniform(terrainMvpLocation, "uMvp", "terrain");
         requireUniform(textureSamplerLocation, "uBlockTextures", "terrain");
 
         glUseProgram(shaderProgram);
+        org.lwjgl.opengl.GL20.glUniform1f(terrainCoverageLocation,1.0f);
+        org.lwjgl.opengl.GL20.glUniform1f(fluidPassLocation,0f);
+        org.lwjgl.opengl.GL20.glUniform1f(waterTextureLayerLocation,BlockType.WATER.getTopTextureLayer());
+        org.lwjgl.opengl.GL20.glUniform1f(lavaTextureLayerLocation,BlockType.LAVA.getTopTextureLayer());
         glUniform1i(textureSamplerLocation, 0);
         glUseProgram(0);
     }
@@ -263,7 +299,7 @@ public final class Renderer {
         return shader;
     }
 
-    private GpuChunk uploadChunk(TerrainMesh.ChunkMesh mesh) {
+    private GpuChunk uploadChunk(TerrainMesh.ChunkMesh mesh, long firstVisibleNanos) {
         int chunkVao=glGenVertexArrays(), chunkVbo=glGenBuffers();
         glBindVertexArray(chunkVao);
         glBindBuffer(GL_ARRAY_BUFFER,chunkVbo);
@@ -274,7 +310,7 @@ public final class Renderer {
         glVertexAttribPointer(2,1,GL_FLOAT,false,stride,5L*Float.BYTES);glEnableVertexAttribArray(2);
         glVertexAttribPointer(3,1,GL_FLOAT,false,stride,6L*Float.BYTES);glEnableVertexAttribArray(3);
         glBindVertexArray(0);glBindBuffer(GL_ARRAY_BUFFER,0);
-        return new GpuChunk(chunkVao,chunkVbo,mesh.vertices().length/TerrainMesh.FLOATS_PER_VERTEX,mesh.revision());
+        return new GpuChunk(chunkVao,chunkVbo,mesh.vertices().length/TerrainMesh.FLOATS_PER_VERTEX,mesh.revision(), firstVisibleNanos);
     }
     private void discard(GpuChunk c){glDeleteBuffers(c.vbo());glDeleteVertexArrays(c.vao());}
     private void initializeTerrain() {
@@ -377,11 +413,23 @@ public final class Renderer {
             if(existing!=null && existing.revision()==c.revision())continue;
             if(uploads>=2){pending=true;continue;}
             if(existing!=null)discard(existing);
-            gpuChunks.put(key,uploadChunk(c));
+            gpuChunks.put(key,uploadChunk(c,existing==null?System.nanoTime():existing.firstVisibleNanos()));
             uploads++;
         }
         var it=gpuChunks.entrySet().iterator();
         while(it.hasNext()){var entry=it.next();if(!live.contains(entry.getKey())){discard(entry.getValue());it.remove();}}
+        // Do not fade out detailed geometry until all its nonempty sections
+        // have reached the GPU. The upload queue is intentionally bounded.
+        java.util.Map<Long,Boolean> fullReady=new java.util.HashMap<>();
+        for(var c:source) {
+            if(c.section()<0)continue;
+            long id=(((long)c.x())<<32) | (c.z()&0xffffffffL);
+            GpuChunk resident=gpuChunks.get(new MeshKey(c.x(),c.section(),c.z()));
+            boolean ready=resident!=null && resident.revision()==c.revision();
+            fullReady.merge(id,ready,(a,b)->a&&b);
+        }
+        fullyUploadedColumns.clear();
+        for(var e:fullReady.entrySet())if(e.getValue())fullyUploadedColumns.add(e.getKey());
         lastTerrainUploads=uploads;
         lastTerrainUploadMicros=(System.nanoTime()-uploadStart)/1000L;
         if(!pending)terrainVersion=terrain.getVersion();
@@ -624,7 +672,11 @@ public final class Renderer {
         }
 
         glViewport(0, 0, width, height);
-        glClearColor(0.48f, 0.68f, 0.88f, 1.0f);
+        boolean underwater=terrain.getBlockAt(
+            (int)Math.floor(camera.getPosition().x),
+            (int)Math.floor(camera.getPosition().y),
+            (int)Math.floor(camera.getPosition().z)).isWater();
+        glClearColor(underwater?.055f:.48f,underwater?.235f:.68f,underwater?.33f:.88f,1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if (screenMode == HudRenderer.ScreenMode.MAIN_MENU
@@ -658,29 +710,97 @@ public final class Renderer {
         }
 
         float far=(terrain.renderDistance()+0.35f)*TerrainMesh.CHUNK_SIZE;
-        org.lwjgl.opengl.GL20.glUniform1f(fogNearLocation,far*0.67f);
-        org.lwjgl.opengl.GL20.glUniform1f(fogFarLocation,far);
-        glUniform3f(fogColorLocation,0.48f,0.68f,0.88f);
+        // Water absorbs light much faster than air. Only the CAMERA's medium
+        // determines underwater fog, so coastlines remain clear from above.
+        org.lwjgl.opengl.GL20.glUniform1f(fogNearLocation,underwater?1.5f:far*0.67f);
+        org.lwjgl.opengl.GL20.glUniform1f(fogFarLocation,underwater?22f:far);
+        glUniform3f(fogColorLocation,underwater?.055f:.48f,underwater?.235f:.68f,underwater?.33f:.88f);
         glUniform3f(glGetUniformLocation(shaderProgram,"uCamera"),camera.getPosition().x,camera.getPosition().y,camera.getPosition().z);
         blockTextures.bind(0);
         FrustumIntersection frustum=new FrustumIntersection(mvp);
+        // Pass 1: opaque terrain and cutout foliage, with depth writes enabled.
+        glDisable(GL_BLEND);
+        glDepthMask(true);
+        org.lwjgl.opengl.GL20.glUniform1f(fluidPassLocation,0f);
         for(var entry:gpuChunks.entrySet()){
-            MeshKey key=entry.getKey();int cx=key.x(),cz=key.z();
-            float x=cx*TerrainMesh.CHUNK_SIZE,z=cz*TerrainMesh.CHUNK_SIZE;
-            float bottom=key.section()<0?0:key.section()*TerrainMesh.SECTION_HEIGHT;
-            if(!frustum.testAab(x,bottom,z,x+TerrainMesh.CHUNK_SIZE,bottom+(key.section()<0?TerrainMesh.WORLD_HEIGHT:TerrainMesh.SECTION_HEIGHT),z+TerrainMesh.CHUNK_SIZE))continue;
-            GpuChunk chunk=entry.getValue();
-            if(chunk.vertices()==0)continue;
-            glBindVertexArray(chunk.vao());glDrawArrays(GL_TRIANGLES,0,chunk.vertices());
+            if(isFluidMesh(entry.getKey()))continue;
+            drawTerrainMesh(entry.getKey(),entry.getValue(),camera,frustum);
         }
         glBindVertexArray(0);
+        org.lwjgl.opengl.GL20.glUniform1f(terrainCoverageLocation,1f);
 
+        // Dropped items are opaque. Draw them BEFORE water so submerged items
+        // can be seen through the fluid rather than appearing pasted on top.
         renderWorldItems(mvp, player == null ? null : player.getWorldItems());
 
+        // Pass 2: translucent fluids after all opaque geometry.
+        // Depth testing stays on, but water must not write to the depth buffer.
+        ArrayList<Map.Entry<MeshKey,GpuChunk>> visibleFluids=new ArrayList<>();
+        for(var entry:gpuChunks.entrySet()) if(isFluidMesh(entry.getKey()))visibleFluids.add(entry);
+        visibleFluids.sort(Comparator.comparingDouble((Map.Entry<MeshKey,GpuChunk> e) ->
+            fluidDistanceSquared(e.getKey(),camera)).reversed());
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+        glDepthMask(false);
+        glDisable(GL_CULL_FACE); // visible from below the surface as well
+        org.lwjgl.opengl.GL20.glUniform1f(fluidPassLocation,1f);
+        for(var entry:visibleFluids)
+            drawTerrainMesh(entry.getKey(),entry.getValue(),camera,frustum);
+        glBindVertexArray(0);
+        glDepthMask(true);
+        glEnable(GL_CULL_FACE);
+        glDisable(GL_BLEND);
+        org.lwjgl.opengl.GL20.glUniform1f(fluidPassLocation,0f);
+        org.lwjgl.opengl.GL20.glUniform1f(terrainCoverageLocation,1f);
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
         glUseProgram(0);
 
         renderTargetOutline(mvp, camera, player);
+    }
+
+    private static boolean isFluidMesh(MeshKey key) {
+        return key.section()==-2 || key.section()>=TerrainMesh.FLUID_SECTION_OFFSET;
+    }
+
+    private static double fluidDistanceSquared(MeshKey key,Camera camera) {
+        double x=key.x()*TerrainMesh.CHUNK_SIZE+TerrainMesh.CHUNK_SIZE*0.5-camera.getPosition().x;
+        double y=key.section()<0 ? 0 :
+            (key.section()-TerrainMesh.FLUID_SECTION_OFFSET)*TerrainMesh.SECTION_HEIGHT
+            +TerrainMesh.SECTION_HEIGHT*0.5-camera.getPosition().y;
+        double z=key.z()*TerrainMesh.CHUNK_SIZE+TerrainMesh.CHUNK_SIZE*0.5-camera.getPosition().z;
+        return x*x+y*y+z*z;
+    }
+
+    /** Shared frustum, LOD crossfade and arrival fade for opaque/fluid streams. */
+    private void drawTerrainMesh(MeshKey key,GpuChunk chunk,Camera camera,FrustumIntersection frustum) {
+        int cx=key.x(),cz=key.z();
+        float x=cx*TerrainMesh.CHUNK_SIZE,z=cz*TerrainMesh.CHUNK_SIZE;
+        int section=key.section();
+        float bottom=section<0?0:(section%TerrainMesh.SECTION_COUNT)*TerrainMesh.SECTION_HEIGHT;
+        float height=section<0?TerrainMesh.WORLD_HEIGHT:TerrainMesh.SECTION_HEIGHT;
+        if(!frustum.testAab(x,bottom,z,x+TerrainMesh.CHUNK_SIZE,bottom+height,z+TerrainMesh.CHUNK_SIZE))return;
+        if(chunk.vertices()==0)return;
+        long column=(((long)cx)<<32) | (cz&0xffffffffL);
+        boolean hasLod=gpuChunks.containsKey(new MeshKey(cx,-1,cz)) || gpuChunks.containsKey(new MeshKey(cx,-2,cz));
+        boolean hasFull=fullyUploadedColumns.contains(column);
+        float dx=Math.abs((x+8f-camera.getPosition().x)/TerrainMesh.CHUNK_SIZE);
+        float dz=Math.abs((z+8f-camera.getPosition().z)/TerrainMesh.CHUNK_SIZE);
+        float transition=Math.max(0f,Math.min(1f,(Math.max(dx,dz)-7f)/3f));
+        float age=Math.max(0f,Math.min(1f,(System.nanoTime()-chunk.firstVisibleNanos())/700_000_000f));
+        float coverage;
+        if(hasLod&&hasFull) {
+            GpuChunk farChunk=gpuChunks.get(new MeshKey(cx,-1,cz));
+            if(farChunk==null)farChunk=gpuChunks.get(new MeshKey(cx,-2,cz));
+            float farAge=Math.max(0f,Math.min(1f,
+                (System.nanoTime()-farChunk.firstVisibleNanos())/700_000_000f));
+            float mix=transition*farAge;
+            coverage=section<0 ? -Math.max(.00001f,mix) : 1f-mix;
+        } else if(section<0) coverage=-Math.max(.00001f,age);
+        else if(hasLod) coverage=0f;
+        else coverage=age;
+        org.lwjgl.opengl.GL20.glUniform1f(terrainCoverageLocation,coverage);
+        glBindVertexArray(chunk.vao());
+        glDrawArrays(GL_TRIANGLES,0,chunk.vertices());
     }
 
     private void renderTargetOutline(Matrix4f mvp, Camera camera, Player player) {

@@ -174,6 +174,22 @@ public final class ContentDataGenerator {
         blockWithItem("crafting_table", 104, 105, 2).textures("crafting_table_top", "crafting_table_side", "crafting_table_side");
         blockWithItem("furnace", 105, 106, 2).textures("furnace_top", "furnace_side", "furnace_side");
         blockWithItem("cactus", 106, 107, 2).textures("cactus_top", "cactus_side", "cactus_side");
+        // Physics-managed fluids are not ordinary inventory/placeable blocks.
+        blockWithoutItem("water", 107, false, false, 0).textures("water", "water", "water");
+        blockWithoutItem("lava", 108, false, false, 0).textures("lava", "lava", "lava");
+        blockWithoutItem("flowing_water", 109, false, false, 0).textures("water", "water", "water");
+        blockWithoutItem("flowing_lava", 110, false, false, 0).textures("lava", "lava", "lava");
+        // Log orientation variants keep the original block item and drops.
+        orientedLog("oak_log_x", 111, "oak_log_block", "oak_log_top", "oak_log_side");
+        orientedLog("oak_log_z", 112, "oak_log_block", "oak_log_top", "oak_log_side");
+        orientedLog("pine_log_x", 113, "pine_log_block", "pine_log_top", "pine_log_side");
+        orientedLog("pine_log_z", 114, "pine_log_block", "pine_log_top", "pine_log_side");
+        orientedLog("maple_log_x", 115, "maple_log_block", "maple_log_top", "maple_log_side");
+        orientedLog("maple_log_z", 116, "maple_log_block", "maple_log_top", "maple_log_side");
+        orientedLog("willow_log_x", 117, "willow_log_block", "willow_log_top", "willow_log_side");
+        orientedLog("willow_log_z", 118, "willow_log_block", "willow_log_top", "willow_log_side");
+        orientedLog("cypress_log_x", 119, "cypress_log_block", "cypress_log_top", "cypress_log_side");
+        orientedLog("cypress_log_z", 120, "cypress_log_block", "cypress_log_top", "cypress_log_side");
         item("brick", 108, 64, "brick");
         item("diamond", 109, 64, "diamond");
         item("gold_ingot", 110, 64, "gold_ingot");
@@ -243,6 +259,15 @@ public final class ContentDataGenerator {
         block.json.add("drops", drops);
         addItem(blockItem, itemId, 64, name, null);
         return block;
+    }
+
+    private void orientedLog(String name,int id,String drop,String top,String bark) {
+        BlockBuilder block=blockWithoutItem(name,id,true,true,2.0f);
+        block.textures(top,bark,top);
+        JsonArray drops=new JsonArray();
+        JsonObject item=new JsonObject();item.addProperty("item",id(drop));
+        item.addProperty("count",1);drops.add(item);
+        block.json.add("drops",drops);
     }
 
     private BlockBuilder blockWithoutItem(String name, int blockId,

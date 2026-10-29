@@ -1,0 +1,14 @@
+{
+  "id": "wildforge:water",
+  "numeric_id": 107,
+  "solid": false,
+  "breakable": false,
+  "hardness": 0.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:water",
+    "side": "wildforge:water",
+    "bottom": "wildforge:water"
+  },
+  "drops": []
+}

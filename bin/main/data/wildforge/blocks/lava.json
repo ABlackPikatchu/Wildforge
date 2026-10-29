@@ -1,0 +1,14 @@
+{
+  "id": "wildforge:lava",
+  "numeric_id": 108,
+  "solid": false,
+  "breakable": false,
+  "hardness": 0.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:lava",
+    "side": "wildforge:lava",
+    "bottom": "wildforge:lava"
+  },
+  "drops": []
+}

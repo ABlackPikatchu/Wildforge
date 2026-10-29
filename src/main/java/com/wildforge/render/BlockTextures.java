@@ -158,7 +158,9 @@ public final class BlockTextures implements AutoCloseable {
         "/textures/flower_daisy.png",
         "/textures/flower_goldenrod.png",
         "/textures/flower_lavender.png",
-        "/textures/flower_bluebell.png"
+        "/textures/flower_bluebell.png",
+        "/textures/water.png", // 133
+        "/textures/lava.png"  // 134
     };
 
     /** Metadata accessors let verification run without creating an OpenGL context. */

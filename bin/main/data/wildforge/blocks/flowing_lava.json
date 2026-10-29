@@ -1,0 +1,14 @@
+{
+  "id": "wildforge:flowing_lava",
+  "numeric_id": 110,
+  "solid": false,
+  "breakable": false,
+  "hardness": 0.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:lava",
+    "side": "wildforge:lava",
+    "bottom": "wildforge:lava"
+  },
+  "drops": []
+}

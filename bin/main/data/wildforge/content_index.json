@@ -106,7 +106,21 @@
     "data/wildforge/blocks/rotten_wood.json",
     "data/wildforge/blocks/crafting_table.json",
     "data/wildforge/blocks/furnace.json",
-    "data/wildforge/blocks/cactus.json"
+    "data/wildforge/blocks/cactus.json",
+    "data/wildforge/blocks/water.json",
+    "data/wildforge/blocks/lava.json",
+    "data/wildforge/blocks/flowing_water.json",
+    "data/wildforge/blocks/flowing_lava.json",
+    "data/wildforge/blocks/oak_log_x.json",
+    "data/wildforge/blocks/oak_log_z.json",
+    "data/wildforge/blocks/pine_log_x.json",
+    "data/wildforge/blocks/pine_log_z.json",
+    "data/wildforge/blocks/maple_log_x.json",
+    "data/wildforge/blocks/maple_log_z.json",
+    "data/wildforge/blocks/willow_log_x.json",
+    "data/wildforge/blocks/willow_log_z.json",
+    "data/wildforge/blocks/cypress_log_x.json",
+    "data/wildforge/blocks/cypress_log_z.json"
   ],
   "items": [
     "data/wildforge/items/grass_block.json",

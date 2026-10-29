@@ -31,7 +31,7 @@ public final class ContentSmokeTest {
         check("Stone".equals(content.blocks().get("stone").getDisplayName()),
                 "Block display names must come from en_us.json");
 
-        check(content.blocks().size() == 107, "Expected 107 registered block types");
+        check(content.blocks().size() == 121, "Expected 121 registered block types");
         check(content.items().size() == 147, "Expected 147 registered item types");
         check(content.blocks().get("wildforge:stone").getNumericId() == 3,
                 "Stone block save ID must remain 3");
@@ -41,6 +41,20 @@ public final class ContentSmokeTest {
                 "Item save ID 7 must stay unused");
         check(content.blocks().getByNumericId(6).getBlockItem() == null,
                 "Bedrock should not have a placeable item");
+        for (BlockType log : new BlockType[]{BlockType.OAK_LOG,BlockType.PINE_LOG,
+                BlockType.MAPLE_LOG,BlockType.WILLOW_LOG,BlockType.CYPRESS_LOG}) {
+            BlockType x=log.orientedLog(0), z=log.orientedLog(2);
+            check(x!=log && z!=log && x!=z && x.getDropItem()==log.getDropItem(),
+                    "Horizontal log must retain original item drop: " + log);
+            check(x.textureForAxis(0)==log.getTopTextureLayer() &&
+                    x.textureForAxis(1)==log.getSideTextureLayer() &&
+                    z.textureForAxis(2)==log.getTopTextureLayer(),
+                    "Log bark/end-grain must follow axis: " + log);
+        }
+        check(!BlockType.WATER.isSolid() && !BlockType.LAVA.isSolid(),
+                "Fluid blocks must be non-solid");
+        check(content.blocks().get("wildforge:flowing_water") != null,
+                "Flowing water must have a generated definition");
         check(content.blocks().get("stone").getId().equals(ResourceId.parse("wildforge:stone")),
                 "Unqualified resource IDs should resolve to wildforge namespace");
         check(content.items().get("wildforge:stone_block").getPlacesBlock()

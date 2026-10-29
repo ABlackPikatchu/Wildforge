@@ -1,0 +1,19 @@
+{
+  "id": "wildforge:maple_log_x",
+  "numeric_id": 115,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:maple_log_top",
+    "side": "wildforge:maple_log_side",
+    "bottom": "wildforge:maple_log_top"
+  },
+  "drops": [
+    {
+      "item": "wildforge:maple_log_block",
+      "count": 1
+    }
+  ]
+}

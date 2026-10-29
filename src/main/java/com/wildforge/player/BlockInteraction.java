@@ -130,6 +130,12 @@ public final class BlockInteraction {
             return;
         }
 
+        // The axis follows the face clicked: east/west X, north/south Z,
+        // floor/ceiling Y. Horizontal logs drop the original log item.
+        if(blockToPlace.isLog()) {
+            int axis=(hit.placeX!=hit.x)?0:(hit.placeZ!=hit.z)?2:1;
+            blockToPlace=blockToPlace.orientedLog(axis);
+        }
         if (terrain.setBlock(bx, by, bz, blockToPlace)) {
             worldItems.onBlockPlaced(bx, by, bz);
             inventory.removeItem(itemType, 1);

@@ -1,0 +1,19 @@
+{
+  "id": "wildforge:cypress_log_x",
+  "numeric_id": 119,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:cypress_log_top",
+    "side": "wildforge:cypress_log_side",
+    "bottom": "wildforge:cypress_log_top"
+  },
+  "drops": [
+    {
+      "item": "wildforge:cypress_log_block",
+      "count": 1
+    }
+  ]
+}

@@ -28,8 +28,8 @@ public final class WorldGenerator {
     private static final long UPLANDS = 0x2ab13f1L;
     private static final long EROSION = 0x3b47e12L;
     private static final long PEAKS = 0x4c58d23L;
-    // Regional cell size ~320 blocks, sites vary in position and influence.
-    private static final int REGION_SIZE = 320;
+    // Regional site spacing ~192 blocks; adjacent sites may still form larger biomes.
+    private static final int REGION_SIZE = 192;
 
     public static final int TREE_CELL_SIZE = 8;
     public static final int PLANT_CELL_SIZE = 4;
@@ -289,7 +289,7 @@ public final class WorldGenerator {
                 profile.topTexture(), profile.fillerTexture(), geology.baseRockTexture());
     }
 
-    /** Irregular, seed-stable regional sites. Biome footprints vary in size (~200-600 blocks).
+    /** Irregular, seed-stable regional sites. Biome footprints vary in size (~120-400 blocks, adjacent matching regions can merge).
      * Site selection is independent of generation order and smooth world coordinates.
      * Climatic suitability is checked at the queried terrain position; candidate sites
      * receive randomized radii so no tiny per-block biome fragments appear.
@@ -299,21 +299,42 @@ public final class WorldGenerator {
         // Domain-warp the regional Voronoi lookup to eliminate straight borders.
         // Coordinates remain in world space, so neighboring chunks agree.
         double warpedX = x + noise.fbm2((x + 1300.0) / 180.0,
-                (z - 900.0) / 180.0, 3, REGION ^ 0x9135L) * 70.0;
+                (z - 900.0) / 180.0, 3, REGION ^ 0x9135L) * 42.0;
         double warpedZ = z + noise.fbm2((x - 700.0) / 180.0,
-                (z + 1100.0) / 180.0, 3, REGION ^ 0x227aL) * 70.0;
+                (z + 1100.0) / 180.0, 3, REGION ^ 0x227aL) * 42.0;
         int cellX = (int)Math.floor(warpedX / REGION_SIZE);
         int cellZ = (int)Math.floor(warpedZ / REGION_SIZE);
-        double closest = Double.POSITIVE_INFINITY;
+        double closest = Double.POSITIVE_INFINITY, runnerUp = Double.POSITIVE_INFINITY;
         int bestX = cellX, bestZ = cellZ;
+        int secondX = cellX, secondZ = cellZ;
         for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
             int gx = cellX + dx, gz = cellZ + dz;
             double px = (gx + 0.15 + 0.70 * noise.unit(gx, 0, gz, REGION)) * REGION_SIZE;
             double pz = (gz + 0.15 + 0.70 * noise.unit(gx, 1, gz, REGION)) * REGION_SIZE;
-            double radius = 0.80 + noise.unit(gx, 2, gz, REGION) * 0.48;
+            double radius = 0.84 + noise.unit(gx, 2, gz, REGION) * 0.32;
             double d = ((warpedX - px)*(warpedX - px) + (warpedZ - pz)*(warpedZ - pz)) / (radius * radius);
-            if (d < closest) { closest = d; bestX = (int)px; bestZ = (int)pz; }
+            if (d < closest) {
+                runnerUp=closest;secondX=bestX;secondZ=bestZ;
+                closest=d;bestX=(int)px;bestZ=(int)pz;
+            } else if(d<runnerUp) {
+                runnerUp=d;secondX=(int)px;secondZ=(int)pz;
+            }
         }
+        Biome primary = biomeForSite(bestX,bestZ);
+        // Soft boundary mixing: a narrow band selects between compatible
+        // neighboring regional identities in large coherent 8-15 block patches.
+        // The terrain height itself remains continuous and is not rescaled.
+        double separation=(runnerUp-closest)/(REGION_SIZE*(double)REGION_SIZE);
+        if(separation<.30 && runnerUp<Double.POSITIVE_INFINITY){
+            double patch=noise.fbm2(x/12.0,z/12.0,2,REGION^0x7181L);
+            double closeness=Math.max(0,Math.min(1,1.0-separation/.30));
+            if((patch+.35)*.65 < closeness*.48)
+                return biomeForSite(secondX,secondZ);
+        }
+        return primary;
+    }
+
+    private Biome biomeForSite(int bestX,int bestZ) {
         // Region-wide sampled climate discourages tiny fragmented biome patches.
         int regionY = (int)Math.round(terrainHeight(bestX, bestZ));
         double t = clamp(0.5 + noise.fbm2(bestX / settings.climateScale(),
@@ -322,6 +343,10 @@ public final class WorldGenerator {
                 - (bestZ / 10000.0) * 0.14, 0, 1);
         double rain = clamp(0.5 + noise.fbm2((bestX + 8000) / settings.climateScale(),
                 (bestZ - 8000) / settings.climateScale(), 3, MOISTURE) * .60, 0, 1);
+        // Mild per-region microclimate variation creates additional biome identities
+        // without generating one-block patches or breaking chunk determinism.
+        t = clamp(t + (noise.unit(bestX, 17, bestZ, REGION ^ 0x1e9L)-0.5)*0.13, 0, 1);
+        rain = clamp(rain + (noise.unit(bestX, 23, bestZ, REGION ^ 0x94eL)-0.5)*0.17, 0, 1);
         // Evaluate eligibility at the regional anchor, not independently for every
         // surface column. This prevents single-column volcanic/coastal intrusions.
         Geology siteGeology = geologyAt(bestX, bestZ);
@@ -364,7 +389,7 @@ public final class WorldGenerator {
                     - 2.0*Math.abs(rain-rainMid)/rainHalf;
             // Coarse region-only variation: never per-block random selection.
             double variation = (noise.unit(siteX, candidate.ordinal(), siteZ,
-                    REGION ^ 0x35b10eL)-.5)*3.2;
+                    REGION ^ 0x35b10eL)-.5)*5.0;
             double score = p.priority()*.045 + climateFit
                     + landformAffinity(candidate, landform)*.85 + variation;
             if (score > bestScore) {

@@ -1,0 +1,19 @@
+{
+  "id": "wildforge:pine_log_x",
+  "numeric_id": 113,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:pine_log_top",
+    "side": "wildforge:pine_log_side",
+    "bottom": "wildforge:pine_log_top"
+  },
+  "drops": [
+    {
+      "item": "wildforge:pine_log_block",
+      "count": 1
+    }
+  ]
+}
