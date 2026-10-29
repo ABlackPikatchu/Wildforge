@@ -719,13 +719,21 @@ public final class Renderer {
         return offset;
     }
 
+    private final Camera interpolatedCamera = new Camera();
+    public void render(int width,int height,Camera camera,Player player,
+                       HudRenderer.ScreenMode screenMode,boolean useMenuBackground) {
+        render(width,height,camera,player,screenMode,useMenuBackground,1f);
+    }
     public void render(
             int width,
             int height,
-            Camera camera,
+            Camera authoritativeCamera,
             Player player,
             HudRenderer.ScreenMode screenMode,
-            boolean useMenuBackground) {
+            boolean useMenuBackground,
+            float interpolationAlpha) {
+        authoritativeCamera.copyInterpolatedTo(interpolatedCamera,interpolationAlpha);
+        Camera camera=interpolatedCamera;
         if (width <= 0 || height <= 0) {
             return;
         }
@@ -826,7 +834,7 @@ public final class Renderer {
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
         glUseProgram(0);
 
-        renderTargetOutline(mvp, camera, player);
+        renderTargetOutline(mvp, authoritativeCamera, player);
     }
 
     private static float lerp(float a,float b,float t){return a+(b-a)*t;}

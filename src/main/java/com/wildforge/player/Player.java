@@ -83,6 +83,7 @@ public void setGameMode(GameMode next) {
     verticalVelocity = 0;
     grounded = false;
     updateCameraPosition();
+    camera.snapInterpolation();
 }
 public void setFlying(boolean enabled) {
     if (gameMode == GameMode.SURVIVAL && enabled) throw new IllegalStateException("Flying requires Creative or Spectator mode");
@@ -99,6 +100,7 @@ public void teleport(float tx, float ty, float tz) {
     x=tx; z=tz; feetY=ty; verticalVelocity=0f;
     grounded=false; stepCameraOffset=0; walkBobOffset=0;
     updateCameraPosition();
+    camera.snapInterpolation();
 }
 
 private boolean grounded = false;
@@ -181,6 +183,9 @@ public float getFeetY() {
 public WorldItemManager getWorldItems() {
     return worldItems;
 }
+
+/** Fixed tick boundary; called by GameSimulation, never by render frames. */
+public void beginPhysicsStep() { camera.beginPhysicsStep(); }
 
 public Camera getCamera() {
     return camera;
@@ -417,6 +422,7 @@ public void loadFrom(Path path, TerrainMesh terrain) throws IOException {
     }
 
     updateCameraPosition();
+    camera.snapInterpolation();
 }
 
 public void setInventoryOpen(boolean open) {

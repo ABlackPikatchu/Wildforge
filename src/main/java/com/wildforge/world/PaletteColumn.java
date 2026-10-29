@@ -1,48 +1,50 @@
 package com.wildforge.world;
 
-import java.util.Arrays;
+import com.wildforge.world.chunk.ChunkSection;
 
-/** Compact, mutable 16x512x16 resident block storage. No save-format changes. */
+/**
+ * Column adapter: section storage uses 16^3 palette chunks while the public
+ * indices and on-disk sparse edits retain the original 16x512x16 Y layout.
+ */
 final class PaletteColumn {
-    private static final int SECTIONS = TerrainMesh.SECTION_COUNT, WIDTH = 16, CELLS = 4096, HEIGHT = TerrainMesh.WORLD_HEIGHT;
-    private final Section[] sections = new Section[SECTIONS];
+    private static final int WIDTH = TerrainMesh.CHUNK_SIZE;
+    private static final int HEIGHT = TerrainMesh.WORLD_HEIGHT;
+    private static final int SECTION_HEIGHT = TerrainMesh.SECTION_HEIGHT;
+    private final ChunkSection[] sections = new ChunkSection[TerrainMesh.SECTION_COUNT];
 
     PaletteColumn(byte[] source) {
-        if (source.length != WIDTH * WIDTH * HEIGHT) throw new IllegalArgumentException("Invalid column length");
-        for (int sy = 0; sy < SECTIONS; sy++) {
-            byte[] values = new byte[CELLS];
+        if (source == null || source.length != WIDTH * WIDTH * HEIGHT)
+            throw new IllegalArgumentException("Invalid column length");
+        for (int sy = 0; sy < sections.length; sy++) {
+            byte[] values = new byte[ChunkSection.VOLUME];
             for (int x = 0; x < WIDTH; x++) for (int z = 0; z < WIDTH; z++) {
-                System.arraycopy(source, (x * WIDTH + z) * HEIGHT + sy * 16,
-                    values, (x * WIDTH + z) * 16, 16);
+                System.arraycopy(source, (x * WIDTH + z) * HEIGHT + sy * SECTION_HEIGHT,
+                    values, (x * WIDTH + z) * SECTION_HEIGHT, SECTION_HEIGHT);
             }
-            sections[sy] = Section.encode(values);
+            sections[sy] = ChunkSection.encode(values);
         }
     }
 
-    byte get(int sourceIndex) {
-        int y = sourceIndex % HEIGHT;
-        int column = sourceIndex / HEIGHT;
-        return sections[y >>> 4].get(column * 16 + (y & 15));
+    byte get(int index) {
+        int y = index % HEIGHT;
+        return sections[y / SECTION_HEIGHT].get(
+                (index / HEIGHT) * SECTION_HEIGHT + (y % SECTION_HEIGHT));
     }
 
-    void set(int sourceIndex, byte value) {
-        int y = sourceIndex % HEIGHT;
-        int section = y >>> 4;
-        int i = (sourceIndex / HEIGHT) * 16 + (y & 15);
-        Section old = sections[section];
-        if (old.get(i) == value) return;
-        byte[] values = old.decode();
-        values[i] = value;
-        sections[section] = Section.encode(values);
+    void set(int index, byte value) {
+        int y = index % HEIGHT;
+        int section = y / SECTION_HEIGHT;
+        int localIndex = (index / HEIGHT) * SECTION_HEIGHT + y % SECTION_HEIGHT;
+        sections[section] = sections[section].with(localIndex, value);
     }
 
     byte[] copyRaw() {
         byte[] raw = new byte[WIDTH * WIDTH * HEIGHT];
-        for (int sy = 0; sy < SECTIONS; sy++) {
+        for (int sy = 0; sy < sections.length; sy++) {
             byte[] values = sections[sy].decode();
             for (int x = 0; x < WIDTH; x++) for (int z = 0; z < WIDTH; z++) {
-                System.arraycopy(values, (x * WIDTH + z) * 16, raw,
-                    (x * WIDTH + z) * HEIGHT + sy * 16, 16);
+                System.arraycopy(values, (x * WIDTH + z) * SECTION_HEIGHT, raw,
+                    (x * WIDTH + z) * HEIGHT + sy * SECTION_HEIGHT, SECTION_HEIGHT);
             }
         }
         return raw;
@@ -50,51 +52,7 @@ final class PaletteColumn {
 
     int storedBytes() {
         int total = 0;
-        for (Section s : sections) total += s.data.length + s.palette.length;
+        for (ChunkSection section : sections) total += section.storedBytes();
         return total;
-    }
-
-    private static final class Section {
-        final byte[] palette;
-        final byte[] data;
-        final int bits;
-        Section(byte[] palette, byte[] data, int bits) {
-            this.palette = palette; this.data = data; this.bits = bits;
-        }
-        static Section encode(byte[] input) {
-            int[] indices = new int[256];
-            Arrays.fill(indices, -1);
-            byte[] palette = new byte[16];
-            int used = 0;
-            for (byte v : input) {
-                int k = v & 255;
-                if (indices[k] >= 0) continue;
-                if (used == 16) return new Section(new byte[0], input.clone(), 8);
-                indices[k] = used;
-                palette[used++] = v;
-            }
-            if (used == 1) return new Section(new byte[]{palette[0]}, new byte[0], 0);
-            int bits = used <= 2 ? 1 : used <= 4 ? 2 : 4;
-            byte[] encoded = new byte[(CELLS * bits + 7) / 8];
-            int mask = (1 << bits) - 1;
-            for (int i = 0; i < CELLS; i++) {
-                int shift = (i * bits) & 7;
-                encoded[(i * bits) >>> 3] |= (byte)((indices[input[i] & 255] & mask) << shift);
-            }
-            return new Section(Arrays.copyOf(palette, used), encoded, bits);
-        }
-        byte get(int i) {
-            if (bits == 0) return palette[0];
-            if (bits == 8) return data[i];
-            int pos = i * bits;
-            return palette[((data[pos >>> 3] & 255) >>> (pos & 7)) & ((1 << bits) - 1)];
-        }
-        byte[] decode() {
-            if (bits == 8) return data.clone();
-            byte[] out = new byte[CELLS];
-            if (bits == 0) { Arrays.fill(out, palette[0]); return out; }
-            for (int i = 0; i < CELLS; i++) out[i] = get(i);
-            return out;
-        }
     }
 }

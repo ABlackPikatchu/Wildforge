@@ -302,3 +302,89 @@ tasks.register('droppedItemPhysicsCheck', JavaExec) {
     mainClass = 'com.wildforge.world.DroppedItemPhysicsSmokeTest'
 }
 tasks.named('check') { dependsOn tasks.named('droppedItemPhysicsCheck') }
+
+// Phase 2: fixed-rate simulation and chunk-source/storage architecture tests.
+// Run individually or via `gradlew check`, no GL context required.
+tasks.register('simulationClockCheck', JavaExec) {
+    group = 'verification'
+    description = 'Validate 60 Hz physics timing, 20 Hz cadence and pause/backlog behavior'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.core.FixedStepClockSmokeTest'
+}
+tasks.register('chunkStorageCheck', JavaExec) {
+    group = 'verification'
+    description = 'Validate immutable 16-high section storage and old 512-height indices'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.ChunkStorageSmokeTest'
+}
+tasks.register('chunkSourceCheck', JavaExec) {
+    group = 'verification'
+    description = 'Validate nearest-first chunk requests, eviction and reset safety'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.ChunkSourceSmokeTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('simulationClockCheck'), tasks.named('chunkStorageCheck'), tasks.named('chunkSourceCheck')
+}
+
+// Phase 3: independently executable headless simulation and mesh-worker regressions.
+tasks.register('fluidEngineCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify fluid scheduling, drainage after source removal and chunk seams'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.FluidEngineSmokeTest'
+}
+tasks.register('meshSchedulerCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify async meshing, stale cancellation and LOD invalidation'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.ChunkMeshSchedulerSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('fluidEngineCheck'),tasks.named('meshSchedulerCheck') }
+tasks.register('cameraInterpolationCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify camera interpolation does not mutate saved physics position'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.player.CameraInterpolationSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('cameraInterpolationCheck') }
+
+// Phase 4: multi-noise/spline world generation, slim mesh snapshots and UI model.
+['climateTerrainPhase4Check':'com.wildforge.worldgen.ClimateTerrainPhase4SmokeTest',
+ 'sectionMeshPhase4Check':'com.wildforge.world.SectionMeshBuilderPhase4SmokeTest',
+ 'newWorldRequestCheck':'com.wildforge.core.NewWorldRequestSmokeTest'].each { taskId, className ->
+    tasks.register(taskId, JavaExec) {
+        group = 'verification'
+        dependsOn tasks.named('testClasses')
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = className
+    }
+    tasks.named('check') { dependsOn tasks.named(taskId) }
+}
+
+['multiNoiseWorldgenCheck':'com.wildforge.worldgen.MultiNoiseWorldgenPhase4SmokeTest',
+ 'fluidDownhillCheck':'com.wildforge.world.FluidDownhillPhase4SmokeTest'].each { taskId, className ->
+    tasks.register(taskId, JavaExec) {
+        group = 'verification'
+        dependsOn tasks.named('testClasses')
+        classpath = sourceSets.test.runtimeClasspath
+        mainClass = className
+    }
+    tasks.named('check') { dependsOn tasks.named(taskId) }
+}
+
+// Ocean-origin seeds must find dry ground even when the first 512 blocks are water.
+tasks.register('spawnCheck', JavaExec) {
+    group = 'verification'
+    description = 'Validate safe deterministic spawn selection for large climate/ocean regions'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.worldgen.SpawnFinderPhase4SmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('spawnCheck') }

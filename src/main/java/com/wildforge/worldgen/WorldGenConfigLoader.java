@@ -16,12 +16,20 @@ public final class WorldGenConfigLoader {
     private WorldGenConfigLoader() { }
 
     public static WorldGenSettings loadBuiltIn() throws IOException {
+        return loadBuiltIn(7);
+    }
+
+    /** Revision 6 retains its historical metadata; new worlds use the actual
+     * 0..511 chunk coordinate space rather than an unreachable negative floor. */
+    public static WorldGenSettings loadBuiltIn(int generatorRevision) throws IOException {
+        if (generatorRevision!=6 && generatorRevision!=7)
+            throw new IOException("Unsupported generator revision " + generatorRevision);
         try (InputStream stream = WorldGenConfigLoader.class.getClassLoader().getResourceAsStream(RESOURCE)) {
             if (stream == null) throw new IOException("Missing generated worldgen profile: " + RESOURCE);
             try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
                 JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
                 return new WorldGenSettings(
-                        json.get("min_y").getAsInt(),
+                        generatorRevision==6?json.get("min_y").getAsInt():0,
                         511,
                         json.get("sea_level").getAsInt() + 160,
                         json.get("continent_scale").getAsDouble(),

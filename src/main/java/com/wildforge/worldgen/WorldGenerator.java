@@ -58,6 +58,9 @@ public final class WorldGenerator {
     private final UndergroundBiomeCatalog undergroundBiomes;
     private final UndergroundBiomeSampler undergroundSampler;
     private final HydrologyNetwork hydrology;
+    private final ClimateField climateField;
+    private final MultiNoiseBiomeSource multiNoise;
+    private final int generationRevision;
 
     public WorldGenerator(long seed, WorldGenSettings settings) {
         this(seed, settings, BiomeCatalog.loadBuiltInUnchecked());
@@ -65,7 +68,7 @@ public final class WorldGenerator {
 
     public WorldGenerator(long seed, WorldGenSettings settings, BiomeCatalog biomes) {
         this(seed, settings, biomes, UndergroundBiomeCatalog.loadBuiltInUnchecked(),
-                loadUndergroundSettings());
+                loadUndergroundSettings(), 7);
     }
 
     private static UndergroundGenSettings loadUndergroundSettings() {
@@ -79,6 +82,21 @@ public final class WorldGenerator {
     public WorldGenerator(long seed, WorldGenSettings settings, BiomeCatalog biomes,
                           UndergroundBiomeCatalog undergroundBiomes,
                           UndergroundGenSettings undergroundSettings) {
+        this(seed, settings, biomes, undergroundBiomes, undergroundSettings, 7);
+    }
+
+    public WorldGenerator(long seed, WorldGenSettings settings, int revision) {
+        this(seed, settings, BiomeCatalog.loadBuiltInUnchecked(),
+                UndergroundBiomeCatalog.loadBuiltInUnchecked(), loadUndergroundSettings(), revision);
+    }
+
+    public WorldGenerator(long seed, WorldGenSettings settings, BiomeCatalog biomes,
+                          UndergroundBiomeCatalog undergroundBiomes,
+                          UndergroundGenSettings undergroundSettings, int revision) {
+        if (revision != 6 && revision != 7) throw new IllegalArgumentException("Unsupported worldgen revision: " + revision);
+        generationRevision = revision;
+        climateField = new ClimateField(seed, settings);
+        multiNoise = new MultiNoiseBiomeSource(biomes, seed);
         this.seed = seed;
         this.settings = Objects.requireNonNull(settings, "settings");
         this.biomes = Objects.requireNonNull(biomes, "biomes");
@@ -90,6 +108,8 @@ public final class WorldGenerator {
     }
 
     public long seed() { return seed; }
+    public int generationRevision() { return generationRevision; }
+    public ClimateField.Sample climateAt(int x, int z) { return climateField.sample(x,z); }
     public WorldGenSettings settings() { return settings; }
     public BiomeCatalog biomes() { return biomes; }
     public UndergroundBiomeCatalog undergroundBiomes() { return undergroundBiomes; }
@@ -127,6 +147,13 @@ public final class WorldGenerator {
                             double upland, double detail, double river) {}
 
     public Geography geographyAt(int x, int z) {
+        if (generationRevision >= 7) {
+            ClimateField.Sample c=climateField.sample(x,z);
+            return new Geography(c.continentalness(),c.erosion(),c.peaksValleys(),
+                    noise.fbm2(x/1050.0,z/1050.0,3,UPLANDS),
+                    noise.fbm2(x/settings.detailScale(),z/settings.detailScale(),2,DETAIL),
+                    hydrology.sample(x,z,baseTerrainHeight(x,z)).drainage());
+        }
         double c = continentalness(x,z);
         double erosion = noise.fbm2(x / 500.0, z / 500.0, 3, EROSION);
         double ridge = 1.0 - Math.abs(noise.fbm2(x / settings.mountainsScale(),
@@ -143,6 +170,9 @@ public final class WorldGenerator {
 
     /** Deterministic regional classification; never depends on chunk-load order. */
     public Landform landformAt(int x, int z) {
+        if (generationRevision>=7)
+            return climateLandform(climateField.sample(x,z),
+                    noise.fbm2(x/1050.0,z/1050.0,3,UPLANDS));
         Geography g = geographyAt(x, z);
         double c = g.continentalness();
         double shoreline = smoothstep(settings.oceanThreshold() - 0.13,
@@ -160,12 +190,35 @@ public final class WorldGenerator {
         return Landform.PLAIN;
     }
 
+    /** Same climatic landform test used by new terrain and biome selection;
+     * no hydrology trace or duplicate erosion pass per surface lookup. */
+    private Landform climateLandform(ClimateField.Sample c,double uplandField) {
+        double continental=c.continentalness();
+        double coast=smoothstep(settings.oceanThreshold()-.13,settings.oceanThreshold()+.18,continental);
+        if(continental<settings.oceanThreshold()-.075)return Landform.OCEAN_SHELF;
+        if(coast<.70)return Landform.COASTAL_LOWLAND;
+        double uplift=smoothstep(-.20,.47,uplandField+continental*.35);
+        double rugged=1.0-smoothstep(-.32,.45,c.erosion());
+        if(uplift>.60 && rugged>.48 && c.peaksValleys()>.60)return Landform.MOUNTAIN_RANGE;
+        if(uplift>.49 && rugged>.46)return Landform.FOOTHILLS;
+        if(uplift>.57 && rugged<.40)return Landform.ERODED_PLATEAU;
+        if(c.erosion()>.24 && uplandField<-.05)return Landform.BASIN;
+        return uplift>.33?Landform.ROLLING_UPLAND:Landform.PLAIN;
+    }
+
     private double terrainHeight(int x, int z) {
         double base=baseTerrainHeight(x,z);
         return hydrology.sample(x,z,base).groundY();
     }
 
     private double baseTerrainHeight(int x, int z) {
+        if (generationRevision >= 7) {
+            ClimateField.Sample c = climateField.sample(x,z);
+            double upland = noise.fbm2(x/1050.0,z/1050.0,3,UPLANDS);
+            double hills = noise.fbm2(x/settings.hillsScale(),z/settings.hillsScale(),3,HILLS);
+            double detail = noise.fbm2(x/settings.detailScale(),z/settings.detailScale(),2,DETAIL);
+            return TerrainShaper.height(c, settings, hills, detail, upland);
+        }
         double continent = continentalness(x, z);
         double sea = settings.seaLevel();
         double ocean = settings.oceanThreshold();
@@ -242,7 +295,8 @@ public final class WorldGenerator {
     }
 
     private double continentalness(int x, int z) {
-        return noise.fbm2(x / settings.continentScale(), z / settings.continentScale(), 5, CONTINENT);
+        return generationRevision>=7 ? climateField.sample(x,z).continentalness()
+                : noise.fbm2(x / settings.continentScale(), z / settings.continentScale(), 5, CONTINENT);
     }
 
     /** Rock formation is generated independently of the surface biome and climate. */
@@ -274,6 +328,7 @@ public final class WorldGenerator {
         double continent = continentalness(x, z);
         HydrologyNetwork.Sample drainage=hydrology.sample(x,z,baseTerrainHeight(x,z));
         int y=(int)Math.round(drainage.groundY());
+        ClimateField.Sample climate = generationRevision>=7 ? climateField.sample(x,z) : null;
         double temperature = clamp(0.5
                 + noise.fbm2(x / settings.climateScale(), z / settings.climateScale(), 3, TEMP) * 0.48
                 - Math.max(0, y - settings.seaLevel()) * 0.0035
@@ -281,19 +336,35 @@ public final class WorldGenerator {
         double rainfall = clamp(0.5
                 + noise.fbm2((x + 8000) / settings.climateScale(),
                         (z - 8000) / settings.climateScale(), 3, MOISTURE) * 0.60, 0, 1);
+        if (climate != null) {
+            temperature=clamp(climate.temperature() - Math.max(0,y-settings.seaLevel())*.0030,0,1);
+            rainfall=climate.humidity();
+        }
         int depth=Math.max(0,settings.seaLevel()-y);
-        WaterBody water=depth>0?WaterBody.OCEAN:drainage.wet() ?
+        WaterBody water=(depth>0 && (generationRevision<7 || continent<settings.oceanThreshold()+.07))
+                ?WaterBody.OCEAN:drainage.wet() ?
                 drainage.kind()==HydrologyNetwork.Kind.LAKE?WaterBody.LAKE:WaterBody.RIVER:WaterBody.LAND;
         boolean river=water==WaterBody.RIVER;
         int waterY=water==WaterBody.OCEAN?settings.seaLevel():
                 water==WaterBody.LAND?y:drainage.waterY();
         boolean coastal = continent <= settings.oceanThreshold() + 0.11
                 && y >= settings.seaLevel() - 10 && y <= settings.seaLevel() + 23;
+        // Modern wetlands should form along real waterways AND in broad, low,
+        // humid basins. Minecraft's swamps are ecosystems, not only river beds.
+        // Keep v6's original rule unchanged for saved terrain compatibility.
         boolean floodplain = river || water==WaterBody.LAKE ||
                 (drainage.drainage()>0.4 && y<=settings.seaLevel()+45);
+        if(climate!=null && !floodplain && y<=settings.seaLevel()+38 && rainfall>=.58) {
+            double basinWetness=noise.fbm2(x/275.0,z/275.0,2,0x71f10dL);
+            floodplain=(drainage.drainage()>.08 || basinWetness>.025)
+                    && (climate.erosion()>-.18 || coastal);
+        }
         Geology geology = geologyAt(x, z);
-        Biome biome = regionalBiome(x, z, temperature, rainfall,
-                y - settings.seaLevel(), geology, coastal, floodplain);
+        Biome biome = climate == null ? regionalBiome(x, z, temperature, rainfall,
+                y - settings.seaLevel(), geology, coastal, floodplain)
+                : multiNoise.select(x,z,climate,temperature,y-settings.seaLevel(),
+                    geology,coastal,floodplain,climateLandform(climate,
+                        noise.fbm2(x/1050.0,z/1050.0,3,UPLANDS)));
         BiomeProfile profile = biomes.get(biome);
         return new Surface(y, biome, temperature, rainfall, continent, river,
                 geology, water, depth, coastal,
@@ -413,7 +484,7 @@ public final class WorldGenerator {
                 : biomes.select(temp, rain, height, geology, coastal, floodplain);
     }
 
-    private static double landformAffinity(Biome biome, Landform landform) {
+    static double landformAffinity(Biome biome, Landform landform) {
         return switch (biome) {
             case FROSTSPIRE_HIGHLANDS -> landform == Landform.MOUNTAIN_RANGE ? 5.0
                     : landform == Landform.FOOTHILLS ? 2.5 : -4.0;

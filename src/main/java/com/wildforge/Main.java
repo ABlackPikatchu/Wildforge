@@ -7,6 +7,10 @@ import com.wildforge.content.ContentLoader;
 import com.wildforge.core.DisplayModeController;
 import com.wildforge.core.DeveloperCommands;
 import com.wildforge.core.FrameTiming;
+import com.wildforge.core.FixedStepClock;
+import com.wildforge.core.GameSimulation;
+import com.wildforge.core.GameSession;
+import com.wildforge.core.NewWorldRequest;
 import com.wildforge.core.GameSettings;
 import com.wildforge.core.InputController;
 import com.wildforge.core.KeyBindings;
@@ -30,7 +34,6 @@ import static org.lwjgl.glfw.GLFW.*;
 
 public final class Main implements InputController.Callbacks {
     private static final long MIN_SAVING_SCREEN_NANOS = 400_000_000L;
-    private static final float MAX_FRAME_DELTA_SECONDS = 0.1f;
 
     private long window;
     private Renderer renderer;
@@ -38,6 +41,7 @@ public final class Main implements InputController.Callbacks {
     private InputController inputController;
     private TerrainMesh terrain;
     private Player player;
+    private GameSession gameSession;
     private final WorldItemManager worldItems = new WorldItemManager();
     private final SaveManager saveManager = new SaveManager();
     private final GameSettings settings = GameSettings.load();
@@ -59,6 +63,8 @@ public final class Main implements InputController.Callbacks {
     // Physical track is held constant while the entire UI changes size.
     private float[] uiScaleDragTrack;
     private final FrameTiming frameTiming = new FrameTiming();
+    private final FixedStepClock simulationClock = FixedStepClock.playerPhysics();
+    private final GameSimulation simulation = new GameSimulation();
     private final DisplayModeController displayController = new DisplayModeController();
     private final SaveSelectionModel saveSelection = new SaveSelectionModel(saveManager);
     private KeyBindings.Action bindingToCapture;
@@ -104,21 +110,16 @@ public final class Main implements InputController.Callbacks {
     private int creativeDraggingCount=64;
     private String newWorldNamePending;
     private boolean focusRetryPending = true;
-    private static long stableSeed(String text){
-        long hash=0xcbf29ce484222325L;
-        for(int i=0;i<text.length();i++){hash^=text.charAt(i);hash*=0x100000001b3L;}
-        return hash;
-    }
     private void updateSeedText(){statusMessage="";}
     private void createWorldFromMenu(){
         if (saveManager.nextAvailableSlot() < 0) { statusMessage="NO FREE WORLD SLOTS"; return; }
-        String input=seedEntry.toString().trim();
-        try{requestedNewSeed=input.isEmpty()?new java.security.SecureRandom().nextLong():Long.parseLong(input);}
-        catch(NumberFormatException ex){requestedNewSeed=stableSeed(input);}
-        System.out.println("Creating new unique world seed: " + requestedNewSeed);
-        newWorldNamePending=worldNameEntry.toString().trim();
-        pendingCreateGameMode=selectedNewGameMode;
-        pendingNewCheats=selectedNewCheats;
+        NewWorldRequest request=NewWorldRequest.fromDraft(seedEntry.toString(),
+                worldNameEntry.toString(),selectedNewGameMode,selectedNewCheats);
+        requestedNewSeed=request.seed();
+        newWorldNamePending=request.name();
+        pendingCreateGameMode=request.gameMode();
+        pendingNewCheats=request.cheats();
+        System.out.println("Creating world seed: " + request.seed());
         beginLoadingSave(saveManager.nextAvailableSlot());
     }
 
@@ -147,6 +148,7 @@ public final class Main implements InputController.Callbacks {
             initialize();
             loop();
         } finally {
+            if (terrain != null) terrain.close();
             if (renderer != null) {
                 renderer.close();
             }
@@ -197,6 +199,7 @@ public final class Main implements InputController.Callbacks {
 
         terrain = new TerrainMesh();
         terrain.setDistances(settings.renderDistance(),settings.simulationDistance());
+        gameSession = new GameSession(terrain,worldItems,saveManager,gameContent);
         player = new Player(terrain, worldItems, gameContent);
         player.setKeyBindings(settings.keyBindings());
         renderer = new Renderer(terrain);
@@ -895,23 +898,15 @@ public final class Main implements InputController.Callbacks {
 
     private void loadWorld() {
         loadPending = false;
+        simulationClock.reset();
+        simulation.reset();
         consoleOpen=false; consoleFeedback=""; consoleInput.setLength(0);
         try {
-            if(requestedNewSeed != null){
-                terrain.newWorld(requestedNewSeed);
-                requestedNewSeed=null;
-            } else saveManager.loadTerrain(activeSaveSlot, terrain);
-            worldItems.clear();
-            player = new Player(terrain, worldItems, gameContent);
-            player.setKeyBindings(settings.keyBindings());
-            saveManager.loadPlayer(activeSaveSlot, player, terrain);
-            saveManager.loadItems(activeSaveSlot, worldItems, terrain);
-            if(pendingCreateGameMode!=null){
-                player.setGameMode(pendingCreateGameMode);pendingCreateGameMode=null;
-                activeWorldCheats=pendingNewCheats;
-                saveManager.saveCheatsEnabled(activeSaveSlot,activeWorldCheats);
-            } else activeWorldCheats=saveManager.cheatsEnabled(activeSaveSlot);
-            terrain.streamAround(player.getX(),player.getZ());
+            player = gameSession.open(activeSaveSlot,requestedNewSeed,pendingCreateGameMode,
+                    pendingNewCheats,settings.keyBindings());
+            requestedNewSeed=null;
+            pendingCreateGameMode=null;
+            activeWorldCheats=gameSession.cheatsEnabled();
             worldLoaded = true;
             preloadingWorld = true;
             statusMessage = "PREPARING NEARBY CHUNKS";
@@ -934,9 +929,9 @@ public final class Main implements InputController.Callbacks {
             if (!saveManager.isValidSlot(activeSaveSlot)) {
                 throw new IOException("No save slot is selected");
             }
-            saveManager.save(activeSaveSlot, terrain, player, worldItems);
+            gameSession.save(newWorldNamePending);
             worldLoaded = true;
-            if(newWorldNamePending!=null){saveManager.saveWorldName(activeSaveSlot,newWorldNamePending);newWorldNamePending=null;}
+            newWorldNamePending=null;
             refreshSaveSlots();
 
             if (quitAfterSave) {
@@ -946,6 +941,7 @@ public final class Main implements InputController.Callbacks {
                 statusMessage = "";
                 worldLoaded = false;
                 activeSaveSlot = -1;
+                gameSession.leave();
                 returnToMainMenuAfterSave = false;
             } else {
                 screenMode = HudRenderer.ScreenMode.PAUSED;
@@ -1096,9 +1092,8 @@ public final class Main implements InputController.Callbacks {
         while (!glfwWindowShouldClose(window)) {
             long frameStartNanos = System.nanoTime();
             double now = glfwGetTime();
-            float deltaTime = (float) (now - lastFrameTime);
+            double elapsedSeconds = Math.max(0.0, now - lastFrameTime);
             lastFrameTime = now;
-            deltaTime = Math.max(0.0f, Math.min(deltaTime, MAX_FRAME_DELTA_SECONDS));
 
             glfwPollEvents();
             if(focusRetryPending && launchSplashFrames==0){
@@ -1109,13 +1104,16 @@ public final class Main implements InputController.Callbacks {
             handleEscapeKey();
 
             if (screenMode == HudRenderer.ScreenMode.PLAYING) {
-                terrain.setDistances(settings.renderDistance(),settings.simulationDistance());
+                terrain.setDistances(settings.renderDistance(), settings.simulationDistance());
+                // Pump chunk workers once per rendered frame, not once per physics tick.
                 terrain.streamAround(player.getX(), player.getZ());
-                terrain.tickFluids(deltaTime); // fixed 20 Hz fluid simulation, independent of FPS
-                player.update(window, terrain, deltaTime);
-                if (screenMode == HudRenderer.ScreenMode.PLAYING) {
-                    worldItems.update(deltaTime, player, terrain);
-                }
+                simulationClock.advance(elapsedSeconds, () -> {
+                    if (screenMode == HudRenderer.ScreenMode.PLAYING)
+                        simulation.step(window, terrain, player, worldItems);
+                });
+            } else {
+                // Paused/menus/loading must not accumulate deferred movement or fluid ticks.
+                simulationClock.reset();
             }
 
             glfwGetFramebufferSize(window, framebufferWidth, framebufferHeight);
@@ -1127,7 +1125,9 @@ public final class Main implements InputController.Callbacks {
                     player.getCamera(),
                     player,
                     screenMode,
-                    !worldLoaded
+                    !worldLoaded,
+                    screenMode==HudRenderer.ScreenMode.PLAYING
+                        ? (float)simulationClock.interpolationAlpha() : 1f
             );
 
             float hudMouseX = (float) mouseX;

@@ -9,21 +9,12 @@ final class ChunkColumn {
     final int cx, cz;
     byte[] blocks = new byte[TerrainMesh.CHUNK_SIZE * TerrainMesh.CHUNK_SIZE * TerrainMesh.WORLD_HEIGHT];
     PaletteColumn compact;
-    float[] lodVertices;
-    float[] lodFluidVertices;
-    int lodRevision;
-    final float[][] sectionVertices = new float[TerrainMesh.SECTION_COUNT][];
-    final float[][] fluidVertices = new float[TerrainMesh.SECTION_COUNT][];
-    final int[] sectionRevision = new int[TerrainMesh.SECTION_COUNT];
-    final int[] fluidRevision = new int[TerrainMesh.SECTION_COUNT];
+    final com.wildforge.world.mesh.ChunkRenderData render =
+            new com.wildforge.world.mesh.ChunkRenderData(TerrainMesh.SECTION_COUNT);
 
     ChunkColumn(int cx, int cz) {
         this.cx = cx;
         this.cz = cz;
-        for (int section = 0; section < TerrainMesh.SECTION_COUNT; section++) {
-            sectionVertices[section] = new float[0];
-            fluidVertices[section] = new float[0];
-        }
     }
 
     byte get(int index) { return compact == null ? blocks[index] : compact.get(index); }

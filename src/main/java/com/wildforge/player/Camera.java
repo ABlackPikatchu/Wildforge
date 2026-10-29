@@ -6,6 +6,8 @@ import org.joml.Vector3f;
 
 public final class Camera {
     private final Vector3f position = new Vector3f();
+    private final Vector3f previousPosition = new Vector3f();
+    private boolean hasPhysicsSnapshot;
     private float yaw = -90.0f;
     private float pitch = 0.0f;
 
@@ -15,6 +17,28 @@ public final class Camera {
 
     public void setPosition(float x, float y, float z) {
         position.set(x, y, z);
+        if(!hasPhysicsSnapshot)previousPosition.set(position);
+    }
+    /** Record the previous authoritative position before each fixed physics step. */
+    public void beginPhysicsStep() {
+        previousPosition.set(position);
+        hasPhysicsSnapshot=true;
+    }
+    /** Teleports, saves and mode switches must never interpolate across discontinuities. */
+    public void snapInterpolation() {
+        previousPosition.set(position);
+        hasPhysicsSnapshot=false;
+    }
+    /** Render-only camera: never use this position for targeting, collision or saves. */
+    public void copyInterpolatedTo(Camera target,float alpha) {
+        if(target==this)throw new IllegalArgumentException("Render view must be separate");
+        if(!Float.isFinite(alpha))throw new IllegalArgumentException("Invalid interpolation fraction");
+        float fraction=Math.max(0f,Math.min(1f,alpha));
+        target.position.set(previousPosition).lerp(position,hasPhysicsSnapshot?fraction:1f);
+        target.previousPosition.set(target.position);
+        target.hasPhysicsSnapshot=false;
+        target.yaw=yaw;
+        target.pitch=pitch;
     }
 
     public void rotate(float deltaX, float deltaY) {

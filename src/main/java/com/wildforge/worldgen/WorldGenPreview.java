@@ -26,6 +26,8 @@ public final class WorldGenPreview {
         BufferedImage rocks = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         BufferedImage continents = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         BufferedImage erosion = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        BufferedImage temperature = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        BufferedImage humidity = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         BufferedImage ridges = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         BufferedImage relief = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         BufferedImage landformTypes = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
@@ -42,6 +44,9 @@ public final class WorldGenPreview {
                 int z = (pz - height / 2) * step;
                 WorldGenerator.Surface surface = generator.surface(x, z);
                 WorldGenerator.Geography g = generator.geographyAt(x,z);
+                ClimateField.Sample climate = generator.climateAt(x,z);
+                temperature.setRGB(px,pz,gradient(climate.temperature()*2.0-1.0).getRGB());
+                humidity.setRGB(px,pz,gradient(climate.humidity()*2.0-1.0).getRGB());
                 continents.setRGB(px,pz,gradient(g.continentalness()).getRGB());
                 erosion.setRGB(px,pz,gradient(g.erosion()).getRGB());
                 ridges.setRGB(px,pz,gradient(g.ridges()*2.0-1.0).getRGB());
@@ -89,6 +94,8 @@ public final class WorldGenPreview {
         ImageIO.write(rocks, "png", rockPath.toFile());
         ImageIO.write(continents, "png", destination.resolve("continentalness_seed_"+seed+".png").toFile());
         ImageIO.write(erosion, "png", destination.resolve("erosion_seed_"+seed+".png").toFile());
+        ImageIO.write(temperature, "png", destination.resolve("temperature_seed_"+seed+".png").toFile());
+        ImageIO.write(humidity, "png", destination.resolve("humidity_seed_"+seed+".png").toFile());
         ImageIO.write(ridges, "png", destination.resolve("ridges_seed_"+seed+".png").toFile());
         ImageIO.write(relief, "png", destination.resolve("landforms_seed_"+seed+".png").toFile());
         ImageIO.write(landformTypes, "png", destination.resolve("landform_types_seed_"+seed+".png").toFile());
