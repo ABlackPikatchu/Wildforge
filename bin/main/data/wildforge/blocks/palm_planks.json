@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:palm_planks",
+  "numeric_id": 142,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:palm_planks",
+    "side": "wildforge:palm_planks",
+    "bottom": "wildforge:palm_planks"
+  },
+  "drops": [
+    {
+      "item": "wildforge:palm_planks_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:palm_planks_block"
+}

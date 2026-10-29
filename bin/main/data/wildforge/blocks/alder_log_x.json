@@ -1,0 +1,19 @@
+{
+  "id": "wildforge:alder_log_x",
+  "numeric_id": 149,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:alder_log_top",
+    "side": "wildforge:alder_log_side",
+    "bottom": "wildforge:alder_log_top"
+  },
+  "drops": [
+    {
+      "item": "wildforge:alder_log_block",
+      "count": 1
+    }
+  ]
+}

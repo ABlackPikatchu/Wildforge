@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:ocean_coral_sand",
+  "numeric_id": 127,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:ocean_coral_sand",
+    "side": "wildforge:ocean_coral_sand",
+    "bottom": "wildforge:ocean_coral_sand"
+  },
+  "drops": [
+    {
+      "item": "wildforge:ocean_coral_sand_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:ocean_coral_sand_block"
+}

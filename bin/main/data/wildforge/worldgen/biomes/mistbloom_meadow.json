@@ -31,8 +31,12 @@
     "max_plant_slope": 3,
     "trees": [
       {
+        "id": "alder",
+        "weight": 3
+      },
+      {
         "id": "willow",
-        "weight": 2
+        "weight": 1
       }
     ],
     "plants": [

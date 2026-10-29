@@ -33,12 +33,16 @@
     "max_plant_slope": 4,
     "trees": [
       {
-        "id": "pine",
+        "id": "spruce",
         "weight": 7
       },
       {
-        "id": "oak",
-        "weight": 2
+        "id": "pine",
+        "weight": 5
+      },
+      {
+        "id": "birch",
+        "weight": 1
       }
     ],
     "plants": [

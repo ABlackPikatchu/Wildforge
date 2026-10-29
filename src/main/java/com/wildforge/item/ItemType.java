@@ -159,7 +159,29 @@ public enum ItemType {
     DIAMOND_HOE(145, "Diamond Hoe", 1, null),
     DIAMOND_PICKAXE(146, "Diamond Pickaxe", 1, null),
     DIAMOND_SHOVEL(147, "Diamond Shovel", 1, null),
-    DIAMOND_SWORD(148, "Diamond Sword", 1, null);
+    DIAMOND_SWORD(148, "Diamond Sword", 1, null),
+    OCEAN_SILTY_SAND_BLOCK(149, "Ocean Silty Sand", 64, BlockType.OCEAN_SILTY_SAND),
+    OCEAN_SHELL_GRIT_BLOCK(150, "Ocean Shell Grit", 64, BlockType.OCEAN_SHELL_GRIT),
+    OCEAN_COLD_GRAVEL_BLOCK(151, "Ocean Cold Gravel", 64, BlockType.OCEAN_COLD_GRAVEL),
+    OCEAN_ALGAE_STONE_BLOCK(152, "Ocean Algae Stone", 64, BlockType.OCEAN_ALGAE_STONE),
+    OCEAN_DARK_SILT_BLOCK(153, "Ocean Dark Silt", 64, BlockType.OCEAN_DARK_SILT),
+    OCEAN_BASALT_PEBBLES_BLOCK(154, "Ocean Basalt Pebbles", 64, BlockType.OCEAN_BASALT_PEBBLES),
+    OCEAN_CORAL_SAND_BLOCK(155, "Ocean Coral Sand", 64, BlockType.OCEAN_CORAL_SAND),
+    OCEAN_REEF_LIMESTONE_BLOCK(156, "Ocean Reef Limestone", 64, BlockType.OCEAN_REEF_LIMESTONE),
+    OCEAN_DEAD_CORAL_RUBBLE_BLOCK(157, "Ocean Dead Coral Rubble", 64, BlockType.OCEAN_DEAD_CORAL_RUBBLE),
+    OCEAN_ABYSSAL_SILT_BLOCK(158, "Ocean Abyssal Silt", 64, BlockType.OCEAN_ABYSSAL_SILT),
+    BIRCH_LOG_BLOCK(159, "Birch Log", 64, BlockType.BIRCH_LOG),
+    BIRCH_PLANKS_BLOCK(160, "Birch Planks", 64, BlockType.BIRCH_PLANKS),
+    SPRUCE_LOG_BLOCK(161, "Spruce Log", 64, BlockType.SPRUCE_LOG),
+    SPRUCE_PLANKS_BLOCK(162, "Spruce Planks", 64, BlockType.SPRUCE_PLANKS),
+    ACACIA_LOG_BLOCK(163, "Acacia Log", 64, BlockType.ACACIA_LOG),
+    ACACIA_PLANKS_BLOCK(164, "Acacia Planks", 64, BlockType.ACACIA_PLANKS),
+    ALDER_LOG_BLOCK(165, "Alder Log", 64, BlockType.ALDER_LOG),
+    ALDER_PLANKS_BLOCK(166, "Alder Planks", 64, BlockType.ALDER_PLANKS),
+    MANGROVE_LOG_BLOCK(167, "Mangrove Log", 64, BlockType.MANGROVE_LOG),
+    MANGROVE_PLANKS_BLOCK(168, "Mangrove Planks", 64, BlockType.MANGROVE_PLANKS),
+    PALM_LOG_BLOCK(169, "Palm Log", 64, BlockType.PALM_LOG),
+    PALM_PLANKS_BLOCK(170, "Palm Planks", 64, BlockType.PALM_PLANKS);
 
     private final int id;
     private final String displayName;

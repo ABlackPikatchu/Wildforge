@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:palm_planks_block",
+  "numeric_id": 170,
+  "max_stack_size": 64,
+  "places_block": "wildforge:palm_planks",
+  "model": "wildforge:item/block"
+}

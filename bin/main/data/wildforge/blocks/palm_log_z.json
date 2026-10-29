@@ -1,0 +1,19 @@
+{
+  "id": "wildforge:palm_log_z",
+  "numeric_id": 154,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:palm_log_top",
+    "side": "wildforge:palm_log_side",
+    "bottom": "wildforge:palm_log_top"
+  },
+  "drops": [
+    {
+      "item": "wildforge:palm_log_block",
+      "count": 1
+    }
+  ]
+}

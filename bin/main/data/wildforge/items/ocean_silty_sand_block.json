@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:ocean_silty_sand_block",
+  "numeric_id": 149,
+  "max_stack_size": 64,
+  "places_block": "wildforge:ocean_silty_sand",
+  "model": "wildforge:item/block"
+}

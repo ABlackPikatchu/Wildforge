@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:ocean_cold_gravel",
+  "numeric_id": 123,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:ocean_cold_gravel",
+    "side": "wildforge:ocean_cold_gravel",
+    "bottom": "wildforge:ocean_cold_gravel"
+  },
+  "drops": [
+    {
+      "item": "wildforge:ocean_cold_gravel_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:ocean_cold_gravel_block"
+}

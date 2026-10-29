@@ -32,7 +32,11 @@
     "trees": [
       {
         "id": "cypress",
-        "weight": 6
+        "weight": 5
+      },
+      {
+        "id": "alder",
+        "weight": 5
       },
       {
         "id": "willow",

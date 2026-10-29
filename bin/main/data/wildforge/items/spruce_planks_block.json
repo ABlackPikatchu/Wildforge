@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:spruce_planks_block",
+  "numeric_id": 162,
+  "max_stack_size": 64,
+  "places_block": "wildforge:spruce_planks",
+  "model": "wildforge:item/block"
+}

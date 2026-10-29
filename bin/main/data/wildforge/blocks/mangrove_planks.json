@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:mangrove_planks",
+  "numeric_id": 140,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:mangrove_planks",
+    "side": "wildforge:mangrove_planks",
+    "bottom": "wildforge:mangrove_planks"
+  },
+  "drops": [
+    {
+      "item": "wildforge:mangrove_planks_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:mangrove_planks_block"
+}

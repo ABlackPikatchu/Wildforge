@@ -1,0 +1,19 @@
+{
+  "id": "wildforge:birch_log_z",
+  "numeric_id": 144,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:birch_log_top",
+    "side": "wildforge:birch_log_side",
+    "bottom": "wildforge:birch_log_top"
+  },
+  "drops": [
+    {
+      "item": "wildforge:birch_log_block",
+      "count": 1
+    }
+  ]
+}

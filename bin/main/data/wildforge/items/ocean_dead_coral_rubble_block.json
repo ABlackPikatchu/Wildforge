@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:ocean_dead_coral_rubble_block",
+  "numeric_id": 157,
+  "max_stack_size": 64,
+  "places_block": "wildforge:ocean_dead_coral_rubble",
+  "model": "wildforge:item/block"
+}

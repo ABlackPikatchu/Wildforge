@@ -211,3 +211,12 @@ tasks.register('caveCheck', JavaExec) {
     mainClass = 'com.wildforge.worldgen.CaveGenerationSmokeTest'
 }
 tasks.named('check') { dependsOn tasks.named('caveCheck') }
+
+// Added with the ocean + tree asset expansion. Does not require an OpenGL context.
+tasks.register('oceanTreeCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify added tree/ocean IDs, oriented log drops, texture layers and registry counts'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.worldgen.OceanTreeIntegrationSmokeTest'
+}

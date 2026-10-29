@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:acacia_planks_block",
+  "numeric_id": 164,
+  "max_stack_size": 64,
+  "places_block": "wildforge:acacia_planks",
+  "model": "wildforge:item/block"
+}

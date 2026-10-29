@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:acacia_planks",
+  "numeric_id": 136,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:acacia_planks",
+    "side": "wildforge:acacia_planks",
+    "bottom": "wildforge:acacia_planks"
+  },
+  "drops": [
+    {
+      "item": "wildforge:acacia_planks_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:acacia_planks_block"
+}

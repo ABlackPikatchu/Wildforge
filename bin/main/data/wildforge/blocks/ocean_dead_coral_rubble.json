@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:ocean_dead_coral_rubble",
+  "numeric_id": 129,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:ocean_dead_coral_rubble",
+    "side": "wildforge:ocean_dead_coral_rubble",
+    "bottom": "wildforge:ocean_dead_coral_rubble"
+  },
+  "drops": [
+    {
+      "item": "wildforge:ocean_dead_coral_rubble_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:ocean_dead_coral_rubble_block"
+}

@@ -31,8 +31,12 @@
     "max_plant_slope": 4,
     "trees": [
       {
+        "id": "acacia",
+        "weight": 7
+      },
+      {
         "id": "oak",
-        "weight": 3
+        "weight": 1
       }
     ],
     "plants": [

@@ -131,7 +131,41 @@ public enum BlockType {
     WILLOW_LOG_X(117,100,1,true,true,103,102,103),
     WILLOW_LOG_Z(118,100,1,true,true,103,102,103),
     CYPRESS_LOG_X(119,102,1,true,true,106,105,106),
-    CYPRESS_LOG_Z(120,102,1,true,true,106,105,106);
+    CYPRESS_LOG_Z(120,102,1,true,true,106,105,106),
+    OCEAN_SILTY_SAND(121, 149, 1, true, true, 201, 201, 201),
+    OCEAN_SHELL_GRIT(122, 150, 1, true, true, 202, 202, 202),
+    OCEAN_COLD_GRAVEL(123, 151, 1, true, true, 203, 203, 203),
+    OCEAN_ALGAE_STONE(124, 152, 1, true, true, 204, 204, 204),
+    OCEAN_DARK_SILT(125, 153, 1, true, true, 205, 205, 205),
+    OCEAN_BASALT_PEBBLES(126, 154, 1, true, true, 206, 206, 206),
+    OCEAN_CORAL_SAND(127, 155, 1, true, true, 207, 207, 207),
+    OCEAN_REEF_LIMESTONE(128, 156, 1, true, true, 208, 208, 208),
+    OCEAN_DEAD_CORAL_RUBBLE(129, 157, 1, true, true, 209, 209, 209),
+    OCEAN_ABYSSAL_SILT(130, 158, 1, true, true, 210, 210, 210),
+    BIRCH_LOG(131, 159, 1, true, true, 178, 177, 178),
+    BIRCH_PLANKS(132, 160, 1, true, true, 179, 179, 179),
+    SPRUCE_LOG(133, 161, 1, true, true, 182, 181, 182),
+    SPRUCE_PLANKS(134, 162, 1, true, true, 183, 183, 183),
+    ACACIA_LOG(135, 163, 1, true, true, 186, 185, 186),
+    ACACIA_PLANKS(136, 164, 1, true, true, 187, 187, 187),
+    ALDER_LOG(137, 165, 1, true, true, 190, 189, 190),
+    ALDER_PLANKS(138, 166, 1, true, true, 191, 191, 191),
+    MANGROVE_LOG(139, 167, 1, true, true, 194, 193, 194),
+    MANGROVE_PLANKS(140, 168, 1, true, true, 195, 195, 195),
+    PALM_LOG(141, 169, 1, true, true, 198, 197, 198),
+    PALM_PLANKS(142, 170, 1, true, true, 199, 199, 199),
+    BIRCH_LOG_X(143, 159, 1, true, true, 178, 177, 178),
+    BIRCH_LOG_Z(144, 159, 1, true, true, 178, 177, 178),
+    SPRUCE_LOG_X(145, 161, 1, true, true, 182, 181, 182),
+    SPRUCE_LOG_Z(146, 161, 1, true, true, 182, 181, 182),
+    ACACIA_LOG_X(147, 163, 1, true, true, 186, 185, 186),
+    ACACIA_LOG_Z(148, 163, 1, true, true, 186, 185, 186),
+    ALDER_LOG_X(149, 165, 1, true, true, 190, 189, 190),
+    ALDER_LOG_Z(150, 165, 1, true, true, 190, 189, 190),
+    MANGROVE_LOG_X(151, 167, 1, true, true, 194, 193, 194),
+    MANGROVE_LOG_Z(152, 167, 1, true, true, 194, 193, 194),
+    PALM_LOG_X(153, 169, 1, true, true, 198, 197, 198),
+    PALM_LOG_Z(154, 169, 1, true, true, 198, 197, 198);
 
     // Texture-array layer IDs. Keep these aligned with BlockTextures.
     public static final int GRASS_TOP_TEXTURE = 0;
@@ -200,11 +234,13 @@ public enum BlockType {
     /** Face axis: 0 = X face, 1 = Y face, 2 = Z face. */
     public int textureForAxis(int faceAxis) {
         boolean xAxis = switch(this) {
-            case OAK_LOG_X,PINE_LOG_X,MAPLE_LOG_X,WILLOW_LOG_X,CYPRESS_LOG_X -> true;
+            case OAK_LOG_X,PINE_LOG_X,MAPLE_LOG_X,WILLOW_LOG_X,CYPRESS_LOG_X,
+                 BIRCH_LOG_X, SPRUCE_LOG_X, ACACIA_LOG_X, ALDER_LOG_X, MANGROVE_LOG_X, PALM_LOG_X -> true;
             default -> false;
         };
         boolean zAxis = switch(this) {
-            case OAK_LOG_Z,PINE_LOG_Z,MAPLE_LOG_Z,WILLOW_LOG_Z,CYPRESS_LOG_Z -> true;
+            case OAK_LOG_Z,PINE_LOG_Z,MAPLE_LOG_Z,WILLOW_LOG_Z,CYPRESS_LOG_Z,
+                 BIRCH_LOG_Z, SPRUCE_LOG_Z, ACACIA_LOG_Z, ALDER_LOG_Z, MANGROVE_LOG_Z, PALM_LOG_Z -> true;
             default -> false;
         };
         if (xAxis || zAxis)
@@ -214,7 +250,8 @@ public enum BlockType {
     public boolean isLog() {return switch(this) {
         case OAK_LOG,OAK_LOG_X,OAK_LOG_Z,PINE_LOG,PINE_LOG_X,PINE_LOG_Z,
              MAPLE_LOG,MAPLE_LOG_X,MAPLE_LOG_Z,WILLOW_LOG,WILLOW_LOG_X,WILLOW_LOG_Z,
-             CYPRESS_LOG,CYPRESS_LOG_X,CYPRESS_LOG_Z -> true;
+             CYPRESS_LOG,CYPRESS_LOG_X,CYPRESS_LOG_Z,
+                 BIRCH_LOG_Z, SPRUCE_LOG_Z, ACACIA_LOG_Z, ALDER_LOG_Z, MANGROVE_LOG_Z, PALM_LOG_Z -> true;
         default -> false;
     };}
     public BlockType orientedLog(int axis) {
@@ -224,6 +261,12 @@ public enum BlockType {
             case MAPLE_LOG,MAPLE_LOG_X,MAPLE_LOG_Z -> axis==0?MAPLE_LOG_X:axis==2?MAPLE_LOG_Z:MAPLE_LOG;
             case WILLOW_LOG,WILLOW_LOG_X,WILLOW_LOG_Z -> axis==0?WILLOW_LOG_X:axis==2?WILLOW_LOG_Z:WILLOW_LOG;
             case CYPRESS_LOG,CYPRESS_LOG_X,CYPRESS_LOG_Z -> axis==0?CYPRESS_LOG_X:axis==2?CYPRESS_LOG_Z:CYPRESS_LOG;
+            case BIRCH_LOG,BIRCH_LOG_X,BIRCH_LOG_Z -> axis==0?BIRCH_LOG_X:axis==2?BIRCH_LOG_Z:BIRCH_LOG;
+            case SPRUCE_LOG,SPRUCE_LOG_X,SPRUCE_LOG_Z -> axis==0?SPRUCE_LOG_X:axis==2?SPRUCE_LOG_Z:SPRUCE_LOG;
+            case ACACIA_LOG,ACACIA_LOG_X,ACACIA_LOG_Z -> axis==0?ACACIA_LOG_X:axis==2?ACACIA_LOG_Z:ACACIA_LOG;
+            case ALDER_LOG,ALDER_LOG_X,ALDER_LOG_Z -> axis==0?ALDER_LOG_X:axis==2?ALDER_LOG_Z:ALDER_LOG;
+            case MANGROVE_LOG,MANGROVE_LOG_X,MANGROVE_LOG_Z -> axis==0?MANGROVE_LOG_X:axis==2?MANGROVE_LOG_Z:MANGROVE_LOG;
+            case PALM_LOG,PALM_LOG_X,PALM_LOG_Z -> axis==0?PALM_LOG_X:axis==2?PALM_LOG_Z:PALM_LOG;
             default -> this;
         };
     }

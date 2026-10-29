@@ -31,8 +31,16 @@
     "max_plant_slope": 3,
     "trees": [
       {
+        "id": "alder",
+        "weight": 6
+      },
+      {
         "id": "willow",
-        "weight": 7
+        "weight": 4
+      },
+      {
+        "id": "mangrove",
+        "weight": 2
       },
       {
         "id": "cypress",
@@ -40,7 +48,7 @@
       },
       {
         "id": "oak",
-        "weight": 2
+        "weight": 1
       }
     ],
     "plants": [

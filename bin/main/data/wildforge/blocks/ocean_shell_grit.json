@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:ocean_shell_grit",
+  "numeric_id": 122,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:ocean_shell_grit",
+    "side": "wildforge:ocean_shell_grit",
+    "bottom": "wildforge:ocean_shell_grit"
+  },
+  "drops": [
+    {
+      "item": "wildforge:ocean_shell_grit_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:ocean_shell_grit_block"
+}

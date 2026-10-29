@@ -25,14 +25,14 @@
     "filler": "sand"
   },
   "decorations": {
-    "tree_density": 0.01,
+    "tree_density": 0.13,
     "plant_density": 0.26,
     "max_tree_slope": 4,
     "max_plant_slope": 4,
     "trees": [
       {
-        "id": "oak",
-        "weight": 1
+        "id": "palm",
+        "weight": 8
       }
     ],
     "plants": [

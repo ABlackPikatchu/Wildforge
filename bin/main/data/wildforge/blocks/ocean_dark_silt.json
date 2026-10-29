@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:ocean_dark_silt",
+  "numeric_id": 125,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:ocean_dark_silt",
+    "side": "wildforge:ocean_dark_silt",
+    "bottom": "wildforge:ocean_dark_silt"
+  },
+  "drops": [
+    {
+      "item": "wildforge:ocean_dark_silt_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:ocean_dark_silt_block"
+}

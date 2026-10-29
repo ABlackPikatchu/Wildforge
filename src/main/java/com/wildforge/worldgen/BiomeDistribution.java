@@ -40,7 +40,7 @@ public final class BiomeDistribution {
         long key = salt(layer);
         double warpX = noise.fbm2((x + 517.0)/110.0,(z-211.0)/110.0,3,key^0x42ac19L)*15.0;
         double warpZ = noise.fbm2((x - 193.0)/110.0,(z+431.0)/110.0,3,key^0x35bd81L)*15.0;
-        double nx=(x+warpX)/35.0, nz=(z+warpZ)/35.0;
+        double nx=(x+warpX)/58.0, nz=(z+warpZ)/58.0;
         double best=-Double.MAX_VALUE;
         BlockType selected=fallback;
         for (var entry:palette.entrySet()) {
@@ -48,7 +48,7 @@ public final class BiomeDistribution {
             long materialKey=salt(entry.getKey())^key;
             double patch=noise.fbm2(nx,nz,3,materialKey^0x1234abcL);
             double detail=noise.fbm2(nx*2.1,nz*2.1,2,materialKey^0x7654321L);
-            double score=Math.log(entry.getValue())+2.8*patch+0.45*detail;
+            double score=Math.log(entry.getValue())+2.25*patch+0.26*detail;
             if(score>best) {best=score;selected=block(entry.getKey(),fallback);}
         }
         return selected;
@@ -85,6 +85,17 @@ public final class BiomeDistribution {
                chosen==BlockType.SHALE || chosen==BlockType.SCREE)
                 return BlockType.GRASS;
         }
+        // Sheltered vegetated terrain should not be checkerboard bare rocks.
+        // Keep 3D rock outcrops for actual steep faces and authored barren biomes.
+        Palette palette=surface.get(biome.name().toLowerCase(Locale.ROOT));
+        boolean verdant=palette!=null && (palette.top.containsKey("grass_top") ||
+                palette.top.containsKey("forest_loam") ||
+                palette.top.containsKey("autumn_leaf_litter") ||
+                palette.top.containsKey("pine_needle_litter"));
+        if(verdant && slope<=3 && (chosen==BlockType.STONE || chosen==BlockType.SLATE ||
+                chosen==BlockType.SHALE || chosen==BlockType.GRAVEL ||
+                chosen==BlockType.SCREE || chosen==BlockType.GABBRO ||
+                chosen==BlockType.ANDESITE)) return BlockType.GRASS;
         return chosen;
     }
     private static BlockType block(String id,BlockType fallback) {

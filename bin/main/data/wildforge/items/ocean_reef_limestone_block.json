@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:ocean_reef_limestone_block",
+  "numeric_id": 156,
+  "max_stack_size": 64,
+  "places_block": "wildforge:ocean_reef_limestone",
+  "model": "wildforge:item/block"
+}

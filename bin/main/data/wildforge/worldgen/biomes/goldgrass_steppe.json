@@ -25,14 +25,14 @@
     "filler": "dirt"
   },
   "decorations": {
-    "tree_density": 0.025,
+    "tree_density": 0.13,
     "plant_density": 0.69,
     "max_tree_slope": 3,
     "max_plant_slope": 4,
     "trees": [
       {
-        "id": "oak",
-        "weight": 1
+        "id": "acacia",
+        "weight": 4
       }
     ],
     "plants": [

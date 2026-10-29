@@ -5,6 +5,12 @@
     "wildforge:pine_planks",
     "wildforge:maple_planks",
     "wildforge:willow_planks",
-    "wildforge:cypress_planks"
+    "wildforge:cypress_planks",
+    "wildforge:birch_planks",
+    "wildforge:spruce_planks",
+    "wildforge:acacia_planks",
+    "wildforge:alder_planks",
+    "wildforge:mangrove_planks",
+    "wildforge:palm_planks"
   ]
 }

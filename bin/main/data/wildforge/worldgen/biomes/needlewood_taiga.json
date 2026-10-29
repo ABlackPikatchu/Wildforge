@@ -32,10 +32,14 @@
     "trees": [
       {
         "id": "pine",
-        "weight": 9
+        "weight": 6
       },
       {
-        "id": "oak",
+        "id": "spruce",
+        "weight": 7
+      },
+      {
+        "id": "birch",
         "weight": 1
       }
     ],

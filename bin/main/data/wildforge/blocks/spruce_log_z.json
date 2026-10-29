@@ -1,0 +1,19 @@
+{
+  "id": "wildforge:spruce_log_z",
+  "numeric_id": 146,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:spruce_log_top",
+    "side": "wildforge:spruce_log_side",
+    "bottom": "wildforge:spruce_log_top"
+  },
+  "drops": [
+    {
+      "item": "wildforge:spruce_log_block",
+      "count": 1
+    }
+  ]
+}

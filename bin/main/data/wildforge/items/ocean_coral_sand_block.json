@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:ocean_coral_sand_block",
+  "numeric_id": 155,
+  "max_stack_size": 64,
+  "places_block": "wildforge:ocean_coral_sand",
+  "model": "wildforge:item/block"
+}

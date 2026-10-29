@@ -414,10 +414,10 @@ public final class TerrainMesh {
                     if(dx*dx+dz*dz>9)continue;
                     if(Math.abs(top-generator.surface(tree.x(),tree.z()).surfaceY())>2)continue;
                     BlockType litter=switch(tree.type()) {
-                        case PINE -> BlockType.PINE_NEEDLE_LITTER;
+                        case PINE, SPRUCE -> BlockType.PINE_NEEDLE_LITTER;
                         case MAPLE -> surface.biome()==Biome.EMBERLEAF_WOODLAND
                                 ? BlockType.AUTUMN_LEAF_LITTER : BlockType.LEAF_LITTER;
-                        case OAK -> BlockType.LEAF_LITTER;
+                        case OAK, BIRCH, ALDER -> BlockType.LEAF_LITTER;
                         default -> null;
                     };
                     if(litter==null)continue;
@@ -435,7 +435,7 @@ public final class TerrainMesh {
                     || surface.waterBody()==WorldGenerator.WaterBody.LAKE)
                 topBlock=seabedAt(wx,wz,top,generator.settings().seaLevel(),slope,surface);
             BlockType filler=distribution.under(surface.biome(),wx,wz,material(surface.fillerTexture(), BlockType.DIRT));
-            if(submerged) filler=(surface.waterDepth()>22 ? BlockType.GRAVEL :
+            if(submerged) filler=(surface.waterDepth()>34 ? BlockType.OCEAN_DARK_SILT :
                     surface.rainfall()>0.64 ? BlockType.CLAY : BlockType.SAND);
             BlockType baseRock=material(surface.baseRockTexture(), BlockType.STONE);
             // Surface geology is a shallow regional accent, not the entire 512-block column.
@@ -444,7 +444,7 @@ public final class TerrainMesh {
             // Shallow, exposed ridges lose soil; sheltered and wet valleys build it up.
             if(slope>=7) soilDepth=Math.min(soilDepth,1);
             else if(slope>=4) soilDepth=Math.min(soilDepth,2);
-            else if(surface.waterBody()!=WorldGenerator.WaterBody.LAND)soilDepth=Math.min(8,soilDepth+2);
+            else if(surface.waterBody()!=WorldGenerator.WaterBody.LAND)soilDepth=Math.max(3,Math.min(6,soilDepth));
             else if(slope<=1 && surface.rainfall()>0.68)soilDepth=Math.min(8,soilDepth+1);
             if(slope>=7 && topBlock!=BlockType.PACKED_SNOW && topBlock!=BlockType.SNOW_CRUST)
                 topBlock=baseRock;
@@ -503,7 +503,9 @@ public final class TerrainMesh {
                             upstream=Math.max(upstream,neighbor.waterSurfaceY());
                     }
                     if(upstream>=surfaceLevel+4) {
-                        int fallTop=Math.min(WORLD_HEIGHT-2,Math.min(upstream-1,surfaceLevel+10));
+                        // A small spill lip, not an artificial ten-block-tall water wall.
+                        // The active fluid queue handles continuing downward spread.
+                        int fallTop=Math.min(WORLD_HEIGHT-2,Math.min(upstream-1,surfaceLevel+3));
                         for(int y=surfaceLevel+1;y<=fallTop;y++) {
                             int at=index(lx,y,lz);
                             if(c.blocks[at]!=BlockType.AIR.id)break;
@@ -762,22 +764,34 @@ public final class TerrainMesh {
         if(roll<24 && accent!=BlockType.AIR)return accent;
         return BlockType.STONE;
     }
-    /** Shallow beaches transition to gravel and rocky deep-sea floors. */
+    /** Marine palettes are local to the ocean type and only cover a thin exposed seabed. */
     private BlockType seabedAt(int x,int z,int y,int sea,int slope,WorldGenerator.Surface surface) {
-        int depth=Math.max(0,sea-y);
-        // Coarse deterministic patches, with finer local breakup; no grass under water.
-        double broad=depositNoise.fbm2(x/44.0,z/44.0,3,0x57eab1L);
-        double detail=depositNoise.fbm2(x/12.0,z/12.0,2,0x781c2dL);
-        double d=broad*0.8+detail*0.2;
         if(surface.waterBody()==WorldGenerator.WaterBody.RIVER)
-            return slope>5?BlockType.WATERWORN_STONE:d>.10?BlockType.GRAVEL:BlockType.RIVERBED_SEDIMENT;
+            return slope>5?BlockType.WATERWORN_STONE:BlockType.RIVERBED_SEDIMENT;
         if(surface.waterBody()==WorldGenerator.WaterBody.LAKE)
-            return slope>4?BlockType.GRAVEL:d<-.20?BlockType.CLAY:BlockType.RIVERBED_SEDIMENT;
-        if(depth<=5) return d>.31?BlockType.GRAVEL:d<-.38?BlockType.CLAY:BlockType.SAND;
-        if(depth<20) return slope>5?BlockType.WATERWORN_STONE:
-                d>.19?BlockType.GRAVEL:d<-.38?BlockType.CLAY:BlockType.SAND;
-        return slope>5?BlockType.STONE:d>.26?BlockType.WATERWORN_STONE:
-                d<-.34?BlockType.CLAY:BlockType.GRAVEL;
+            return slope>4?BlockType.GRAVEL:BlockType.CLAY;
+        WorldGenerator.OceanBiome ocean=generator.oceanBiomeAt(x,z,surface);
+        BlockType[] palette; int[] weights;
+        switch(ocean) {
+            case TEMPERATE -> {palette=new BlockType[]{BlockType.OCEAN_SILTY_SAND,BlockType.OCEAN_SHELL_GRIT,BlockType.OCEAN_COLD_GRAVEL,BlockType.OCEAN_ALGAE_STONE};weights=new int[]{40,25,20,15};}
+            case DEEP -> {palette=new BlockType[]{BlockType.OCEAN_DARK_SILT,BlockType.OCEAN_BASALT_PEBBLES,BlockType.OCEAN_COLD_GRAVEL,BlockType.OCEAN_ALGAE_STONE};weights=new int[]{55,20,15,10};}
+            case WARM -> {palette=new BlockType[]{BlockType.OCEAN_CORAL_SAND,BlockType.OCEAN_SHELL_GRIT,BlockType.OCEAN_REEF_LIMESTONE,BlockType.OCEAN_DEAD_CORAL_RUBBLE};weights=new int[]{45,25,20,10};}
+            case COLD -> {palette=new BlockType[]{BlockType.OCEAN_COLD_GRAVEL,BlockType.OCEAN_ALGAE_STONE,BlockType.OCEAN_SILTY_SAND,BlockType.OCEAN_BASALT_PEBBLES};weights=new int[]{45,25,20,10};}
+            case FROZEN -> {palette=new BlockType[]{BlockType.OCEAN_COLD_GRAVEL,BlockType.OCEAN_BASALT_PEBBLES,BlockType.OCEAN_DARK_SILT,BlockType.OCEAN_ALGAE_STONE};weights=new int[]{45,30,15,10};}
+            case REEF -> {palette=new BlockType[]{BlockType.OCEAN_REEF_LIMESTONE,BlockType.OCEAN_CORAL_SAND,BlockType.OCEAN_DEAD_CORAL_RUBBLE,BlockType.OCEAN_SHELL_GRIT};weights=new int[]{40,30,20,10};}
+            case KELP -> {palette=new BlockType[]{BlockType.OCEAN_ALGAE_STONE,BlockType.OCEAN_COLD_GRAVEL,BlockType.OCEAN_SILTY_SAND,BlockType.OCEAN_DARK_SILT};weights=new int[]{40,25,20,15};}
+            case ABYSSAL -> {palette=new BlockType[]{BlockType.OCEAN_ABYSSAL_SILT,BlockType.OCEAN_BASALT_PEBBLES,BlockType.OCEAN_DARK_SILT};weights=new int[]{65,25,10};}
+            case ESTUARY -> {palette=new BlockType[]{BlockType.OCEAN_SILTY_SAND,BlockType.OCEAN_DARK_SILT,BlockType.OCEAN_SHELL_GRIT,BlockType.OCEAN_ALGAE_STONE};weights=new int[]{45,25,20,10};}
+            case VOLCANIC -> {palette=new BlockType[]{BlockType.OCEAN_BASALT_PEBBLES,BlockType.OCEAN_ABYSSAL_SILT,BlockType.OCEAN_DEAD_CORAL_RUBBLE,BlockType.OCEAN_ALGAE_STONE};weights=new int[]{55,20,15,10};}
+            default -> throw new IllegalStateException();
+        }
+        // Domain-warped ~9-block material patches. No salt-and-pepper block selection.
+        double wx=depositNoise.fbm2(x/62.0,z/62.0,2,0x39e3L)*7.0;
+        double wz=depositNoise.fbm2(x/62.0,z/62.0,2,0x7bd2L)*7.0;
+        int px=(int)Math.floor((x+wx)/9.0),pz=(int)Math.floor((z+wz)/9.0);
+        double roll=depositNoise.unit(px,1,pz,0x523eaL)*100.0;
+        for(int i=0;i<palette.length;i++) {roll-=weights[i];if(roll<0)return palette[i];}
+        return palette[palette.length-1];
     }
     private static long rockHash(int x,int y,int z) {
         long v=((long)x*0x9E3779B97F4A7C15L)^((long)y*0xD6E8FEB86659FD93L)
@@ -792,8 +806,8 @@ public final class TerrainMesh {
         int maxX=minX+CHUNK_SIZE-1, maxZ=minZ+CHUNK_SIZE-1;
         int treeCell=WorldGenerator.TREE_CELL_SIZE;
         // Large species crowns may extend eight blocks across chunk borders.
-        for(int tx=Math.floorDiv(minX-9,treeCell);tx<=Math.floorDiv(maxX+9,treeCell);tx++)
-            for(int tz=Math.floorDiv(minZ-9,treeCell);tz<=Math.floorDiv(maxZ+9,treeCell);tz++) {
+        for(int tx=Math.floorDiv(minX-13,treeCell);tx<=Math.floorDiv(maxX+13,treeCell);tx++)
+            for(int tz=Math.floorDiv(minZ-13,treeCell);tz<=Math.floorDiv(maxZ+13,treeCell);tz++) {
                 WorldGenerator.Tree tree=generator.treeForCell(tx,tz);
                 if(tree!=null) placeTree(c,tree,minX,minZ);
             }
@@ -812,48 +826,75 @@ public final class TerrainMesh {
     private void placeTree(Chunk c,WorldGenerator.Tree t,int minX,int minZ) {
         int x=t.x(),z=t.z();
         int y=generator.surface(x,z).surfaceY()+1;
-        if(y<2||y+t.trunkHeight()+3>=WORLD_HEIGHT)return;
-        BlockType log=switch(t.type()) {
-            case PINE -> BlockType.PINE_LOG;
-            case MAPLE -> BlockType.MAPLE_LOG;
-            case CYPRESS -> BlockType.CYPRESS_LOG;
-            case WILLOW -> BlockType.WILLOW_LOG;
-            default -> BlockType.OAK_LOG;
-        };
-        for(int h=0;h<t.trunkHeight();h++)putFeature(c,x,y+h,z,log,minX,minZ);
-        // Branch-first broadleaf construction. Branch geometry is sampled only from
-        // the immutable tree anchor, so neighboring chunks produce identical limbs.
-        if (t.type()==WorldGenerator.TreeType.OAK || t.type()==WorldGenerator.TreeType.MAPLE
-                || t.type()==WorldGenerator.TreeType.WILLOW) {
+        if(y<2||y+t.trunkHeight()+4>=WORLD_HEIGHT)return;
+        BlockType log=treeLog(t.type());
+        int leanX=t.type()==WorldGenerator.TreeType.PALM ? ((t.x()&1)==0?1:-1) : 0;
+        int leanZ=t.type()==WorldGenerator.TreeType.ACACIA ? ((t.z()&1)==0?1:-1) : 0;
+        for(int h=0;h<t.trunkHeight();h++){
+            int step=h*2/t.trunkHeight();
+            putFeature(c,x+leanX*step,y+h,z+leanZ*step,log,minX,minZ);
+        }
+        // Stilt roots anchor mangroves into banks; alder has low multi-stem offshoots.
+        if(t.type()==WorldGenerator.TreeType.MANGROVE || t.type()==WorldGenerator.TreeType.ALDER) {
+            for(int dir=0;dir<4;dir++) {
+                int dx=(dir%2==0)?(dir==0?1:-1):0;
+                int dz=(dir%2==1)?(dir==1?1:-1):0;
+                for(int k=1;k<=2;k++)putFeature(c,x+dx*k,y+Math.max(0,3-k),z+dz*k,
+                        log.orientedLog(dx!=0?0:2),minX,minZ);
+            }
+        }
+        if (branchCount(t)>0) {
             int count=branchCount(t);
             for(int b=0;b<count;b++) {
                 int[] tip=branchTip(t,b);
                 int startY=y+(int)(t.trunkHeight()*.57)+(b%3);
                 int endY=y+t.trunkHeight()+tip[1];
-                int steps=Math.max(Math.abs(tip[0]),Math.max(Math.abs(tip[2]),Math.abs(endY-startY)))*2;
+                int steps=Math.max(1,Math.max(Math.abs(tip[0]),Math.max(Math.abs(tip[2]),Math.abs(endY-startY)))*2);
                 for(int i=0;i<=steps;i++) {
-                    double f=i/(double)Math.max(1,steps);
-                    int bx=x+(int)Math.round(tip[0]*f), bz=z+(int)Math.round(tip[2]*f);
+                    double f=i/(double)steps;
+                    int bx=x+(int)Math.round(tip[0]*f),bz=z+(int)Math.round(tip[2]*f);
                     int by=(int)Math.round(startY+(endY-startY)*f);
-                    BlockType branchLog=log.orientedLog(Math.abs(tip[0])>=Math.abs(tip[2])?0:2);
-                    putFeature(c,bx,by,bz,branchLog,minX,minZ);
+                    putFeature(c,bx,by,bz,log.orientedLog(Math.abs(tip[0])>=Math.abs(tip[2])?0:2),minX,minZ);
                 }
             }
         }
     }
+    private static BlockType treeLog(WorldGenerator.TreeType type) {
+        return switch(type) {
+            case OAK -> BlockType.OAK_LOG; case MAPLE -> BlockType.MAPLE_LOG;
+            case PINE -> BlockType.PINE_LOG; case CYPRESS -> BlockType.CYPRESS_LOG;
+            case WILLOW -> BlockType.WILLOW_LOG; case BIRCH -> BlockType.BIRCH_LOG;
+            case SPRUCE -> BlockType.SPRUCE_LOG; case ACACIA -> BlockType.ACACIA_LOG;
+            case ALDER -> BlockType.ALDER_LOG; case MANGROVE -> BlockType.MANGROVE_LOG;
+            case PALM -> BlockType.PALM_LOG;
+        };
+    }
     private static int branchCount(WorldGenerator.Tree tree) {
-        return switch(tree.type()) {case OAK -> 4; case MAPLE -> 6; case WILLOW -> 6; default -> 0;};
+        return switch(tree.type()) {
+            case OAK,BIRCH -> 4; case MAPLE,WILLOW,ALDER -> 6;
+            case ACACIA -> 5; case MANGROVE -> 5;
+            default -> 0;
+        };
     }
     /** Returns relative X, vertical displacement from the trunk tip, and Z. */
     private static int[] branchTip(WorldGenerator.Tree t,int branch) {
         long v=((long)t.x()*0x9E3779B97F4A7C15L)^((long)t.z()*0xC2B2AE3D27D4EB4FL)
                 ^((long)branch*0x165667B19E3779F9L);
         v ^= v>>>30; v*=0xbf58476d1ce4e5b9L;v^=v>>>27;
-        double angle=2*Math.PI*(branch+.23+((v>>>12)&255)/1024.0)/branchCount(t);
-        int length=switch(t.type()) {case OAK->3+(int)((v>>>24)&3);case MAPLE->3+(int)((v>>>24)&3);
-            case WILLOW->5+(int)((v>>>24)&3);default->2;};
-        int rise=switch(t.type()) {case OAK->-2+(branch%3);case MAPLE->-1+(branch%3);
-            case WILLOW->-2+(branch%2);default->0;};
+        double angle=2*Math.PI*(branch+.23+((v>>>12)&255)/1024.0)/Math.max(1,branchCount(t));
+        int length=switch(t.type()) {
+            case OAK,BIRCH -> 3+(int)((v>>>24)&3);
+            case MAPLE,ALDER -> 3+(int)((v>>>24)&3);
+            case WILLOW,ACACIA,MANGROVE -> 5+(int)((v>>>24)&3);
+            default -> 2;
+        };
+        int rise=switch(t.type()) {
+            case OAK,BIRCH,MAPLE -> -2+(branch%3);
+            case WILLOW,ALDER -> -2+(branch%2);
+            case ACACIA -> -1+(branch%2);
+            case MANGROVE -> -1+(branch%3);
+            default -> 0;
+        };
         return new int[]{(int)Math.round(length*Math.cos(angle)),rise,(int)Math.round(length*Math.sin(angle))};
     }
     private void placePlant(Chunk c,WorldGenerator.Plant p,int minX,int minZ) {
@@ -1048,27 +1089,38 @@ public final class TerrainMesh {
                 if(tree==null||tree.x()<ox||tree.x()>=ox+CHUNK_SIZE||tree.z()<oz||tree.z()>=oz+CHUNK_SIZE)continue;
                 int treeGround=generator.surface(tree.x(),tree.z()).surfaceY()+1;
                 int crownY=treeGround+tree.trunkHeight();
-                int r=switch(tree.type()) {case OAK,MAPLE->4;case WILLOW->5;case PINE,CYPRESS->2;};
-                int depth=switch(tree.type()) {case PINE,CYPRESS->7;default->4;};
-                int logTex=switch(tree.type()) {
-                    case OAK->BlockType.OAK_LOG.getSideTextureLayer();
-                    case MAPLE->BlockType.MAPLE_LOG.getSideTextureLayer();
-                    case PINE->BlockType.PINE_LOG.getSideTextureLayer();
-                    case WILLOW->BlockType.WILLOW_LOG.getSideTextureLayer();
-                    case CYPRESS->BlockType.CYPRESS_LOG.getSideTextureLayer();
+                int r=switch(tree.type()) {
+                    case OAK,MAPLE,ALDER,ACACIA,MANGROVE -> 3;
+                    case WILLOW -> 4;
+                    case PINE,CYPRESS,SPRUCE,BIRCH,PALM -> 2;
                 };
-                // Two crossed trunk planes and two crossed cutout crown planes.
+                int depth=switch(tree.type()) {
+                    case PINE,CYPRESS,SPRUCE -> 7; case PALM -> 2;
+                    default -> 4;
+                };
+                int logTex=treeLog(tree.type()).getSideTextureLayer();
                 float x=tree.x()+.5f,z=tree.z()+.5f;
-                face(out,x-.5f,treeGround,z,x+.5f,treeGround,z,x+.5f,crownY,z,x-.5f,crownY,z,logTex,.85f);
-                face(out,x,treeGround,z-.5f,x,treeGround,z+.5f,x,crownY,z+.5f,x,crownY,z-.5f,logTex,.85f);
+                // Six-sided trunk prism and a staggered 3D foliage canopy.
+                lodBox(out,x-.48f,treeGround,z-.48f,x+.48f,crownY,z+.48f,logTex);
                 int leaf=leafLayer(tree.type());
-                float bottom=crownY-depth,topY=crownY+1;
-                face(out,x-r,bottom,z,x+r,bottom,z,x+r,topY,z,x-r,topY,z,leaf,1f);
-                face(out,x,bottom,z-r,x,bottom,z+r,x,topY,z+r,x,topY,z-r,leaf,1f);
+                int n=tree.type()==WorldGenerator.TreeType.SPRUCE || tree.type()==WorldGenerator.TreeType.PINE ? 3:2;
+                for(int layerIndex=0;layerIndex<n;layerIndex++) {
+                    float width=Math.max(1.1f,r*(layerIndex==0?1.0f:layerIndex==1?.73f:.43f));
+                    float low=crownY-depth+layerIndex*(depth/(float)n);
+                    float high=crownY-depth+(layerIndex+1)*depth/(float)n+.65f;
+                    lodBox(out,x-width,low,z-width,x+width,high,z+width,leaf);
+                }
             }
         return new LodMeshes(out.toArray(),water.toArray());
     }
 
+    private void lodBox(FloatArrayBuilder out,float x0,float y0,float z0,float x1,float y1,float z1,int tex) {
+        face(out,x0,y0,z1,x1,y0,z1,x1,y1,z1,x0,y1,z1,tex,.88f);
+        face(out,x1,y0,z0,x0,y0,z0,x0,y1,z0,x1,y1,z0,tex,.76f);
+        face(out,x1,y0,z1,x1,y0,z0,x1,y1,z0,x1,y1,z1,tex,.84f);
+        face(out,x0,y0,z0,x0,y0,z1,x0,y1,z1,x0,y1,z0,tex,.80f);
+        face(out,x0,y1,z1,x1,y1,z1,x1,y1,z0,x0,y1,z0,tex,1f);
+    }
     private int distantSurfaceY(int x,int z) {
         WorldGenerator.Surface surface=generator.surface(x,z);
         return surface.waterBody()!=WorldGenerator.WaterBody.LAND
@@ -1438,14 +1490,20 @@ public final class TerrainMesh {
         int maxX=minX+CHUNK_SIZE-1, maxZ=minZ+CHUNK_SIZE-1;
         // Include entire large tree crowns across chunk boundaries.
         int tc=WorldGenerator.TREE_CELL_SIZE;
-        for(int tx=Math.floorDiv(minX-9,tc);tx<=Math.floorDiv(maxX+9,tc);tx++)
-            for(int tz=Math.floorDiv(minZ-9,tc);tz<=Math.floorDiv(maxZ+9,tc);tz++) {
+        for(int tx=Math.floorDiv(minX-13,tc);tx<=Math.floorDiv(maxX+13,tc);tx++)
+            for(int tz=Math.floorDiv(minZ-13,tc);tz<=Math.floorDiv(maxZ+13,tc);tz++) {
                 WorldGenerator.Tree t=snap.generator().treeForCell(tx,tz);
                 if(t==null)continue;
                 int tip=snap.generator().surface(t.x(),t.z()).surfaceY()+1+t.trunkHeight();
                 int layer=leafLayer(t.type());
+                if(t.type()==WorldGenerator.TreeType.PALM) {
+                    appendPalmFronds(snap,data,section,t,tip,layer,minX,maxX,minZ,maxZ);
+                    continue;
+                }
                 if(t.type()==WorldGenerator.TreeType.OAK || t.type()==WorldGenerator.TreeType.MAPLE
-                        || t.type()==WorldGenerator.TreeType.WILLOW) {
+                        || t.type()==WorldGenerator.TreeType.WILLOW || t.type()==WorldGenerator.TreeType.BIRCH
+                        || t.type()==WorldGenerator.TreeType.ACACIA || t.type()==WorldGenerator.TreeType.ALDER
+                        || t.type()==WorldGenerator.TreeType.MANGROVE) {
                     appendBranchCrown(snap,data,section,t,tip,layer,minX,maxX,minZ,maxZ);
                     continue;
                 }
@@ -1455,19 +1513,21 @@ public final class TerrainMesh {
                 int halfWidth=switch(t.type()) {
                     case OAK -> 5 + (height>=14?1:0);
                     case MAPLE -> 5 + (height>=14?1:0);
-                    case PINE -> height>=19?4:3;
+                    case PINE,SPRUCE -> height>=19?4:3;
                     case WILLOW -> 7;
                     case CYPRESS -> height>=19?4:3;
+                    case BIRCH,ACACIA,ALDER,MANGROVE,PALM -> 4;
                 };
                 int crownDepth=switch(t.type()) {
                     case OAK,MAPLE -> Math.max(5,height*3/5);
-                    case PINE -> Math.max(7,height*2/3);
+                    case PINE,SPRUCE -> Math.max(7,height*2/3);
                     case WILLOW -> 5;
                     case CYPRESS -> Math.max(9,height*3/4);
+                    case BIRCH,ACACIA,ALDER,MANGROVE,PALM -> 6;
                 };
                 for(int dy=-crownDepth;dy<=2;dy++) {
                     // Evergreens terminate at the trunk top: no floating tufts above it.
-                    if ((t.type()==WorldGenerator.TreeType.PINE || t.type()==WorldGenerator.TreeType.CYPRESS) && dy>0) continue;
+                    if ((t.type()==WorldGenerator.TreeType.PINE || t.type()==WorldGenerator.TreeType.CYPRESS || t.type()==WorldGenerator.TreeType.SPRUCE) && dy>0) continue;
                     int y=tip+dy;
                     if(y<1||y>=WORLD_HEIGHT||y/SECTION_HEIGHT!=section)continue;
                     for(int dx=-halfWidth;dx<=halfWidth;dx++)
@@ -1486,7 +1546,7 @@ public final class TerrainMesh {
                                     limit=halfWidth * Math.sqrt(Math.max(0,1.0-Math.pow((dy+crownDepth*.48)/(crownDepth*.66),2)));
                                     fill=.83;
                                 }
-                                case PINE -> {
+                                case PINE,SPRUCE -> {
                                     int fromTop=-dy;
                                     // Cohesive tapered whorls: the central crown is continuous;
                                     // only the outer fringe receives sparse breakup.
@@ -1507,7 +1567,8 @@ public final class TerrainMesh {
                                     if(dy < -2) limit=halfWidth * 0.83;
                                     fill=dy < -2 ? .20 : .58;
                                 }
-                                default -> throw new IllegalStateException();
+                                case BIRCH,ACACIA,ALDER,MANGROVE,PALM -> {limit=halfWidth*.8;fill=.72;}
+                                default -> {limit=halfWidth;fill=.70;}
                             }
                             if(radial>limit+0.25 || (dx==0&&dz==0&&dy<=0))continue;
                             long h=(((long)x*0x9E3779B97F4A7C15L)^((long)z*0xC2B2AE3D27D4EB4FL)
@@ -1517,7 +1578,8 @@ public final class TerrainMesh {
                             // A solid inner core joins every evergreen foliage layer;
                             // irregularity belongs primarily at the crown perimeter.
                             boolean evergreen=t.type()==WorldGenerator.TreeType.PINE
-                                    || t.type()==WorldGenerator.TreeType.CYPRESS;
+                                    || t.type()==WorldGenerator.TreeType.CYPRESS
+                                    || t.type()==WorldGenerator.TreeType.SPRUCE;
                             if(chance>=fill && (!evergreen || radial>Math.max(1.25,limit*.57)))continue;
                             if(snapshotBlockAt(snap,x,y,z)!=BlockType.AIR)continue;
                             leafCube(data,x,y,z,layer);
@@ -1537,6 +1599,57 @@ public final class TerrainMesh {
                 if(snapshotBlockAt(snap,p.x(),y-1,p.z())==BlockType.AIR)continue;
                 crossPlant(data,p.x(),y,p.z(),layer,p.tall()?1.0f:0.78f);
             }
+        appendMarineDecorations(snap,data,section);
+    }
+    /** Marine decorations are deterministic lightweight cutout models, not solid cubes. */
+    private void appendMarineDecorations(MeshSnapshot snap,FloatArrayBuilder out,int section) {
+        int minX=snap.cx()*CHUNK_SIZE,minZ=snap.cz()*CHUNK_SIZE;
+        for(int wx=minX;wx<minX+CHUNK_SIZE;wx++)for(int wz=minZ;wz<minZ+CHUNK_SIZE;wz++) {
+            if((wx&3)!=0 || (wz&3)!=0)continue;
+            WorldGenerator.Surface surface=snap.generator().surface(wx,wz);
+            if(surface.waterBody()!=WorldGenerator.WaterBody.OCEAN || surface.waterDepth()<3)continue;
+            int floor=surface.surfaceY();
+            int start=floor+1;
+            if(start<1 || start>=WORLD_HEIGHT-8)continue;
+            BlockType support=snapshotBlockAt(snap,wx,floor,wz);
+            if(support==BlockType.AIR || support.isFluid())continue;
+            BlockType above=snapshotBlockAt(snap,wx,start,wz);
+            if(!above.isWater())continue;
+            long hash=rockHash(wx,0,wz);
+            double chance=((hash>>>11)&0xffff)/65536.0;
+            WorldGenerator.OceanBiome ocean=snap.generator().oceanBiomeAt(wx,wz,surface);
+            double threshold=switch(ocean) {
+                case REEF,WARM,ESTUARY -> .66;
+                case KELP -> .88; case TEMPERATE -> .52;
+                case COLD -> .31; case FROZEN,ABYSSAL,VOLCANIC -> .10;
+                case DEEP -> .18;
+            };
+            if(chance>=threshold)continue;
+            int type=(int)((hash>>>27)&7);
+            int layer=switch(ocean) {
+                case REEF,WARM -> type==7 && (hash&8L)==0 ? 225 :
+                        new int[]{217,218,219,220,221,222,223,224}[type];
+                case ESTUARY -> new int[]{211,212,213,216,211,212,214,211}[type];
+                case KELP -> 214;
+                case COLD,FROZEN,DEEP,ABYSSAL,VOLCANIC -> type%3==0?216:211;
+                case TEMPERATE -> new int[]{211,212,216,211,212,211,216,212}[type];
+            };
+            // Reef organisms need hard substrate and sufficient light.
+            if(layer>=217 && layer<=225) {
+                boolean reefStone=support==BlockType.OCEAN_REEF_LIMESTONE ||
+                        support==BlockType.OCEAN_ALGAE_STONE ||
+                        support==BlockType.OCEAN_DEAD_CORAL_RUBBLE;
+                if(!reefStone || surface.waterDepth()>26)layer=211;
+            }
+            int height=layer==214?Math.min(surface.waterDepth()-2,3+((int)(hash>>>32)&7)):1;
+            for(int dy=0;dy<height;dy++) {
+                int y=start+dy;
+                if(y/SECTION_HEIGHT!=section || y>=surface.waterSurfaceY()-1)continue;
+                if(!snapshotBlockAt(snap,wx,y,wz).isWater())continue;
+                crossPlant(out,wx,y,wz,layer==214&&dy==height-1?215:layer,
+                        layer==214?1f:.72f);
+            }
+        }
     }
     /** Leaf clusters follow branch endpoints rather than a single floating sphere. */
     private void appendBranchCrown(MeshSnapshot snap,FloatArrayBuilder data,int section,
@@ -1545,20 +1658,28 @@ public final class TerrainMesh {
         for(int b=-1;b<total;b++) {
             int[] offset=b<0?new int[]{0,-1,0}:branchTip(t,b);
             int cx=t.x()+offset[0],cy=trunkTip+offset[1],cz=t.z()+offset[2];
-            int radius=(t.type()==WorldGenerator.TreeType.WILLOW)?3:((b<0)?3:2+(t.trunkHeight()>13?1:0));
+            int radius=switch(t.type()) {
+                case WILLOW,ACACIA,MANGROVE -> b<0?4:3;
+                case BIRCH -> b<0?3:2;
+                default -> b<0?3:2+(t.trunkHeight()>13?1:0);
+            };
             for(int dx=-radius;dx<=radius;dx++)for(int dz=-radius;dz<=radius;dz++)
                 for(int dy=-radius;dy<=radius;dy++) {
                     int x=cx+dx,y=cy+dy,z=cz+dz;
                     if(x<minX||x>maxX||z<minZ||z>maxZ||y<1||y>=WORLD_HEIGHT
                             ||y/SECTION_HEIGHT!=section)continue;
+                    double flatten=t.type()==WorldGenerator.TreeType.ACACIA?2.9:1.0;
                     double shape=(dx*dx+dz*dz)/(double)(radius*radius)
-                            +(dy*dy)/(double)Math.max(1,(radius-1)*(radius-1));
+                            +(dy*dy)*flatten/(double)Math.max(1,(radius-1)*(radius-1));
                     if(shape>1.20)continue;
                     long hash=((long)x*0x9E3779B97F4A7C15L)^((long)y*0xC2B2AE3D27D4EB4FL)
                             ^((long)z*0x165667B19E3779F9L)^((long)t.x()*0xD6E8FEB86659FD93L);
                     hash^=hash>>>33;hash*=0xff51afd7ed558ccdL;hash^=hash>>>33;
                     double rnd=(hash>>>11)*0x1.0p-53;
-                    double density=t.type()==WorldGenerator.TreeType.MAPLE?.87:.76;
+                    double density=switch(t.type()) {
+                        case MAPLE,MANGROVE,ALDER -> .82;
+                        case ACACIA -> .58; case BIRCH -> .68; default -> .76;
+                    };
                     if(rnd>density && shape>.48)continue;
                     if(snapshotBlockAt(snap,x,y,z)!=BlockType.AIR)continue;
                     leafCube(data,x,y,z,layer);
@@ -1577,10 +1698,28 @@ public final class TerrainMesh {
             }
         }
     }
+    /** Distinct radial palm fronds with a hanging outer edge, not a leaf sphere. */
+    private void appendPalmFronds(MeshSnapshot snap,FloatArrayBuilder out,int section,
+            WorldGenerator.Tree tree,int tip,int layer,int minX,int maxX,int minZ,int maxZ) {
+        for(int arm=0;arm<8;arm++) {
+            double angle=arm*Math.PI/4.0 + ((tree.x()^tree.z())&3)*.13;
+            int reach=4+((tree.x()+tree.z()+arm)&1);
+            for(int length=0;length<=reach;length++) {
+                int x=tree.x()+(int)Math.round(Math.cos(angle)*length);
+                int z=tree.z()+(int)Math.round(Math.sin(angle)*length);
+                int y=tip+(length<=2?1:length<=3?0:-1-(length-4));
+                if(x<minX||x>maxX||z<minZ||z>maxZ||y<1||y>=WORLD_HEIGHT
+                        ||y/SECTION_HEIGHT!=section)continue;
+                if(snapshotBlockAt(snap,x,y,z)==BlockType.AIR) leafCube(out,x,y,z,layer);
+            }
+        }
+    }
     private static int leafLayer(WorldGenerator.TreeType type) {
         return switch(type) {
             case OAK -> 116; case PINE -> 117; case MAPLE -> 118;
             case WILLOW -> 119; case CYPRESS -> 120;
+            case BIRCH -> 180; case SPRUCE -> 184; case ACACIA -> 188;
+            case ALDER -> 192; case MANGROVE -> 196; case PALM -> 200;
         };
     }
     private static int plantLayer(String name) {

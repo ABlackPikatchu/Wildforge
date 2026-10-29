@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:ocean_cold_gravel_block",
+  "numeric_id": 151,
+  "max_stack_size": 64,
+  "places_block": "wildforge:ocean_cold_gravel",
+  "model": "wildforge:item/block"
+}

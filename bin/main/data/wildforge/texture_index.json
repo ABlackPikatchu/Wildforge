@@ -1,6 +1,13 @@
 {
   "textures": [
     {
+      "id": "wildforge:acacia_leaves",
+      "source": "textures/acacia_leaves.png",
+      "width": 32,
+      "height": 32,
+      "model_hint": "cutout_cube"
+    },
+    {
       "id": "wildforge:acacia_log_side",
       "source": "textures/acacia_log_side.png",
       "width": 32,

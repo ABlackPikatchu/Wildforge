@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:ocean_shell_grit_block",
+  "numeric_id": 150,
+  "max_stack_size": 64,
+  "places_block": "wildforge:ocean_shell_grit",
+  "model": "wildforge:item/block"
+}

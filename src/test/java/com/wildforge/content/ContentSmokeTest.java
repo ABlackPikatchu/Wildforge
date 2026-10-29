@@ -31,8 +31,8 @@ public final class ContentSmokeTest {
         check("Stone".equals(content.blocks().get("stone").getDisplayName()),
                 "Block display names must come from en_us.json");
 
-        check(content.blocks().size() == 121, "Expected 121 registered block types");
-        check(content.items().size() == 147, "Expected 147 registered item types");
+        check(content.blocks().size() == 155, "Expected 155 registered block types");
+        check(content.items().size() == 169, "Expected 169 registered item types");
         check(content.blocks().get("wildforge:stone").getNumericId() == 3,
                 "Stone block save ID must remain 3");
         check(content.items().get("wildforge:coal").getNumericId() == 4,

@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:ocean_abyssal_silt_block",
+  "numeric_id": 158,
+  "max_stack_size": 64,
+  "places_block": "wildforge:ocean_abyssal_silt",
+  "model": "wildforge:item/block"
+}

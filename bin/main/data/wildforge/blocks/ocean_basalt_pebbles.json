@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:ocean_basalt_pebbles",
+  "numeric_id": 126,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:ocean_basalt_pebbles",
+    "side": "wildforge:ocean_basalt_pebbles",
+    "bottom": "wildforge:ocean_basalt_pebbles"
+  },
+  "drops": [
+    {
+      "item": "wildforge:ocean_basalt_pebbles_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:ocean_basalt_pebbles_block"
+}

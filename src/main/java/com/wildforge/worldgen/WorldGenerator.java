@@ -30,7 +30,7 @@ public final class WorldGenerator {
     // Regional site spacing ~192 blocks; adjacent sites may still form larger biomes.
     private static final int REGION_SIZE = 192;
 
-    public static final int TREE_CELL_SIZE = 8;
+    public static final int TREE_CELL_SIZE = 7;
     public static final int PLANT_CELL_SIZE = 4;
 
     public enum WaterBody { LAND, OCEAN, RIVER, LAKE }
@@ -44,7 +44,10 @@ public final class WorldGenerator {
         public double moisture() { return rainfall; }
     }
 
-    public enum TreeType { OAK, MAPLE, PINE, CYPRESS, WILLOW }
+    public enum TreeType { OAK, MAPLE, PINE, CYPRESS, WILLOW, BIRCH, SPRUCE, ACACIA, ALDER, MANGROVE, PALM }
+    /** Regional marine classification; sea floor remains independent of land biome tags. */
+    public enum OceanBiome { TEMPERATE, DEEP, WARM, COLD, FROZEN, REEF, KELP, ABYSSAL, ESTUARY, VOLCANIC }
+
     public record Tree(int x, int z, int trunkHeight, TreeType type) {}
     public record Plant(int x, int z, String species, boolean tall) {}
 
@@ -171,6 +174,15 @@ public final class WorldGenerator {
         double shoreline = smoothstep(ocean - 0.13, ocean + 0.18, continent);
         double interior = smoothstep(ocean + 0.04, ocean + 0.40, continent);
         double continentalHeight = sea - 16.0 + shoreline * 25.0 + interior * 15.0;
+        // Continental shelf, deep basins and occasional narrow trenches form one
+        // continuous depth field, not separate rectangles cut into the seabed.
+        double offshore = 1.0 - shoreline;
+        double basin = smoothstep(-0.13, 0.12,
+                noise.fbm2(x/760.0,z/760.0,3,CONTINENT ^ 0x341aL));
+        double trench = smoothstep(0.42,0.73,Math.abs(
+                noise.fbm2(x/330.0,z/330.0,3,CONTINENT ^ 0x8720L)));
+        continentalHeight -= offshore * (34.0*basin + 37.0*trench);
+
 
         // Two independent regional fields yield broad uplands with irregular footprints.
         double highlandField = noise.fbm2(x / 1050.0, z / 1050.0, 3, UPLANDS);
@@ -500,9 +512,14 @@ public final class WorldGenerator {
         double main = noise.noise3(x / settings.caveScale(), y / (settings.caveScale() * 0.73),
                 z / settings.caveScale(), CAVE);
         if (Math.abs(main) >= threshold) return false;
-        double breakup = noise.noise3(x / (settings.caveScale() * 0.65),
-                y / (settings.caveScale() * 0.55), z / (settings.caveScale() * 0.65), CAVE_BREAKUP);
-        return breakup > -0.16 + (1.0 - taper) * 0.15;
+        double breakup = noise.noise3(x / (settings.caveScale() * 0.68),
+                y / (settings.caveScale() * 0.59), z / (settings.caveScale() * 0.68), CAVE_BREAKUP);
+        // Intersect independent density ridges to form tubes rather than broad
+        // near-zero sheets. The original single-ridge test produced concentric
+        // cavern shells and unmanageably large overlapping cavities in spectator.
+        double secondaryLimit=threshold*(1.5 + 0.65*taper);
+        return Math.abs(breakup) < secondaryLimit;
+
     }
 
     /** One tree candidate per 8x8 world-cell, independent of chunk-loading order. */
@@ -520,7 +537,12 @@ public final class WorldGenerator {
             if (treeSlope>2 || surface.surfaceY()>settings.seaLevel()+94) return null;
         }
         double local = clamp(0.85 + noise.noise2(x / 150.0, z / 150.0, TREES) * 0.5, 0.20, 1.0);
-        double chance = profile.treeDensity() * settings.treeDensity() * local;
+        // Individual patches have clustered forest openings. This is not a
+        // rectangular tree grid: each candidate is jittered and seed-derived.
+        double cluster = noise.fbm2(x/96.0,z/96.0,3,TREES ^ 0x771aL);
+        double forestBoost = profile.treeDensity()>.35 ? 1.24 : 1.0;
+        double chance = clamp(profile.treeDensity()*settings.treeDensity()*local
+                *forestBoost*(0.88+0.45*cluster),0,0.91);
         if (noise.unit(cellX, 2, cellZ, TREES) >= chance) return null;
         String tree = BiomeProfile.chooseFeature(profile.trees(), noise.unit(cellX, 3, cellZ, TREES));
         if (tree == null) return null;
@@ -533,15 +555,39 @@ public final class WorldGenerator {
             case PINE -> 12;
             case WILLOW -> 8;
             case CYPRESS -> 13;
+            case BIRCH -> 9; case SPRUCE -> 12; case ACACIA -> 7;
+            case ALDER -> 8; case MANGROVE -> 6; case PALM -> 9;
         };
         int max = switch (type) {
             case OAK, MAPLE -> 16;
             case PINE -> 22;
             case WILLOW -> 15;
             case CYPRESS -> 23;
+            case BIRCH -> 17; case SPRUCE -> 25; case ACACIA -> 13;
+            case ALDER -> 16; case MANGROVE -> 12; case PALM -> 19;
         };
         int height = min + (int)Math.floor(sizeRoll * (max - min + 1));
         return new Tree(x, z, height, type);
+    }
+
+    /** Coherent sea-climate classification; material patches do not decide biomes. */
+    public OceanBiome oceanBiomeAt(int x,int z,Surface s) {
+        if(s.waterBody()!=WaterBody.OCEAN) return OceanBiome.TEMPERATE;
+        int depth=s.waterDepth();
+        double regional=noise.fbm2(x/250.0,z/250.0,3,0x0c3aebL);
+        double local=noise.fbm2(x/105.0,z/105.0,2,0x0c3aebL+1);
+        if(depth>=69 && regional>.05) return OceanBiome.ABYSSAL;
+        if(s.geology()==Geology.VOLCANIC && depth>=15 && regional>-.22) return OceanBiome.VOLCANIC;
+        if(depth>=34) return OceanBiome.DEEP;
+        if(s.temperature()<.22) return OceanBiome.FROZEN;
+        if(s.temperature()<.37) return OceanBiome.COLD;
+        if(depth<=12 && s.rainfall()>.64 && regional+local*.15>.10) return OceanBiome.ESTUARY;
+        if(s.temperature()>.64) {
+            if(depth<=16 && regional+local*.15>.14) return OceanBiome.REEF;
+            return OceanBiome.WARM;
+        }
+        if(depth>=9 && depth<=37 && regional>.12) return OceanBiome.KELP;
+        return OceanBiome.TEMPERATE;
     }
 
     /** Decorations depend on biome-specific rules, hydrology, slope, and local density. */

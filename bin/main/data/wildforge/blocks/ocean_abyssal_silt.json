@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:ocean_abyssal_silt",
+  "numeric_id": 130,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:ocean_abyssal_silt",
+    "side": "wildforge:ocean_abyssal_silt",
+    "bottom": "wildforge:ocean_abyssal_silt"
+  },
+  "drops": [
+    {
+      "item": "wildforge:ocean_abyssal_silt_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:ocean_abyssal_silt_block"
+}

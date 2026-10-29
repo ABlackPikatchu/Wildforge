@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:mangrove_log_block",
+  "numeric_id": 167,
+  "max_stack_size": 64,
+  "places_block": "wildforge:mangrove_log",
+  "model": "wildforge:item/block"
+}

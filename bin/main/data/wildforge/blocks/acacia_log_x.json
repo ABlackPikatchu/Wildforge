@@ -1,0 +1,19 @@
+{
+  "id": "wildforge:acacia_log_x",
+  "numeric_id": 147,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:acacia_log_top",
+    "side": "wildforge:acacia_log_side",
+    "bottom": "wildforge:acacia_log_top"
+  },
+  "drops": [
+    {
+      "item": "wildforge:acacia_log_block",
+      "count": 1
+    }
+  ]
+}

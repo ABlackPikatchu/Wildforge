@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:spruce_planks",
+  "numeric_id": 134,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:spruce_planks",
+    "side": "wildforge:spruce_planks",
+    "bottom": "wildforge:spruce_planks"
+  },
+  "drops": [
+    {
+      "item": "wildforge:spruce_planks_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:spruce_planks_block"
+}

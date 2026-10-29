@@ -25,17 +25,21 @@
     "filler": "wet_mud"
   },
   "decorations": {
-    "tree_density": 0.11,
+    "tree_density": 0.39,
     "plant_density": 0.92,
     "max_tree_slope": 2,
     "max_plant_slope": 2,
     "trees": [
       {
-        "id": "willow",
+        "id": "mangrove",
+        "weight": 8
+      },
+      {
+        "id": "alder",
         "weight": 4
       },
       {
-        "id": "cypress",
+        "id": "willow",
         "weight": 2
       }
     ],

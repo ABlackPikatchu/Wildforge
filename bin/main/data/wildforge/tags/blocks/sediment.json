@@ -11,6 +11,16 @@
     "wildforge:submerged_scree",
     "wildforge:silt",
     "wildforge:cave_clay",
-    "wildforge:clay"
+    "wildforge:clay",
+    "wildforge:ocean_silty_sand",
+    "wildforge:ocean_shell_grit",
+    "wildforge:ocean_cold_gravel",
+    "wildforge:ocean_algae_stone",
+    "wildforge:ocean_dark_silt",
+    "wildforge:ocean_basalt_pebbles",
+    "wildforge:ocean_coral_sand",
+    "wildforge:ocean_reef_limestone",
+    "wildforge:ocean_dead_coral_rubble",
+    "wildforge:ocean_abyssal_silt"
   ]
 }

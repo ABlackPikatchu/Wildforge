@@ -16,6 +16,24 @@
     "wildforge:willow_log_x",
     "wildforge:willow_log_z",
     "wildforge:cypress_log_x",
-    "wildforge:cypress_log_z"
+    "wildforge:cypress_log_z",
+    "wildforge:birch_log",
+    "wildforge:spruce_log",
+    "wildforge:acacia_log",
+    "wildforge:alder_log",
+    "wildforge:mangrove_log",
+    "wildforge:palm_log",
+    "wildforge:birch_log_x",
+    "wildforge:birch_log_z",
+    "wildforge:spruce_log_x",
+    "wildforge:spruce_log_z",
+    "wildforge:acacia_log_x",
+    "wildforge:acacia_log_z",
+    "wildforge:alder_log_x",
+    "wildforge:alder_log_z",
+    "wildforge:mangrove_log_x",
+    "wildforge:mangrove_log_z",
+    "wildforge:palm_log_x",
+    "wildforge:palm_log_z"
   ]
 }

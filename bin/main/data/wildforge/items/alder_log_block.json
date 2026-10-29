@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:alder_log_block",
+  "numeric_id": 165,
+  "max_stack_size": 64,
+  "places_block": "wildforge:alder_log",
+  "model": "wildforge:item/block"
+}

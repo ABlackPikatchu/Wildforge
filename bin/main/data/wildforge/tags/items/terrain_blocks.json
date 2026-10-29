@@ -50,6 +50,16 @@
     "wildforge:wet_mud_block",
     "wildforge:wet_rock_block",
     "wildforge:wet_sand_block",
-    "wildforge:wet_slate_block"
+    "wildforge:wet_slate_block",
+    "wildforge:ocean_silty_sand_block",
+    "wildforge:ocean_shell_grit_block",
+    "wildforge:ocean_cold_gravel_block",
+    "wildforge:ocean_algae_stone_block",
+    "wildforge:ocean_dark_silt_block",
+    "wildforge:ocean_basalt_pebbles_block",
+    "wildforge:ocean_coral_sand_block",
+    "wildforge:ocean_reef_limestone_block",
+    "wildforge:ocean_dead_coral_rubble_block",
+    "wildforge:ocean_abyssal_silt_block"
   ]
 }

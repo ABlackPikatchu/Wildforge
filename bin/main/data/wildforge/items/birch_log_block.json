@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:birch_log_block",
+  "numeric_id": 159,
+  "max_stack_size": 64,
+  "places_block": "wildforge:birch_log",
+  "model": "wildforge:item/block"
+}

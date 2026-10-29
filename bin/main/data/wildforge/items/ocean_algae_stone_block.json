@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:ocean_algae_stone_block",
+  "numeric_id": 152,
+  "max_stack_size": 64,
+  "places_block": "wildforge:ocean_algae_stone",
+  "model": "wildforge:item/block"
+}

@@ -1,0 +1,19 @@
+{
+  "id": "wildforge:mangrove_log_x",
+  "numeric_id": 151,
+  "solid": true,
+  "breakable": true,
+  "hardness": 2.0,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:mangrove_log_top",
+    "side": "wildforge:mangrove_log_side",
+    "bottom": "wildforge:mangrove_log_top"
+  },
+  "drops": [
+    {
+      "item": "wildforge:mangrove_log_block",
+      "count": 1
+    }
+  ]
+}

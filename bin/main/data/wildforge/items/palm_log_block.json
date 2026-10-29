@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:palm_log_block",
+  "numeric_id": 169,
+  "max_stack_size": 64,
+  "places_block": "wildforge:palm_log",
+  "model": "wildforge:item/block"
+}

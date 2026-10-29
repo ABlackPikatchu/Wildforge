@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:spruce_log_block",
+  "numeric_id": 161,
+  "max_stack_size": 64,
+  "places_block": "wildforge:spruce_log",
+  "model": "wildforge:item/block"
+}

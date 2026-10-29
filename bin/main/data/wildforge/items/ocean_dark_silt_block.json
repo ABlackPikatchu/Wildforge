@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:ocean_dark_silt_block",
+  "numeric_id": 153,
+  "max_stack_size": 64,
+  "places_block": "wildforge:ocean_dark_silt",
+  "model": "wildforge:item/block"
+}

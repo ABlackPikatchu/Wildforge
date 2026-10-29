@@ -34,7 +34,11 @@
     "trees": [
       {
         "id": "oak",
-        "weight": 3
+        "weight": 2
+      },
+      {
+        "id": "birch",
+        "weight": 2
       },
       {
         "id": "maple",
