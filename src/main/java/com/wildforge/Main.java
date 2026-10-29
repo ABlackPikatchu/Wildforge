@@ -1113,7 +1113,7 @@ public final class Main implements InputController.Callbacks {
                 terrain.tickFluids(deltaTime); // fixed 20 Hz fluid simulation, independent of FPS
                 player.update(window, terrain, deltaTime);
                 if (screenMode == HudRenderer.ScreenMode.PLAYING) {
-                    worldItems.update(deltaTime, player);
+                    worldItems.update(deltaTime, player, terrain);
                 }
             }
 

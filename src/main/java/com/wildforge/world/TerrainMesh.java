@@ -43,6 +43,11 @@ public final class TerrainMesh {
     private static final int LAVA_DELAY_TICKS = 30; // 1.5 s per cell at 20 TPS
     private record FluidPosition(int x,int y,int z) {}
     private final HashSet<FluidPosition> queuedFluidPositions = new HashSet<>();
+    // Edits outside simulation distance are parked rather than consuming fluid ticks.
+    // This is transient scheduling state; the existing v4 edits/levels remain authoritative.
+    private final HashMap<Long,LinkedHashSet<FluidPosition>> sleepingFluid = new HashMap<>();
+    private int simulationCenterX=1,simulationCenterZ=1;
+    private static final int SLEEPING_FLUID_LIMIT_PER_COLUMN=2048;
     // Sparse, persistent levels for FLOWING_* cells only. Source blocks are always level 7.
     // Indexing matches edits (chunk key + column-major block index), so unloaded fluids retain state.
     private final HashMap<Long,HashMap<Integer,Byte>> fluidLevels = new HashMap<>();
@@ -93,7 +98,7 @@ public final class TerrainMesh {
         });
     }
     private void cancelGeneration() {
-        fluidQueue.clear();queuedFluidPositions.clear();fluidAccumulator=0f;fluidTick=0;
+        fluidQueue.clear();queuedFluidPositions.clear();sleepingFluid.clear();fluidAccumulator=0f;fluidTick=0;
         generationWorker.shutdownNow();
         pending.clear();
         generationWorker = newGenerationWorker();
@@ -162,7 +167,12 @@ public final class TerrainMesh {
     public TerrainMesh(){initializeGenerator();generateSpawnChunk(16,27);}
     public void setDistances(int render,int simulation){
         renderDistance=Math.max(2,Math.min(24,render));
-        simulationDistance=Math.max(2,Math.min(renderDistance,simulation));
+        int next=Math.max(2,Math.min(renderDistance,simulation));
+        if(next!=simulationDistance) {
+            simulationDistance=next;
+            reclassifyFluidTasks();
+            wakeSleepingFluids();
+        }
     }
     public int renderDistance(){return renderDistance;}
     public int simulationDistance(){return simulationDistance;}
@@ -180,12 +190,32 @@ public final class TerrainMesh {
         return generator.surface(worldX,worldZ).biome().name().replace('_',' ');
     }
     public int activeFluidUpdates(){return fluidQueue.size();}
+    public int sleepingFluidUpdates(){int count=0;for(var positions:sleepingFluid.values())count+=positions.size();return count;}
+    /** Square simulation radius in chunk units, including negative chunk coordinates. */
+    static boolean withinSimulation(int playerCX,int playerCZ,int distance,int worldX,int worldZ) {
+        return Math.abs(Math.floorDiv(worldX,CHUNK_SIZE)-playerCX)<=distance &&
+               Math.abs(Math.floorDiv(worldZ,CHUNK_SIZE)-playerCZ)<=distance;
+    }
+    private boolean withinSimulation(int worldX,int worldZ) {
+        return withinSimulation(simulationCenterX,simulationCenterZ,simulationDistance,worldX,worldZ);
+    }
+    /** Entity physics uses the same center/radius as fluid updates. */
+    public boolean isWithinSimulationDistance(float worldX,float worldZ) {
+        if(!Float.isFinite(worldX)||!Float.isFinite(worldZ))return false;
+        int x=(int)Math.floor(worldX),z=(int)Math.floor(worldZ);
+        return withinSimulation(x,z) && isColumnLoaded(x,z);
+    }
     public long seed(){return seed;}
     public void resetWorld(){legacyVerticalMigration=false;cancelGeneration();edits.clear();fluidLevels.clear();seed=DEFAULT_SEED;initializeGenerator();chunks.clear();generateSpawnChunk(16,27);version++;}
     /** Nonblocking player-centered streaming: one worker produces raw columns, main thread owns meshes. */
     public void streamAround(float x,float z){
         int cx=Math.floorDiv((int)Math.floor(x),CHUNK_SIZE);
         int cz=Math.floorDiv((int)Math.floor(z),CHUNK_SIZE);
+        if(cx!=simulationCenterX || cz!=simulationCenterZ) {
+            simulationCenterX=cx;simulationCenterZ=cz;
+            reclassifyFluidTasks();
+            wakeSleepingFluids();
+        }
         boolean changed=false;
         Iterator<Map.Entry<Long,Chunk>> it=chunks.entrySet().iterator();
         while(it.hasNext()){
@@ -199,6 +229,10 @@ public final class TerrainMesh {
                 MeshJob old=meshJobs.remove(removed);
                 if(old!=null)old.future().cancel(true);
                 meshEpochs.remove(removed);
+                // Unloaded chunks have no active simulation. Flowing edits will be
+                // resumed on reload, and seam neighbors are checked on installation.
+                sleepingFluid.remove(removed);
+                discardFluidTasks(removed);
             }
         }
         // Discard out-of-range requests. Cancellation is best-effort; late results are ignored.
@@ -225,6 +259,8 @@ public final class TerrainMesh {
                 chunks.put(entry.getKey(),c);
                 resumeEditedFlows(c);
                 activateGeneratedRiverFalls(c);
+                activateFluidSeams(c);
+                wakeSleepingFluids();
                 markMeshDirty(c.cx,c.cz);
                 markMeshDirty(c.cx-1,c.cz);markMeshDirty(c.cx+1,c.cz);
                 markMeshDirty(c.cx,c.cz-1);markMeshDirty(c.cx,c.cz+1);
@@ -639,15 +675,89 @@ public final class TerrainMesh {
         if(Math.floorMod(z,CHUNK_SIZE)==0)markMeshDirty(cx,cz-1,y);
         if(Math.floorMod(z,CHUNK_SIZE)==CHUNK_SIZE-1)markMeshDirty(cx,cz+1,y);
     }
+    private void parkFluid(FluidPosition pos) {
+        long k=key(Math.floorDiv(pos.x(),CHUNK_SIZE),Math.floorDiv(pos.z(),CHUNK_SIZE));
+        LinkedHashSet<FluidPosition> parked=sleepingFluid.computeIfAbsent(k,unused->new LinkedHashSet<>());
+        if(parked.size()<SLEEPING_FLUID_LIMIT_PER_COLUMN) parked.add(pos);
+    }
+    private void reclassifyFluidTasks() {
+        Iterator<FluidTask> it=fluidQueue.iterator();
+        while(it.hasNext()) {
+            FluidTask task=it.next();
+            if(withinSimulation(task.x(),task.z()) && isColumnLoaded(task.x(),task.z()))continue;
+            it.remove();
+            FluidPosition pos=new FluidPosition(task.x(),task.y(),task.z());
+            queuedFluidPositions.remove(pos);
+            if(isColumnLoaded(task.x(),task.z()))parkFluid(pos);
+        }
+    }
+    private void discardFluidTasks(long columnKey) {
+        Iterator<FluidTask> it=fluidQueue.iterator();
+        while(it.hasNext()){
+            FluidTask task=it.next();
+            if(key(Math.floorDiv(task.x(),CHUNK_SIZE),Math.floorDiv(task.z(),CHUNK_SIZE))!=columnKey)continue;
+            it.remove();queuedFluidPositions.remove(new FluidPosition(task.x(),task.y(),task.z()));
+        }
+    }
+    private void wakeSleepingFluids() {
+        ArrayList<FluidPosition> wake=new ArrayList<>();
+        Iterator<Map.Entry<Long,LinkedHashSet<FluidPosition>>> it=sleepingFluid.entrySet().iterator();
+        while(it.hasNext()) {
+            var entry=it.next();
+            int cx=(int)(entry.getKey()>>32),cz=(int)(long)entry.getKey();
+            if(Math.abs(cx-simulationCenterX)>simulationDistance ||
+               Math.abs(cz-simulationCenterZ)>simulationDistance ||
+               !chunks.containsKey(entry.getKey()))continue;
+            wake.addAll(entry.getValue());it.remove();
+        }
+        for(FluidPosition pos:wake)scheduleFluid(pos.x(),pos.y(),pos.z());
+    }
     private void scheduleFluid(int x,int y,int z) {
-        if(y<1||y>=WORLD_HEIGHT-1||fluidQueue.size()>=FLUID_QUEUE_LIMIT)return;
+        if(y<1||y>=WORLD_HEIGHT-1)return;
+        if(!isColumnLoaded(x,z))return;
         BlockType b=getBlockAt(x,y,z);
         if(!b.isFluid())return;
         FluidPosition pos=new FluidPosition(x,y,z);
+        if(!withinSimulation(x,z)) {parkFluid(pos);return;}
+        if(fluidQueue.size()>=FLUID_QUEUE_LIMIT){parkFluid(pos);return;}
         if(queuedFluidPositions.add(pos)) {
             int delay=b.isLava()?LAVA_DELAY_TICKS:WATER_DELAY_TICKS;
             fluidQueue.add(new FluidTask(x,y,z,fluidTick+delay));
         }
+    }
+    /** When the adjacent column arrives, reopen fluid/air contacts on both
+     * sides of the seam. Without this, an earlier failed spill is never retried.
+     * Only one-block-wide border strips are examined, not entire ocean volumes.
+     */
+    private void activateFluidSeams(Chunk loaded) {
+        for(int[] dir:new int[][]{{1,0},{-1,0},{0,1},{0,-1}}) {
+            Chunk neighbor=chunks.get(key(loaded.cx+dir[0],loaded.cz+dir[1]));
+            if(neighbor==null)continue;
+            for(int i=0;i<CHUNK_SIZE;i++) {
+                int ax=dir[0]>0?CHUNK_SIZE-1:dir[0]<0?0:i;
+                int az=dir[1]>0?CHUNK_SIZE-1:dir[1]<0?0:i;
+                int bx=dir[0]>0?0:dir[0]<0?CHUNK_SIZE-1:i;
+                int bz=dir[1]>0?0:dir[1]<0?CHUNK_SIZE-1:i;
+                int wx=loaded.cx*CHUNK_SIZE+ax,wz=loaded.cz*CHUNK_SIZE+az;
+                int nx=neighbor.cx*CHUNK_SIZE+bx,nz=neighbor.cz*CHUNK_SIZE+bz;
+                for(int y=1;y<WORLD_HEIGHT-1;y++) {
+                    BlockType a=BlockType.fromId(loaded.get(index(ax,y,az)));
+                    BlockType b=BlockType.fromId(neighbor.get(index(bx,y,bz)));
+                    if(!a.isFluid() && !b.isFluid())continue;
+                    int levelA=a.isFluid()&&b.isFluid()?getFluidLevelAt(wx,y,wz):0;
+                    int levelB=a.isFluid()&&b.isFluid()?getFluidLevelAt(nx,y,nz):0;
+                    if(shouldActivateFluidSeam(a,levelA,b,levelB))scheduleFluid(wx,y,wz);
+                    if(shouldActivateFluidSeam(b,levelB,a,levelA))scheduleFluid(nx,y,nz);
+                }
+            }
+        }
+    }
+    /** Only exposed, lower-level or incompatible-fluid contacts need waking. */
+    static boolean shouldActivateFluidSeam(BlockType source,int sourceLevel,
+                                           BlockType neighbor,int neighborLevel) {
+        return source.isFluid() && (neighbor==BlockType.AIR ||
+                (neighbor.isFluid() &&
+                        (source.isWater()!=neighbor.isWater() || sourceLevel>neighborLevel)));
     }
     /** Fixed-rate simulation, independent of FPS and bounded after long frame stalls. */
     public void tickFluids(float elapsedSeconds) {
@@ -658,6 +768,8 @@ public final class TerrainMesh {
             fluidAccumulator-=FLUID_TICK_SECONDS;
             fluidTick++;
             processFluidUpdates(32);
+            if((fluidTick&15L)==0 && fluidQueue.size()<FLUID_QUEUE_LIMIT/2 && !sleepingFluid.isEmpty())
+                wakeSleepingFluids();
         }
     }
     private void processFluidUpdates(int budget) {
@@ -665,6 +777,11 @@ public final class TerrainMesh {
             if(fluidQueue.peek().readyTick()>fluidTick)break;
             FluidTask task=fluidQueue.remove();
             queuedFluidPositions.remove(new FluidPosition(task.x,task.y,task.z));
+            if(!isColumnLoaded(task.x,task.z()))continue;
+            if(!withinSimulation(task.x,task.z())) {
+                parkFluid(new FluidPosition(task.x,task.y,task.z));
+                continue;
+            }
             BlockType b=getBlockAt(task.x,task.y,task.z);
             if(!b.isFluid())continue;
             int strength=getFluidLevelAt(task.x,task.y,task.z);
@@ -1088,56 +1205,66 @@ public final class TerrainMesh {
      * outer faces. Full-resolution blocks remain stored for edits and collision.
      * This intentionally omits underground cave walls and decorative foliage.
      */
-    private LodMeshes buildDistantMeshes(Chunk c) {
-        // Sample the LAND SURFACE, not the tallest log. Trunks are modeled separately.
-        // The same world-space height sampler is used on either side of chunk seams.
-        final int step=2, tiles=CHUNK_SIZE/step;
-        int[][] top=new int[tiles][tiles], layer=new int[tiles][tiles];
-        int[][] ground=new int[tiles][tiles],groundLayer=new int[tiles][tiles];
-        boolean[][] wet=new boolean[tiles][tiles];
-        int ox=c.cx*CHUNK_SIZE, oz=c.cz*CHUNK_SIZE;
-        for(int tx=0;tx<tiles;tx++)for(int tz=0;tz<tiles;tz++) {
-            int wx=ox+tx*step, wz=oz+tz*step;
-            WorldGenerator.Surface surf=generator.surface(wx,wz);
-            int h=surf.waterBody()!=WorldGenerator.WaterBody.LAND
-                ? Math.max(surf.surfaceY(),surf.waterSurfaceY()) : surf.surfaceY();
-            top[tx][tz]=h;
-            byte id=c.get(index(tx*step,Math.max(0,Math.min(WORLD_HEIGHT-1,h)),tz*step));
-            BlockType sampled=BlockType.fromId(id);
-            wet[tx][tz]=sampled.isFluid();
-            layer[tx][tz]=sampled.getTopTextureLayer();
-            // Read the actual exposed seabed; caves can remove the expected
-            // top block and shouldn't turn distant underwater terrain into air.
-            int bed=Math.max(0,Math.min(WORLD_HEIGHT-1,surf.surfaceY()));
+    private LodMeshes buildDistantMeshes(Chunk c,Map<Integer,Byte> levels) {
+        // Oceans retain inexpensive 2x2 tiles. Streams, coastlines and height / flow
+        // transitions subdivide into actual 1x1 water/ground cells, preserving banks.
+        final int step=2,tiles=CHUNK_SIZE/step;
+        int[][] top=new int[CHUNK_SIZE][CHUNK_SIZE], layer=new int[CHUNK_SIZE][CHUNK_SIZE];
+        int[][] ground=new int[CHUNK_SIZE][CHUNK_SIZE],groundLayer=new int[CHUNK_SIZE][CHUNK_SIZE];
+        int[][] flow=new int[CHUNK_SIZE][CHUNK_SIZE];
+        boolean[][] wet=new boolean[CHUNK_SIZE][CHUNK_SIZE];
+        int ox=c.cx*CHUNK_SIZE,oz=c.cz*CHUNK_SIZE;
+        for(int lx=0;lx<CHUNK_SIZE;lx++)for(int lz=0;lz<CHUNK_SIZE;lz++) {
+            WorldGenerator.Surface surface=generator.surface(ox+lx,oz+lz);
+            int h=surface.waterBody()!=WorldGenerator.WaterBody.LAND
+                    ? Math.max(surface.surfaceY(),surface.waterSurfaceY()):surface.surfaceY();
+            h=Math.max(0,Math.min(WORLD_HEIGHT-2,h));
+            // A generated short waterfall may protrude above the usual waterline.
+            for(int candidate=Math.min(WORLD_HEIGHT-2,h+3);candidate>h;candidate--)
+                if(BlockType.fromId(c.get(index(lx,candidate,lz))).isFluid()) {h=candidate;break;}
+            top[lx][lz]=h;
+            int cell=index(lx,h,lz);
+            byte id=c.get(cell);
+            BlockType b=BlockType.fromId(id);
+            wet[lx][lz]=b.isFluid();
+            flow[lx][lz]=wet[lx][lz]?snapshotFluidLevel(id,levels,cell):0;
+            layer[lx][lz]=b.getTopTextureLayer();
+            int bed=Math.max(0,Math.min(WORLD_HEIGHT-1,surface.surfaceY()));
             int lower=Math.max(0,bed-12);
-            while(bed>lower && !BlockType.fromId(c.get(index(tx*step,bed,tz*step))).isSolid()) bed--;
-            ground[tx][tz]=bed;
-            BlockType bedType=BlockType.fromId(c.get(index(tx*step,bed,tz*step)));
-            groundLayer[tx][tz]=(bedType.isSolid()?bedType:BlockType.STONE).getTopTextureLayer();
+            while(bed>lower && !BlockType.fromId(c.get(index(lx,bed,lz))).isSolid())bed--;
+            ground[lx][lz]=bed;
+            BlockType bedType=BlockType.fromId(c.get(index(lx,bed,lz)));
+            groundLayer[lx][lz]=(bedType.isSolid()?bedType:BlockType.STONE).getTopTextureLayer();
         }
         FloatArrayBuilder out=new FloatArrayBuilder();
         FloatArrayBuilder water=new FloatArrayBuilder();
         for(int tx=0;tx<tiles;tx++)for(int tz=0;tz<tiles;tz++) {
-            int h=top[tx][tz],x=ox+tx*step,z=oz+tz*step;
-            if(h<0)continue;
-            float y=h+1f;
-            int tex=layer[tx][tz];
-            // Keep distant water translucent as a separate mesh, not as an
-            // opaque blue terrain tile. The seabed remains visible beneath it.
-            if(wet[tx][tz]) {
-                float waterY=h+.94f;
-                face(water,x,waterY,z+step,x+step,waterY,z+step,x+step,waterY,z,x,waterY,z,tex,1f);
-                float bedY=ground[tx][tz]+1f;
-                face(out,x,bedY,z+step,x+step,bedY,z+step,x+step,bedY,z,x,bedY,z,groundLayer[tx][tz],1f);
+            int lx=tx*step,lz=tz*step,x=ox+lx,z=oz+lz;
+            boolean[] patchWet={wet[lx][lz],wet[lx+1][lz],wet[lx][lz+1],wet[lx+1][lz+1]};
+            int[] patchHeight={top[lx][lz],top[lx+1][lz],top[lx][lz+1],top[lx+1][lz+1]};
+            int[] patchFlow={flow[lx][lz],flow[lx+1][lz],flow[lx][lz+1],flow[lx+1][lz+1]};
+            if(DistantWaterLod.needsFineTiles(patchWet,patchHeight,patchFlow)) {
+                for(int dx=0;dx<2;dx++)for(int dz=0;dz<2;dz++)
+                    drawDistantCell(out,water,ox,oz,lx+dx,lz+dz,top,layer,
+                            ground,groundLayer,wet,flow);
                 continue;
             }
+            int h=top[lx][lz],tex=layer[lx][lz];
+            if(wet[lx][lz]) {
+                float waterY=h+fluidSurfaceHeight(flow[lx][lz]);
+                face(water,x,waterY,z+step,x+step,waterY,z+step,
+                           x+step,waterY,z,x,waterY,z,tex,1f);
+                float bedY=ground[lx][lz]+1f;
+                face(out,x,bedY,z+step,x+step,bedY,z+step,
+                         x+step,bedY,z,x,bedY,z,groundLayer[lx][lz],1f);
+                continue;
+            }
+            float y=h+1f;
             face(out,x,y,z+step,x+step,y,z+step,x+step,y,z,x,y,z,tex,1f);
-            // Boundary neighbors are sampled in world space, not defaulted to h-1.
-            // This prevents seam walls when adjacent LOD columns load separately.
-            int south=tz+1<tiles?top[tx][tz+1]:distantSurfaceY(x,z+step);
-            int north=tz>0?top[tx][tz-1]:distantSurfaceY(x,z-step);
-            int east=tx+1<tiles?top[tx+1][tz]:distantSurfaceY(x+step,z);
-            int west=tx>0?top[tx-1][tz]:distantSurfaceY(x-step,z);
+            int south=lz+step<CHUNK_SIZE?top[lx][lz+step]:distantSurfaceY(x,z+step);
+            int north=lz>0?top[lx][lz-1]:distantSurfaceY(x,z-step);
+            int east=lx+step<CHUNK_SIZE?top[lx+step][lz]:distantSurfaceY(x+step,z);
+            int west=lx>0?top[lx-1][lz]:distantSurfaceY(x-step,z);
             if(h>south)face(out,x,south+1,z+step,x+step,south+1,z+step,x+step,y,z+step,x,y,z+step,tex,.85f);
             if(h>north)face(out,x+step,north+1,z,x,north+1,z,x,y,z,x+step,y,z,tex,.75f);
             if(h>east)face(out,x+step,east+1,z+step,x+step,east+1,z,x+step,y,z,x+step,y,z+step,tex,.80f);
@@ -1181,6 +1308,36 @@ public final class TerrainMesh {
         return new LodMeshes(out.toArray(),water.toArray());
     }
 
+    private void drawDistantCell(FloatArrayBuilder out,FloatArrayBuilder water,int ox,int oz,
+            int lx,int lz,int[][] top,int[][] layer,int[][] ground,int[][] groundLayer,
+            boolean[][] wet,int[][] flow) {
+        int x=ox+lx,z=oz+lz,h=top[lx][lz],tex=layer[lx][lz];
+        float y=h+(wet[lx][lz]?fluidSurfaceHeight(flow[lx][lz]):1f);
+        if(wet[lx][lz]) {
+            face(water,x,y,z+1,x+1,y,z+1,x+1,y,z,x,y,z,tex,1f);
+            float bed=ground[lx][lz]+1f;
+            face(out,x,bed,z+1,x+1,bed,z+1,x+1,bed,z,x,bed,z,groundLayer[lx][lz],1f);
+        } else face(out,x,y,z+1,x+1,y,z+1,x+1,y,z,x,y,z,tex,1f);
+        for(int[] d:new int[][]{{0,1},{0,-1},{1,0},{-1,0}}) {
+            int nx=lx+d[0],nz=lz+d[1];
+            float neighborY;
+            if(nx>=0&&nx<CHUNK_SIZE&&nz>=0&&nz<CHUNK_SIZE)
+                neighborY=top[nx][nz]+(wet[nx][nz]?fluidSurfaceHeight(flow[nx][nz]):1f);
+            else neighborY=distantSurfaceY(ox+nx,oz+nz)+1f;
+            if(y<=neighborY+.01f)continue;
+            // Long waterfall walls remain visible at distance, but only at the
+            // edge of water, never throughout a submerged ocean volume.
+            FloatArrayBuilder target=wet[lx][lz]?water:out;
+            if(d[0]==0&&d[1]==1)
+                face(target,x,neighborY,z+1,x+1,neighborY,z+1,x+1,y,z+1,x,y,z+1,tex,.86f);
+            else if(d[0]==0)
+                face(target,x+1,neighborY,z,x,neighborY,z,x,y,z,x+1,y,z,tex,.76f);
+            else if(d[0]==1)
+                face(target,x+1,neighborY,z+1,x+1,neighborY,z,x+1,y,z,x+1,y,z+1,tex,.82f);
+            else
+                face(target,x,neighborY,z,x,neighborY,z+1,x,y,z+1,x,y,z,tex,.80f);
+        }
+    }
     private void lodBox(FloatArrayBuilder out,float x0,float y0,float z0,float x1,float y1,float z1,int tex) {
         face(out,x0,y0,z1,x1,y0,z1,x1,y1,z1,x0,y1,z1,tex,.88f);
         face(out,x1,y0,z0,x0,y0,z0,x0,y1,z0,x1,y1,z0,tex,.76f);
@@ -1242,10 +1399,11 @@ public final class TerrainMesh {
                         byte[] snapshot=c.copyBlocks();
                         int revision=c.lodRevision,generation=meshGeneration;
                         int chunkX=c.cx,chunkZ=c.cz;
+                        Map<Integer,Byte> flows=flowSnapshot(chunkX,chunkZ);
                         Future<LodMeshes> task=lodWorker.submit(()->{
                             Chunk immutable=new Chunk(chunkX,chunkZ);
                             immutable.blocks=snapshot;
-                            return buildDistantMeshes(immutable);
+                            return buildDistantMeshes(immutable,flows);
                         });
                         lodJobs.put(k,new LodJob(task,revision,generation));
                     }

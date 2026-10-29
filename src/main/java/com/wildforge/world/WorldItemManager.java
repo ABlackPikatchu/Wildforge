@@ -87,6 +87,11 @@ public final class WorldItemManager {
     }
 
     public void update(float deltaTime, Player player) {
+        update(deltaTime,player,null);
+    }
+
+    /** Update only nearby items; distant drops remain present but their physics freezes. */
+    public void update(float deltaTime, Player player, TerrainMesh terrain) {
         if (!Float.isFinite(deltaTime) || deltaTime <= 0.0f) {
             return;
         }
@@ -110,9 +115,10 @@ public final class WorldItemManager {
         }
 
         // Physics runs even if no player reference is available.
-        entityManager.update(dt);
+        entityManager.update(dt,entity->terrain==null ||
+                terrain.isWithinSimulationDistance(entity.getX(),entity.getZ()));
 
-        mergeNearbyStacks();
+        mergeNearbyStacks(terrain);
 
         if (player != null && player.getGameMode() != com.wildforge.player.GameMode.SPECTATOR) {
             collectNearbyItems(player);
@@ -121,13 +127,14 @@ public final class WorldItemManager {
         entityManager.removeRemoved();
     }
 
-    private void mergeNearbyStacks() {
+    private void mergeNearbyStacks(TerrainMesh terrain) {
         List<DroppedItemEntity> items = getItems();
         float horizontalDistanceSquared =
                 MERGE_HORIZONTAL_DISTANCE * MERGE_HORIZONTAL_DISTANCE;
 
         for (int i = 0; i < items.size(); i++) {
             DroppedItemEntity first = items.get(i);
+            if(terrain!=null && !terrain.isWithinSimulationDistance(first.getX(),first.getZ()))continue;
 
             if (first.isRemoved()
                     || first.getCount() >= first.getItemType().getMaxStackSize()) {
@@ -136,6 +143,7 @@ public final class WorldItemManager {
 
             for (int j = i + 1; j < items.size(); j++) {
                 DroppedItemEntity second = items.get(j);
+                if(terrain!=null && !terrain.isWithinSimulationDistance(second.getX(),second.getZ()))continue;
 
                 if (second.isRemoved()
                         || first.getItemType() != second.getItemType()) {

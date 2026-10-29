@@ -97,7 +97,7 @@ public final class HudRenderer {
     }
     private String debugBiome="",debugMode="",debugFacing="";
     private long debugSeed;
-    private int debugX,debugY,debugZ,debugFluidQueue;
+    private int debugX,debugY,debugZ,debugFluidQueue,debugFluidSleeping,debugSimulationDistance;
     private boolean debugFlying;
     private long debugHeapUsed,debugHeapMax;
     private int lastBiomeX=Integer.MIN_VALUE,lastBiomeZ=Integer.MIN_VALUE;
@@ -116,6 +116,7 @@ public final class HudRenderer {
         }
         debugMode=player.getGameMode().name();debugFlying=player.isFlying();
         debugSeed=terrain.seed();debugFluidQueue=terrain.activeFluidUpdates();
+        debugFluidSleeping=terrain.sleepingFluidUpdates();debugSimulationDistance=terrain.simulationDistance();
         org.joml.Vector3f look=player.getCamera().getLookDirection();
         debugFacing=Math.abs(look.x)>Math.abs(look.z)?(look.x>0?"EAST":"WEST"):(look.z>0?"SOUTH":"NORTH");
         Runtime runtime=Runtime.getRuntime();
@@ -244,14 +245,14 @@ public final class HudRenderer {
                 menuText(data,"FPS " + measuredFps + " AVG " + debugAverageFps + " P95 " + formatMs(debugP95Ms) + "MS",px,y0+29f,1.18f,.94f,.94f,.78f,1f);
                 menuText(data,"FRAME " + formatMs(debugAverageMs) + " MS MAX " + formatMs(debugWorstMs) + " MS",px,y0+47f,1.18f,.94f,.94f,.78f,1f);
                 menuText(data,"XYZ " + debugX + " / " + debugY + " / " + debugZ + "  " + debugFacing,px,y0+69f,1.25f,.94f,.94f,.78f,1f);
-                menuText(data,"CHUNK " + Math.floorDiv(debugX,16) + " / " + Math.floorDiv(debugZ,16) + "  VIEW " + debugDistance,px,y0+87f,1.15f,.94f,.94f,.78f,1f);
+                menuText(data,"CHUNK " + Math.floorDiv(debugX,16) + " / " + Math.floorDiv(debugZ,16) + "  VIEW " + debugDistance + " SIM " + debugSimulationDistance,px,y0+87f,1.15f,.94f,.94f,.78f,1f);
                 menuText(data,"BIOME " + debugBiome,px,y0+106f,1.07f,.94f,.94f,.78f,1f);
                 menuText(data,"MODE " + debugMode + (debugFlying?"  FLYING":""),px,y0+126f,1.15f,.94f,.94f,.78f,1f);
                 menuText(data,"CHUNKS " + debugLoaded + " / " + ((2*debugDistance+1)*(2*debugDistance+1)) + "  GEN " + debugPending,px,y0+146f,1.08f,.94f,.94f,.78f,1f);
                 menuText(data,"MESH JOBS " + debugMeshes + "  SECTIONS " + debugMeshSections + " LOD JOBS " + debugLodJobs,px,y0+164f,1.0f,.94f,.94f,.78f,1f);
                 menuText(data,"GPU " + debugGpu + "  LOD READY " + debugLodReady + "  UPLOADS " + debugUploads,px,y0+183f,1.03f,.94f,.94f,.78f,1f);
                 menuText(data,"UPLOAD CPU " + formatMs(debugUploadMicros/1000f) + " MS  BLOCK DATA " + (debugStorageBytes/1048576) + " MIB",px,y0+202f,0.98f,.94f,.94f,.78f,1f);
-                menuText(data,"FLUID " + debugFluidQueue + "  MEM " + (debugHeapUsed/1048576) + " / " + (debugHeapMax/1048576) + " MIB",px,y0+221f,1.08f,.94f,.94f,.78f,1f);
+                menuText(data,"FLUID " + debugFluidQueue + " SLEEP " + debugFluidSleeping + " MEM " + (debugHeapUsed/1048576) + " / " + (debugHeapMax/1048576) + " MIB",px,y0+221f,1.08f,.94f,.94f,.78f,1f);
                 menuText(data,"SEED " + debugSeed,px,y0+241f,.95f,.94f,.94f,.78f,1f);
             }
             if(consoleOpen || !consoleFeedback.isBlank()) {

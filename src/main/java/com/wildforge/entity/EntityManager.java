@@ -48,6 +48,12 @@ public final class EntityManager {
     }
 
     public void update(float deltaTime) {
+        update(deltaTime,entity->true);
+    }
+
+    /** Freeze entities outside the active simulation radius without despawning them. */
+    public void update(float deltaTime, java.util.function.Predicate<Entity> shouldSimulate) {
+        java.util.Objects.requireNonNull(shouldSimulate,"shouldSimulate");
         if (!Float.isFinite(deltaTime) || deltaTime <= 0.0f) {
             return;
         }
@@ -58,7 +64,7 @@ public final class EntityManager {
         updating = true;
         try {
             for (Entity entity : entities) {
-                if (!entity.isRemoved()) {
+                if (!entity.isRemoved() && shouldSimulate.test(entity)) {
                     entity.update(dt);
                 }
             }
