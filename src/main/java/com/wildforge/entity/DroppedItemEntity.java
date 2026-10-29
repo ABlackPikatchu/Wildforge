@@ -53,6 +53,14 @@ public final class DroppedItemEntity extends Entity {
         );
     }
 
+    /** Restore a saved entity without retaining the constructor's random launch velocity. */
+    public void restoreMotion(float vx, float vy, float vz, float savedAge) {
+        if (!Float.isFinite(savedAge) || savedAge < 0f)
+            throw new IllegalArgumentException("Invalid entity age");
+        setVelocity(vx, vy, vz);
+        age = savedAge;
+    }
+
     public ItemType getItemType() {
         return itemType;
     }
@@ -235,11 +243,10 @@ public final class DroppedItemEntity extends Entity {
         float oldY = y;
         float nextY = y + velocityY * dt;
 
-        if (!collidesAt(x, nextY, z)) {
-            y = nextY;
-            grounded = false;
-            return;
-        }
+        boolean destinationBlocked = collidesAt(x, nextY, z);
+        // A high-velocity item can cross an entire floor in a single frame.
+        // Do not rely on destination overlap to decide whether to sweep.
+
 
         if (velocityY <= 0.0f) {
             float oldBottom = oldY - HALF_SIZE;
@@ -320,7 +327,12 @@ public final class DroppedItemEntity extends Entity {
             }
         }
 
-        // Defensive fallback for unusual overlaps.
+        if (!destinationBlocked) {
+            y = nextY;
+            grounded = false;
+            return;
+        }
+        // Defensive fallback for unusual starting overlaps.
         velocityY = 0.0f;
         grounded = false;
     }

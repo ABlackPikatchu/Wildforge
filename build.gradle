@@ -269,3 +269,36 @@ tasks.register('riverModelCheck', JavaExec) {
     mainClass = 'com.wildforge.worldgen.RiverModelSmokeTest'
 }
 tasks.named('check') { dependsOn tasks.named('riverModelCheck') }
+
+// Refactor regressions: no OpenGL context or rendered windows required.
+tasks.register('architectureCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify save transaction integrity and crash recovery'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.core.SaveTransactionSmokeTest'
+}
+tasks.register('chunkCoordinateCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify chunk coordinate packing and legacy indices'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.ChunkCoordinatesSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('architectureCheck'), tasks.named('chunkCoordinateCheck') }
+tasks.register('fluidRulesCheck', JavaExec) {
+    group = 'verification'
+    description = 'Verify extracted fluid source, height and tick rules'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.FluidRulesSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('fluidRulesCheck') }
+tasks.register('droppedItemPhysicsCheck', JavaExec) {
+    group = 'verification'
+    description = 'Check fast-falling dropped items cannot tunnel through solid floors'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.DroppedItemPhysicsSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('droppedItemPhysicsCheck') }

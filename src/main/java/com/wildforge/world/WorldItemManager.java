@@ -2,6 +2,7 @@
 package com.wildforge.world;
 
 import com.wildforge.entity.DroppedItemEntity;
+import com.wildforge.core.save.DroppedItemStorage;
 import com.wildforge.entity.Entity;
 import com.wildforge.entity.EntityManager;
 import com.wildforge.item.ItemType;
@@ -57,6 +58,15 @@ public final class WorldItemManager {
 
             remaining -= stackCount;
         }
+    }
+
+    /** Used only by validated save decoding; spawn() remains randomized for gameplay. */
+    public void restore(DroppedItemStorage.Stack stack, TerrainMesh terrain) {
+        ItemType type = ItemType.fromId(stack.id());
+        DroppedItemEntity entity = new DroppedItemEntity(type,stack.count(),
+                stack.x(),stack.y(),stack.z(),terrain);
+        entity.restoreMotion(stack.vx(),stack.vy(),stack.vz(),stack.age());
+        entityManager.spawn(entity);
     }
 
     public List<DroppedItemEntity> getItems() {

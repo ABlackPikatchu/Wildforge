@@ -1,6 +1,9 @@
 package com.wildforge.world;
 
 import com.wildforge.worldgen.Biome;
+import com.wildforge.worldgen.SpawnFinder;
+import com.wildforge.world.mesh.FloatArrayBuilder;
+import com.wildforge.world.fluid.FluidRules;
 
 import com.wildforge.worldgen.WorldGenerator;
 import com.wildforge.worldgen.WorldGenConfigLoader;
@@ -29,9 +32,10 @@ public final class TerrainMesh {
     public static final int WORLDGEN_REVISION=6;
     private int worldgenRevision=WORLDGEN_REVISION;
     public int worldgenRevision(){return worldgenRevision;}
-    private final LinkedHashMap<Long,Chunk> chunks = new LinkedHashMap<>();
+    private final LinkedHashMap<Long,ChunkColumn> chunks = new LinkedHashMap<>();
     private final HashMap<Long,HashMap<Integer,Byte>> edits = new HashMap<>();
     private WorldGenerator generator;
+    private SpawnFinder.Spawn initialSpawn;
     private BiomeDistribution distribution;
     private SeededNoise depositNoise;
     private long seed=DEFAULT_SEED;
@@ -43,9 +47,7 @@ public final class TerrainMesh {
              .thenComparingInt(FluidTask::x).thenComparingInt(FluidTask::y).thenComparingInt(FluidTask::z));
     private long fluidTick = 0;
     private float fluidAccumulator = 0f;
-    private static final float FLUID_TICK_SECONDS = 0.05f;
-    private static final int WATER_DELAY_TICKS = 5; // 0.25 s per cell at 20 TPS
-    private static final int LAVA_DELAY_TICKS = 30; // 1.5 s per cell at 20 TPS
+    private static final float FLUID_TICK_SECONDS = FluidRules.TICK_SECONDS;
     private record FluidPosition(int x,int y,int z) {}
     private final HashSet<FluidPosition> queuedFluidPositions = new HashSet<>();
     // Edits outside simulation distance are parked rather than consuming fluid ticks.
@@ -66,7 +68,7 @@ public final class TerrainMesh {
     private int version=0, renderDistance=8, simulationDistance=5;
     // Worker builds raw chunk data only. OpenGL-facing meshes remain on the main thread.
     private ExecutorService generationWorker = newGenerationWorker();
-    private final HashMap<Long, Future<Chunk>> pending = new HashMap<>();
+    private final HashMap<Long, Future<ChunkColumn>> pending = new HashMap<>();
     // Mesh jobs never read live chunk maps or mutate meshes; only the game thread installs results.
     private ExecutorService meshWorker = newMeshWorker();
     // Each pending column has a bit set for only the vertical sections needing remesh.
@@ -119,7 +121,7 @@ public final class TerrainMesh {
     }
     private void generateSpawnChunk(int x, int z) {
         int cx = Math.floorDiv(x, CHUNK_SIZE), cz = Math.floorDiv(z, CHUNK_SIZE);
-        Chunk c = generate(cx, cz);
+        ChunkColumn c = generate(cx, cz);
         applySavedEdits(c);
         chunks.put(key(cx, cz), c);
         resumeEditedFlows(c);
@@ -128,7 +130,7 @@ public final class TerrainMesh {
         c.compact();
         version++;
     }
-    private void applySavedEdits(Chunk c) {
+    private void applySavedEdits(ChunkColumn c) {
         HashMap<Integer, Byte> changes = edits.get(key(c.cx, c.cz));
         if (changes != null) for (var entry : changes.entrySet()) c.set(entry.getKey(), entry.getValue());
     }
@@ -139,32 +141,8 @@ public final class TerrainMesh {
             this.x=x;this.y=y;this.z=z;placeX=px;placeY=py;placeZ=pz;this.block=block;
         }
     }
-    private static final class Chunk {
-        final int cx,cz;
-        byte[] blocks=new byte[CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT];
-        PaletteColumn compact;
-        byte get(int i) { return compact == null ? blocks[i] : compact.get(i); }
-        void set(int i,byte b) { if(compact == null) blocks[i]=b; else compact.set(i,b); }
-        byte[] copyBlocks() { return compact == null ? blocks.clone() : compact.copyRaw(); }
-        void compact() { if(compact == null) {compact = new PaletteColumn(blocks); blocks=null;} }
-        float[] lodVertices;
-        float[] lodFluidVertices;
-        int lodRevision=0;
-        final float[][] sectionVertices=new float[SECTION_COUNT][];
-        final float[][] fluidVertices=new float[SECTION_COUNT][];
-        final int[] sectionRevision=new int[SECTION_COUNT];
-        final int[] fluidRevision=new int[SECTION_COUNT];
-        Chunk(int cx,int cz){this.cx=cx;this.cz=cz;for(int i=0;i<SECTION_COUNT;i++){
-            sectionVertices[i]=new float[0];fluidVertices[i]=new float[0];
-        }}
-    }
-    private static final class FloatArrayBuilder {
-        private float[] values=new float[1024]; private int size;
-        void add(float value){if(size==values.length)values=Arrays.copyOf(values,values.length*2);values[size++]=value;}
-        float[] toArray(){return Arrays.copyOf(values,size);}
-    }
-    private static long key(int x,int z){return ((long)x<<32)|(z&0xffffffffL);}
-    private static int index(int x,int y,int z){return (x*CHUNK_SIZE+z)*WORLD_HEIGHT+y;}
+    private static long key(int x,int z){return ChunkCoordinates.pack(x,z);}
+    private static int index(int x,int y,int z){return ChunkCoordinates.localIndex(x,y,z);}
     private void initializeGenerator(){
         try { generator=new WorldGenerator(seed,WorldGenConfigLoader.loadBuiltIn()); distribution=new BiomeDistribution(seed); depositNoise=new SeededNoise(seed); }
         catch(IOException e){ throw new IllegalStateException("Worldgen profile unavailable; run generateContent",e); }
@@ -183,7 +161,7 @@ public final class TerrainMesh {
     public int simulationDistance(){return simulationDistance;}
     public int loadedChunkCount(){return chunks.size();}
     /** Approximate encoded block payload, excluding object overhead and CPU meshes. */
-    public long residentBlockPayloadBytes(){long bytes=0;for(Chunk c:chunks.values())bytes+=c.compact==null?CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT:c.compact.storedBytes();return bytes;}
+    public long residentBlockPayloadBytes(){long bytes=0;for(ChunkColumn c:chunks.values())bytes+=c.compact==null?CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT:c.compact.storedBytes();return bytes;}
     /** Count of outstanding terrain generation jobs; queried on the game thread. */
     public int pendingGenerationCount(){return pending.size();}
     /** True only when a terrain column is actually resident in memory. */
@@ -211,7 +189,9 @@ public final class TerrainMesh {
         return withinSimulation(x,z) && isColumnLoaded(x,z);
     }
     public long seed(){return seed;}
-    public void resetWorld(){legacyVerticalMigration=false;cancelGeneration();edits.clear();fluidLevels.clear();seed=DEFAULT_SEED;worldgenRevision=WORLDGEN_REVISION;initializeGenerator();chunks.clear();generateSpawnChunk(16,27);version++;}
+    /** Chosen at new-world creation; null for loaded legacy worlds. */
+    public SpawnFinder.Spawn initialSpawn(){return initialSpawn;}
+    public void resetWorld(){initialSpawn=null;legacyVerticalMigration=false;cancelGeneration();edits.clear();fluidLevels.clear();seed=DEFAULT_SEED;worldgenRevision=WORLDGEN_REVISION;initializeGenerator();chunks.clear();generateSpawnChunk(16,27);version++;}
     /** Nonblocking player-centered streaming: one worker produces raw columns, main thread owns meshes. */
     public void streamAround(float x,float z){
         int cx=Math.floorDiv((int)Math.floor(x),CHUNK_SIZE);
@@ -222,9 +202,9 @@ public final class TerrainMesh {
             wakeSleepingFluids();
         }
         boolean changed=false;
-        Iterator<Map.Entry<Long,Chunk>> it=chunks.entrySet().iterator();
+        Iterator<Map.Entry<Long,ChunkColumn>> it=chunks.entrySet().iterator();
         while(it.hasNext()){
-            Chunk c=it.next().getValue();
+            ChunkColumn c=it.next().getValue();
             if(Math.abs(c.cx-cx)>renderDistance || Math.abs(c.cz-cz)>renderDistance){
                 it.remove();changed=true;
                 long removed=key(c.cx,c.cz);
@@ -241,7 +221,7 @@ public final class TerrainMesh {
             }
         }
         // Discard out-of-range requests. Cancellation is best-effort; late results are ignored.
-        Iterator<Map.Entry<Long, Future<Chunk>>> requests=pending.entrySet().iterator();
+        Iterator<Map.Entry<Long, Future<ChunkColumn>>> requests=pending.entrySet().iterator();
         while(requests.hasNext()){
             var entry=requests.next();
             int px=(int)(entry.getKey()>>32),pz=(int)(long)entry.getKey();
@@ -250,14 +230,14 @@ public final class TerrainMesh {
             }
         }
         // Install at most one completed chunk per frame, bounding expensive main-thread mesh work.
-        Iterator<Map.Entry<Long,Future<Chunk>>> finished=pending.entrySet().iterator();
+        Iterator<Map.Entry<Long,Future<ChunkColumn>>> finished=pending.entrySet().iterator();
         while(finished.hasNext()){
             var entry=finished.next();
-            Future<Chunk> future=entry.getValue();
+            Future<ChunkColumn> future=entry.getValue();
             if(!future.isDone())continue;
             finished.remove();
             try {
-                Chunk c=future.get();
+                ChunkColumn c=future.get();
                 if(chunks.containsKey(entry.getKey()))continue;
                 applySavedEdits(c);
                 c.compact();
@@ -303,7 +283,7 @@ public final class TerrainMesh {
             meshIter.remove();
             try {
                 float[][] built = job.future().get();
-                Chunk target = chunks.get(entry.getKey());
+                ChunkColumn target = chunks.get(entry.getKey());
                 if (target == null || job.generation() != meshGeneration) continue;
                 if (job.epoch() != meshEpochs.getOrDefault(entry.getKey(), 0)) {
                     // A late result must never overwrite newer edits.
@@ -339,7 +319,7 @@ public final class TerrainMesh {
                 if (d < bestDistance) {bestDistance=d;bestKey=candidate;}
             }
             BitSet selected = dirtyMeshes.remove(bestKey);
-            Chunk target = chunks.get(bestKey);
+            ChunkColumn target = chunks.get(bestKey);
             if (target == null || selected==null || selected.isEmpty() || meshJobs.containsKey(bestKey)) continue;
             MeshSnapshot snapshot = snapshot(target);
             int epoch=meshEpochs.getOrDefault(bestKey,0);
@@ -383,14 +363,14 @@ public final class TerrainMesh {
         }
         // Distant LOD is a per-column representation. A changed section still
         // invalidates its LOD, but not the other 31 full-detail section meshes.
-        Chunk lodChunk=chunks.get(k);
+        ChunkColumn lodChunk=chunks.get(k);
         LodJob lodJob=lodJobs.remove(k);
         if(lodJob!=null)lodJob.future().cancel(true);
         if(lodChunk!=null){lodChunk.lodVertices=null;lodChunk.lodFluidVertices=null;lodChunk.lodRevision++;}
     }
-    private MeshSnapshot snapshot(Chunk c) {
-        Chunk w=chunks.get(key(c.cx-1,c.cz)), e=chunks.get(key(c.cx+1,c.cz));
-        Chunk n=chunks.get(key(c.cx,c.cz-1)), so=chunks.get(key(c.cx,c.cz+1));
+    private MeshSnapshot snapshot(ChunkColumn c) {
+        ChunkColumn w=chunks.get(key(c.cx-1,c.cz)), e=chunks.get(key(c.cx+1,c.cz));
+        ChunkColumn n=chunks.get(key(c.cx,c.cz-1)), so=chunks.get(key(c.cx,c.cz+1));
         return new MeshSnapshot(c.cx,c.cz,c.copyBlocks(),w==null?null:w.copyBlocks(),
             e==null?null:e.copyBlocks(),n==null?null:n.copyBlocks(),so==null?null:so.copyBlocks(),
             flowSnapshot(c.cx,c.cz),flowSnapshot(c.cx-1,c.cz),flowSnapshot(c.cx+1,c.cz),
@@ -425,9 +405,9 @@ public final class TerrainMesh {
     }
     public int pendingMeshCount() {return meshJobs.size()+dirtyMeshes.size();}
     public int pendingLodCount() {return lodJobs.size();}
-    public int readyLodCount() {int n=0;for(Chunk c:chunks.values())if(c.lodVertices!=null)n++;return n;}
-    private Chunk generate(int cx,int cz){
-        Chunk c=new Chunk(cx,cz);
+    public int readyLodCount() {int n=0;for(ChunkColumn c:chunks.values())if(c.lodVertices!=null)n++;return n;}
+    private ChunkColumn generate(int cx,int cz){
+        ChunkColumn c=new ChunkColumn(cx,cz);
         // Cache nearby tree anchors once per column to avoid repeatedly sampling
         // tree candidates for each surface block. Includes anchors across seams.
         java.util.List<WorldGenerator.Tree> litterTrees = new java.util.ArrayList<>();
@@ -521,7 +501,7 @@ public final class TerrainMesh {
     /** Deterministic 1..8-height snow cover, placed only on exposed cold ground.
      * Layer state is encoded in append-only numeric block IDs for existing saves.
      */
-    private void populateSnowCover(Chunk c) {
+    private void populateSnowCover(ChunkColumn c) {
         for(int lx=0;lx<CHUNK_SIZE;lx++)for(int lz=0;lz<CHUNK_SIZE;lz++) {
             int wx=c.cx*CHUNK_SIZE+lx,wz=c.cz*CHUNK_SIZE+lz;
             WorldGenerator.Surface s=generator.surface(wx,wz);
@@ -545,7 +525,7 @@ public final class TerrainMesh {
     /** Deterministic static water: submerged ocean/river terrain and rare cave pools.
      * This runs on the generation worker and never enqueues millions of ocean cells.
      */
-    private void placeNaturalFluids(Chunk c) {
+    private void placeNaturalFluids(ChunkColumn c) {
         int sea=generator.settings().seaLevel();
         for(int lx=0;lx<CHUNK_SIZE;lx++)for(int lz=0;lz<CHUNK_SIZE;lz++) {
             int wx=c.cx*CHUNK_SIZE+lx,wz=c.cz*CHUNK_SIZE+lz;
@@ -595,7 +575,7 @@ public final class TerrainMesh {
     public int getFluidLevelAt(int x,int y,int z) {
         if(y<0||y>=WORLD_HEIGHT)return 0;
         int cx=Math.floorDiv(x,CHUNK_SIZE),cz=Math.floorDiv(z,CHUNK_SIZE);
-        Chunk c=chunks.get(key(cx,cz));
+        ChunkColumn c=chunks.get(key(cx,cz));
         if(c==null)return 0;
         int i=index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE));
         BlockType type=BlockType.fromId(c.get(i));
@@ -619,7 +599,7 @@ public final class TerrainMesh {
     public boolean setFluidLevelAt(int x,int y,int z,int level) {
         if(y<1||y>=WORLD_HEIGHT-1||level<1||level>7)return false;
         int cx=Math.floorDiv(x,CHUNK_SIZE),cz=Math.floorDiv(z,CHUNK_SIZE);
-        Chunk c=chunks.get(key(cx,cz));if(c==null)return false;
+        ChunkColumn c=chunks.get(key(cx,cz));if(c==null)return false;
         int i=index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE));
         BlockType b=BlockType.fromId(c.get(i));
         if(b!=BlockType.FLOWING_WATER&&b!=BlockType.FLOWING_LAVA)return false;
@@ -637,13 +617,13 @@ public final class TerrainMesh {
         return y+(getBlockAt(x,y+1,z).isFluid()?1f:fluidSurfaceHeight(getFluidLevelAt(x,y,z)));
     }
     private static float fluidSurfaceHeight(int level) {
-        return level>=7?.94f:.20f+.105f*Math.max(1,level);
+        return FluidRules.surfaceHeight(Math.max(1,Math.min(7,level)));
     }
     /** Activate a few generated waterfall cells when a column becomes resident.
      * Oceans and still lakes stay inert; do not seed fluid ticks for every source block.
      * This also handles streams present in a freshly created world.
      */
-    private void activateGeneratedRiverFalls(Chunk c) {
+    private void activateGeneratedRiverFalls(ChunkColumn c) {
         int scheduled = 0;
         // Sample a coarse grid to avoid 256 expensive noise lookups per loaded chunk.
         for (int lx=0;lx<CHUNK_SIZE && scheduled<24;lx+=2)
@@ -667,7 +647,7 @@ public final class TerrainMesh {
                 }
             }
     }
-    private void resumeEditedFlows(Chunk c) {
+    private void resumeEditedFlows(ChunkColumn c) {
         // Only edited flowing cells resume; naturally generated oceans and pools stay inert.
         Map<Integer,Byte> changed=edits.get(key(c.cx,c.cz));
         if(changed==null)return;
@@ -733,7 +713,7 @@ public final class TerrainMesh {
         if(!withinSimulation(x,z)) {parkFluid(pos);return;}
         if(fluidQueue.size()>=FLUID_QUEUE_LIMIT){parkFluid(pos);return;}
         if(queuedFluidPositions.add(pos)) {
-            int delay=b.isLava()?LAVA_DELAY_TICKS:WATER_DELAY_TICKS;
+            int delay=FluidRules.delay(b);
             fluidQueue.add(new FluidTask(x,y,z,fluidTick+delay));
         }
     }
@@ -741,9 +721,9 @@ public final class TerrainMesh {
      * sides of the seam. Without this, an earlier failed spill is never retried.
      * Only one-block-wide border strips are examined, not entire ocean volumes.
      */
-    private void activateFluidSeams(Chunk loaded) {
+    private void activateFluidSeams(ChunkColumn loaded) {
         for(int[] dir:new int[][]{{1,0},{-1,0},{0,1},{0,-1}}) {
-            Chunk neighbor=chunks.get(key(loaded.cx+dir[0],loaded.cz+dir[1]));
+            ChunkColumn neighbor=chunks.get(key(loaded.cx+dir[0],loaded.cz+dir[1]));
             if(neighbor==null)continue;
             for(int i=0;i<CHUNK_SIZE;i++) {
                 int ax=dir[0]>0?CHUNK_SIZE-1:dir[0]<0?0:i;
@@ -767,9 +747,7 @@ public final class TerrainMesh {
     /** Only exposed, lower-level or incompatible-fluid contacts need waking. */
     static boolean shouldActivateFluidSeam(BlockType source,int sourceLevel,
                                            BlockType neighbor,int neighborLevel) {
-        return source.isFluid() && (neighbor==BlockType.AIR ||
-                (neighbor.isFluid() &&
-                        (source.isWater()!=neighbor.isWater() || sourceLevel>neighborLevel)));
+        return FluidRules.activatesBorder(source,sourceLevel,neighbor,neighborLevel);
     }
     /** Fixed-rate simulation, independent of FPS and bounded after long frame stalls. */
     public void tickFluids(float elapsedSeconds) {
@@ -829,11 +807,7 @@ public final class TerrainMesh {
     /** Pure rule used by fluid ticks and regression tests. */
     static boolean supportedWaterSource(BlockType below, BlockType east,
             BlockType west, BlockType south, BlockType north) {
-        if(!below.isSolid() && below!=BlockType.WATER)return false;
-        int sources=0;
-        for(BlockType neighbor:new BlockType[]{east,west,south,north})
-            if(neighbor==BlockType.WATER)sources++;
-        return sources>=2;
+        return FluidRules.formsWaterSource(below,east,west,south,north);
     }
 
     /** Currents follow falling water and higher-to-lower liquid levels.
@@ -871,7 +845,7 @@ public final class TerrainMesh {
         if(y<=0||y>=WORLD_HEIGHT-1||strength<1)return false;
         int cx=Math.floorDiv(x,CHUNK_SIZE),cz=Math.floorDiv(z,CHUNK_SIZE);
         long chunkKey=key(cx,cz);
-        Chunk c=chunks.get(chunkKey);if(c==null)return false;
+        ChunkColumn c=chunks.get(chunkKey);if(c==null)return false;
         int pos=index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE));
         BlockType old=BlockType.fromId(c.get(pos));
         if(old.isFluid() && old.isWater()!=flow.isWater()) {
@@ -971,7 +945,7 @@ public final class TerrainMesh {
         return v^(v>>>31);
     }
     /** Tree trunks precede leaf placement, including at cross-column boundaries. */
-    private void populateFeatures(Chunk c) {
+    private void populateFeatures(ChunkColumn c) {
         int minX=c.cx*CHUNK_SIZE, minZ=c.cz*CHUNK_SIZE;
         int maxX=minX+CHUNK_SIZE-1, maxZ=minZ+CHUNK_SIZE-1;
         int tc=WorldGenerator.TREE_CELL_SIZE;
@@ -993,12 +967,12 @@ public final class TerrainMesh {
                 if(plant!=null)placePlant(c,plant,minX,minZ);
             }
     }
-    private void putFeature(Chunk c,int x,int y,int z,BlockType type,int minX,int minZ) {
+    private void putFeature(ChunkColumn c,int x,int y,int z,BlockType type,int minX,int minZ) {
         if(x<minX||x>=minX+CHUNK_SIZE||z<minZ||z>=minZ+CHUNK_SIZE||y<1||y>=WORLD_HEIGHT-1)return;
         int idx=index(x-minX,y,z-minZ);
         if(c.get(idx)==BlockType.AIR.id)c.set(idx,type.id);
     }
-    private void placeTree(Chunk c,WorldGenerator.Tree t,int minX,int minZ) {
+    private void placeTree(ChunkColumn c,WorldGenerator.Tree t,int minX,int minZ) {
         int x=t.x(),z=t.z();
         int y=generator.surface(x,z).surfaceY()+1;
         if(y<2||y+t.trunkHeight()+4>=WORLD_HEIGHT)return;
@@ -1072,7 +1046,7 @@ public final class TerrainMesh {
         };
         return new int[]{(int)Math.round(length*Math.cos(angle)),rise,(int)Math.round(length*Math.sin(angle))};
     }
-    private void placePlant(Chunk c,WorldGenerator.Plant p,int minX,int minZ) {
+    private void placePlant(ChunkColumn c,WorldGenerator.Plant p,int minX,int minZ) {
         int x=p.x(),z=p.z();
         int y=generator.surface(x,z).surfaceY()+1;
         if(y<2||y>=WORLD_HEIGHT-3)return;
@@ -1113,7 +1087,7 @@ public final class TerrainMesh {
         return BlockType.GRASS_TUFT;
     }
     /** Sparse biome-specific cave decorations on actual carved faces. */
-    private void populateCaveDecorations(Chunk c) {
+    private void populateCaveDecorations(ChunkColumn c) {
         for(int lx=1;lx<CHUNK_SIZE-1;lx+=3)for(int lz=1;lz<CHUNK_SIZE-1;lz+=3) {
             int wx=c.cx*CHUNK_SIZE+lx,wz=c.cz*CHUNK_SIZE+lz;
             WorldGenerator.Surface surf=generator.surface(wx,wz);
@@ -1157,7 +1131,7 @@ public final class TerrainMesh {
      * including adjacent cells, so deposits remain continuous across chunk boundaries.
      * A fixed number of candidates per anchor gives predictable upper bounds on work.
      */
-    private void generateOreVeins(Chunk c) {
+    private void generateOreVeins(ChunkColumn c) {
         final int spacing=16, band=24;
         for(int ax=c.cx-1;ax<=c.cx+1;ax++) for(int az=c.cz-1;az<=c.cz+1;az++) {
             for(int ay=0;ay<=WORLD_HEIGHT/band;ay++) for(int type=0;type<5;type++) {
@@ -1216,7 +1190,7 @@ public final class TerrainMesh {
     }
     public BlockType getBlockAt(int x,int y,int z){
         if(y<0||y>=WORLD_HEIGHT)return BlockType.AIR;
-        Chunk c=chunks.get(key(Math.floorDiv(x,CHUNK_SIZE),Math.floorDiv(z,CHUNK_SIZE)));
+        ChunkColumn c=chunks.get(key(Math.floorDiv(x,CHUNK_SIZE),Math.floorDiv(z,CHUNK_SIZE)));
         if(c==null)return BlockType.AIR;
         return BlockType.fromId(c.get(index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE))));
     }
@@ -1232,7 +1206,7 @@ public final class TerrainMesh {
     public boolean setBlock(int x,int y,int z,BlockType type){
         if(type==null||y<0||y>=WORLD_HEIGHT)return false;
         int cx=Math.floorDiv(x,CHUNK_SIZE),cz=Math.floorDiv(z,CHUNK_SIZE);
-        Chunk c=chunks.get(key(cx,cz));if(c==null)return false;
+        ChunkColumn c=chunks.get(key(cx,cz));if(c==null)return false;
         int i=index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE));
         if(c.get(i)==type.id)return false;
         BlockType previous=BlockType.fromId(c.get(i));
@@ -1268,7 +1242,7 @@ public final class TerrainMesh {
      * outer faces. Full-resolution blocks remain stored for edits and collision.
      * This intentionally omits underground cave walls and decorative foliage.
      */
-    private LodMeshes buildDistantMeshes(Chunk c,Map<Integer,Byte> levels) {
+    private LodMeshes buildDistantMeshes(ChunkColumn c,Map<Integer,Byte> levels) {
         // Oceans retain inexpensive 2x2 tiles. Streams, coastlines and height / flow
         // transitions subdivide into actual 1x1 water/ground cells, preserving banks.
         final int step=2,tiles=CHUNK_SIZE/step;
@@ -1427,7 +1401,7 @@ public final class TerrainMesh {
             LodJob job=entry.getValue();
             if(!job.future().isDone())continue;
             iterator.remove();
-            Chunk chunk=chunks.get(entry.getKey());
+            ChunkColumn chunk=chunks.get(entry.getKey());
             if(chunk==null || job.generation()!=meshGeneration || job.revision()!=chunk.lodRevision)continue;
             try {
                 LodMeshes built=job.future().get();
@@ -1442,13 +1416,13 @@ public final class TerrainMesh {
             }
         }
         lodBuildPending=false;
-        java.util.ArrayList<Chunk> ordered=new java.util.ArrayList<>(chunks.values());
+        java.util.ArrayList<ChunkColumn> ordered=new java.util.ArrayList<>(chunks.values());
         ordered.sort(java.util.Comparator.comparingLong(c->{
             long dx=(long)c.cx-cameraChunkX,dz=(long)c.cz-cameraChunkZ;
             return dx*dx+dz*dz;
         }));
         java.util.ArrayList<ChunkMesh> result=new java.util.ArrayList<>(chunks.size()*4);
-        for(Chunk c:ordered){
+        for(ChunkColumn c:ordered){
             int radius=Math.max(Math.abs(c.cx-cameraChunkX),Math.abs(c.cz-cameraChunkZ));
             long k=key(c.cx,c.cz);
             // Both meshes exist in the transition ring for a dithered crossfade.
@@ -1464,7 +1438,7 @@ public final class TerrainMesh {
                         int chunkX=c.cx,chunkZ=c.cz;
                         Map<Integer,Byte> flows=flowSnapshot(chunkX,chunkZ);
                         Future<LodMeshes> task=lodWorker.submit(()->{
-                            Chunk immutable=new Chunk(chunkX,chunkZ);
+                            ChunkColumn immutable=new ChunkColumn(chunkX,chunkZ);
                             immutable.blocks=snapshot;
                             return buildDistantMeshes(immutable,flows);
                         });
@@ -1490,7 +1464,7 @@ public final class TerrainMesh {
 
     public java.util.List<ChunkMesh> chunkMeshes(){
         java.util.ArrayList<ChunkMesh> result=new java.util.ArrayList<>(chunks.size()*SECTION_COUNT);
-        for(Chunk c:chunks.values()) for(int section=0;section<SECTION_COUNT;section++) {
+        for(ChunkColumn c:chunks.values()) for(int section=0;section<SECTION_COUNT;section++) {
             if(c.sectionVertices[section].length>0)result.add(new ChunkMesh(c.cx,section,c.cz,c.sectionRevision[section],c.sectionVertices[section]));
             if(c.fluidVertices[section].length>0)result.add(new ChunkMesh(c.cx,section+FLUID_SECTION_OFFSET,c.cz,c.fluidRevision[section],c.fluidVertices[section]));
         }
@@ -1498,22 +1472,23 @@ public final class TerrainMesh {
     }
     public void newWorld(long newSeed){
         cancelGeneration();edits.clear();fluidLevels.clear();seed=newSeed;worldgenRevision=WORLDGEN_REVISION;initializeGenerator();chunks.clear();
-        generateSpawnChunk(16,27);version++;
+        initialSpawn=SpawnFinder.find(generator,512);
+        generateSpawnChunk(initialSpawn.x(),initialSpawn.z());version++;
     }
     public int getVersion(){return version;}
     public float[] getVertices(){
-        int n=0;for(Chunk c:chunks.values()) {
+        int n=0;for(ChunkColumn c:chunks.values()) {
             for(float[] section:c.sectionVertices)n+=section.length;
             for(float[] section:c.fluidVertices)n+=section.length;
         }
         float[] all=new float[n];int offset=0;
-        for(Chunk c:chunks.values()) {
+        for(ChunkColumn c:chunks.values()) {
             for(float[] section:c.sectionVertices){System.arraycopy(section,0,all,offset,section.length);offset+=section.length;}
             for(float[] section:c.fluidVertices){System.arraycopy(section,0,all,offset,section.length);offset+=section.length;}
         }
         return all;
     }
-    public int getVertexCount(){int n=0;for(Chunk c:chunks.values()){
+    public int getVertexCount(){int n=0;for(ChunkColumn c:chunks.values()){
         for(float[] section:c.sectionVertices)n+=section.length/FLOATS_PER_VERTEX;
         for(float[] section:c.fluidVertices)n+=section.length/FLOATS_PER_VERTEX;
     }return n;}
@@ -1612,6 +1587,7 @@ public final class TerrainMesh {
         }
         // Commit only after complete validation.
         legacyVerticalMigration=migrateLegacy;
+        initialSpawn=null;
         cancelGeneration();seed=newSeed;worldgenRevision=incomingRevision;initializeGenerator();edits.clear();edits.putAll(incoming);
         fluidLevels.clear();fluidLevels.putAll(incomingFluidLevels);
         chunks.clear();generateSpawnChunk(16,27);version++;
@@ -1651,8 +1627,8 @@ public final class TerrainMesh {
         if(currentModel.pass()==BlockModels.Pass.CUTOUT && current==neighbor)return false;
         return !otherModel.fullCubeOcclusion();
     }
-    /** Build only exposed faces. Chunk neighbors are resolved once per rebuild. */
-    private void rebuild(Chunk c){
+    /** Build only exposed faces. ChunkColumn neighbors are resolved once per rebuild. */
+    private void rebuild(ChunkColumn c){
         BitSet all=new BitSet(SECTION_COUNT);
         all.set(0,SECTION_COUNT);
         float[][] layers=buildSelectedMeshes(snapshot(c),all);

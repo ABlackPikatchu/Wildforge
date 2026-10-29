@@ -1,6 +1,9 @@
 package com.wildforge.core;
 
 import com.wildforge.player.Player;
+import com.wildforge.world.WorldItemManager;
+import com.wildforge.core.save.SaveTransaction;
+import com.wildforge.core.save.DroppedItemStorage;
 import com.wildforge.world.TerrainMesh;
 
 import java.io.IOException;
@@ -31,6 +34,7 @@ public final class SaveManager {
     }
     private static final Pattern WORLD_FILE = Pattern.compile("world_(\\d+)\\.wfs");
     private static final Pattern PLAYER_FILE = Pattern.compile("player_(\\d+)\\.wfp");
+    private static final Pattern JOURNAL_FILE = Pattern.compile("world_(\\d+)\\.journal");
 
     public record SaveSlotSummary(int slot, boolean hasWorld, boolean hasPlayer) {
         public String displayName() {
@@ -52,6 +56,7 @@ public final class SaveManager {
             throw new IllegalArgumentException("Terrain cannot be null");
         }
 
+        recoverSlot(slot);
         Path worldPath = worldPath(slot);
         if (Files.isRegularFile(worldPath)) {
             terrain.loadFrom(worldPath);
@@ -74,6 +79,7 @@ public final class SaveManager {
                     "Player and terrain must not be null");
         }
 
+        recoverSlot(slot);
         Path path = playerPath(slot);
         if (Files.isRegularFile(path)) {
             player.loadFrom(path, terrain);
@@ -82,6 +88,24 @@ public final class SaveManager {
             // Numbered world saves are always expected to have their matching player file.
             throw new IOException("Incomplete world save: player data is missing for slot " + (slot + 1));
         }
+    }
+
+    /** Legacy worlds have no dropped-item data. A malformed item file is never silently ignored. */
+    public void loadItems(int slot, WorldItemManager items, TerrainMesh terrain) throws IOException {
+        requireValidSlot(slot);
+        recoverSlot(slot);
+        DroppedItemStorage.read(itemPath(slot), items, terrain);
+    }
+
+    private Path itemPath(int slot) {
+        return saveDirectory.resolve("items_" + ((long)slot + 1) + ".wfi");
+    }
+    private Path journalPath(int slot) {
+        return saveDirectory.resolve("world_" + ((long)slot + 1) + ".journal");
+    }
+    private void recoverSlot(int slot) throws IOException {
+        SaveTransaction.recover(journalPath(slot),
+                List.of(worldPath(slot), playerPath(slot), itemPath(slot)));
     }
 
     /** Optional display name stored separately from world and player data (legacy-safe). */
@@ -112,22 +136,24 @@ public final class SaveManager {
     private Path rulesPath(int slot) { return saveDirectory.resolve("world_" + ((long)slot+1) + ".rules"); }
     private Path namePath(int slot){return saveDirectory.resolve("world_"+((long)slot+1)+".name");}
 
-    public void save(int slot, TerrainMesh terrain, Player player)
-            throws IOException {
-        requireValidSlot(slot);
-        if (terrain == null || player == null) {
-            throw new IllegalArgumentException(
-                    "Terrain and player must not be null");
-        }
+    /** Saves the world, player and dropped entities as one recoverable generation. */
+    public void save(int slot, TerrainMesh terrain, Player player) throws IOException {
+        save(slot,terrain,player,null);
+    }
 
-        // Inventory cursor stacks aren't part of the current v1 player-save format.
-        // Refuse to save rather than silently discarding items when no slot is free.
-        if (player.hasCursorStack()) {
+    public void save(int slot, TerrainMesh terrain, Player player,
+                     WorldItemManager worldItems) throws IOException {
+        requireValidSlot(slot);
+        if (terrain == null || player == null)
+            throw new IllegalArgumentException("Terrain and player cannot be null");
+        if (player.hasCursorStack())
             throw new IOException("Return held inventory items before saving");
-        }
         Files.createDirectories(saveDirectory);
-        terrain.saveTo(worldPath(slot));
-        player.saveTo(playerPath(slot));
+        SaveTransaction.write(journalPath(slot), List.of(
+            new SaveTransaction.Entry(worldPath(slot), terrain::saveTo),
+            new SaveTransaction.Entry(playerPath(slot), player::saveTo),
+            new SaveTransaction.Entry(itemPath(slot), path -> DroppedItemStorage.write(path,worldItems))
+        ));
     }
 
     /** Sorted list of every discovered save slot, preserving legacy slot 0 compatibility. */
@@ -141,11 +167,14 @@ public final class SaveManager {
                     String name = path.getFileName().toString();
                     Matcher world = WORLD_FILE.matcher(name);
                     Matcher player = PLAYER_FILE.matcher(name);
+                    Matcher journal = JOURNAL_FILE.matcher(name);
                     try {
                         if (world.matches()) {
                             slots.add(parseSlotIndex(world.group(1)));
                         } else if (player.matches()) {
                             slots.add(parseSlotIndex(player.group(1)));
+                        } else if (journal.matches()) {
+                            slots.add(parseSlotIndex(journal.group(1)));
                         }
                     } catch (NumberFormatException ignored) {
                         // Ignore invalid or oversized filenames.
@@ -162,10 +191,16 @@ public final class SaveManager {
 
         List<SaveSlotSummary> result = new ArrayList<>();
         for (Integer slot : slots.stream().sorted().toList()) {
+            try { recoverSlot(slot); }
+            catch (IOException ex) {
+                // Preserve a visible incomplete slot instead of hiding corruption.
+                System.err.println("[Wildforge] Save recovery failed for world " + (slot + 1) + ": " + ex.getMessage());
+            }
             boolean hasWorld = Files.isRegularFile(worldPath(slot))
                     || (slot == 0 && legacyWorldExists);
             boolean hasPlayer = Files.isRegularFile(playerPath(slot));
-            result.add(new SaveSlotSummary(slot, hasWorld, hasPlayer));
+            if (hasWorld || hasPlayer || Files.isRegularFile(journalPath(slot)))
+                result.add(new SaveSlotSummary(slot, hasWorld, hasPlayer));
         }
         result.sort(Comparator.comparingInt(SaveSlotSummary::slot));
         return List.copyOf(result);
@@ -189,6 +224,7 @@ public final class SaveManager {
         }
         return Files.isRegularFile(worldPath(slot))
                 || Files.isRegularFile(playerPath(slot))
+                || Files.isRegularFile(journalPath(slot))
                 || (slot == 0 && Files.isRegularFile(legacySavePath));
     }
 
@@ -199,9 +235,12 @@ public final class SaveManager {
         if (!slotExists(slot)) {
             throw new IOException("World does not exist: " + (slot + 1));
         }
-        // Do not touch any unrelated saves or files in the saves directory.
+        // Recover an interrupted write before deleting; only recognized slot files.
+        recoverSlot(slot);
         Files.deleteIfExists(worldPath(slot));
         Files.deleteIfExists(playerPath(slot));
+        Files.deleteIfExists(itemPath(slot));
+        Files.deleteIfExists(journalPath(slot));
         Files.deleteIfExists(namePath(slot));
         Files.deleteIfExists(rulesPath(slot));
         if (slot == 0) {

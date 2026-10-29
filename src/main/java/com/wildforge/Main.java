@@ -905,6 +905,7 @@ public final class Main implements InputController.Callbacks {
             player = new Player(terrain, worldItems, gameContent);
             player.setKeyBindings(settings.keyBindings());
             saveManager.loadPlayer(activeSaveSlot, player, terrain);
+            saveManager.loadItems(activeSaveSlot, worldItems, terrain);
             if(pendingCreateGameMode!=null){
                 player.setGameMode(pendingCreateGameMode);pendingCreateGameMode=null;
                 activeWorldCheats=pendingNewCheats;
@@ -933,7 +934,7 @@ public final class Main implements InputController.Callbacks {
             if (!saveManager.isValidSlot(activeSaveSlot)) {
                 throw new IOException("No save slot is selected");
             }
-            saveManager.save(activeSaveSlot, terrain, player);
+            saveManager.save(activeSaveSlot, terrain, player, worldItems);
             worldLoaded = true;
             if(newWorldNamePending!=null){saveManager.saveWorldName(activeSaveSlot,newWorldNamePending);newWorldNamePending=null;}
             refreshSaveSlots();

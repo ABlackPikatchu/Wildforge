@@ -157,6 +157,10 @@ public Player(TerrainMesh terrain, WorldItemManager worldItems,
     inventory.setStack(HOTBAR_START_INDEX + 2,
             new ItemStack(ItemType.GRASS_BLOCK, 16));
 
+    if (terrain.initialSpawn() != null) {
+        x = terrain.initialSpawn().x() + 0.5f;
+        z = terrain.initialSpawn().z() + 0.5f;
+    }
     feetY = terrain.getHeightAt(x, z);
     grounded = true;
     updateCameraPosition();
