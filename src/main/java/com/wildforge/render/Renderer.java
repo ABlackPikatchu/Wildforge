@@ -4,6 +4,7 @@ import com.wildforge.item.ItemType;
 import com.wildforge.player.Camera;
 import com.wildforge.player.Player;
 import com.wildforge.world.BlockType;
+import com.wildforge.world.BlockModels;
 import com.wildforge.world.TerrainMesh;
 import com.wildforge.entity.DroppedItemEntity;
 import com.wildforge.world.WorldItemManager;
@@ -581,15 +582,15 @@ public final class Renderer {
 
     // Dropped block cubes must use the registry's face layers, not numeric block IDs.
     private int getTopTextureLayer(BlockType blockType) {
-        return blockType.getTopTextureLayer();
+        return blockType.textureForFace(BlockModels.Face.UP);
     }
 
     private int getBottomTextureLayer(BlockType blockType) {
-        return blockType.getBottomTextureLayer();
+        return blockType.textureForFace(BlockModels.Face.DOWN);
     }
 
     private int getSideTextureLayer(BlockType blockType) {
-        return blockType.getSideTextureLayer();
+        return blockType.textureForFace(BlockModels.Face.SOUTH);
     }
 
     private int appendItemCube(

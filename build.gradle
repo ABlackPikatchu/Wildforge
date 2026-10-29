@@ -220,3 +220,13 @@ tasks.register('oceanTreeCheck', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'com.wildforge.worldgen.OceanTreeIntegrationSmokeTest'
 }
+
+// Patch 3A: validates logical states, legacy ID encoding and model face maps.
+tasks.register('blockStateCheck', JavaExec) {
+    group = 'verification'
+    description = 'Validate save-stable block states, all log axes and model textures'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.BlockStateSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('blockStateCheck') }

@@ -9,6 +9,7 @@ import com.wildforge.inventory.Inventory;
 import com.wildforge.item.ItemStack;
 import com.wildforge.item.ItemType;
 import com.wildforge.world.BlockType;
+import com.wildforge.world.BlockState;
 import com.wildforge.world.TerrainMesh;
 import com.wildforge.world.TerrainMesh.RayHit;
 import com.wildforge.world.WorldItemManager;
@@ -143,7 +144,8 @@ public final class BlockInteraction {
         // floor/ceiling Y. Horizontal logs drop the original log item.
         if(blockToPlace.isLog()) {
             int axis=(hit.placeX!=hit.x)?0:(hit.placeZ!=hit.z)?2:1;
-            blockToPlace=blockToPlace.orientedLog(axis);
+            blockToPlace=BlockState.fromLegacy(blockToPlace)
+                    .withAxis(BlockState.Axis.fromFaceAxis(axis)).toLegacyBlock();
         }
         if (terrain.setBlock(bx, by, bz, blockToPlace)) {
             worldItems.onBlockPlaced(bx, by, bz);

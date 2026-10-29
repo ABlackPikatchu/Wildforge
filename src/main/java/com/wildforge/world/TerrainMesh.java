@@ -989,6 +989,15 @@ public final class TerrainMesh {
         if(c==null)return BlockType.AIR;
         return BlockType.fromId(c.get(index(Math.floorMod(x,CHUNK_SIZE),y,Math.floorMod(z,CHUNK_SIZE))));
     }
+    /** Logical-state API; legacy byte column storage remains the save encoding. */
+    public BlockState getBlockStateAt(int x,int y,int z) {
+        return BlockState.fromLegacy(getBlockAt(x,y,z));
+    }
+
+    public boolean setBlockState(int x,int y,int z,BlockState state) {
+        return setBlock(x,y,z,java.util.Objects.requireNonNull(state).toLegacyBlock());
+    }
+
     public boolean setBlock(int x,int y,int z,BlockType type){
         if(type==null||y<0||y>=WORLD_HEIGHT)return false;
         int cx=Math.floorDiv(x,CHUNK_SIZE),cz=Math.floorDiv(z,CHUNK_SIZE);
@@ -1460,13 +1469,13 @@ public final class TerrainMesh {
                     if(showBottom)face(fluid,x,y,z,x+1,y,z,x+1,y,z+1,x,y,z+1,block.getBottomTextureLayer(),.72f+anim);
                     continue;
                 }
-                if(showSouth)face(data,x,y,z+1,x+1,y,z+1,x+1,y+1,z+1,x,y+1,z+1,block.textureForAxis(2),.85f);
-                if(showNorth)face(data,x+1,y,z,x,y,z,x,y+1,z,x+1,y+1,z,block.textureForAxis(2),.75f);
-                if(showEast)face(data,x+1,y,z+1,x+1,y,z,x+1,y+1,z,x+1,y+1,z+1,block.textureForAxis(0),.8f);
-                if(showWest)face(data,x,y,z,x,y,z+1,x,y+1,z+1,x,y+1,z,block.textureForAxis(0),.8f);
-                if(showTop)face(data,x,y+1,z+1,x+1,y+1,z+1,x+1,y+1,z,x,y+1,z,block.textureForAxis(1),1f);
+                if(showSouth)face(data,x,y,z+1,x+1,y,z+1,x+1,y+1,z+1,x,y+1,z+1,block.textureForFace(BlockModels.Face.SOUTH),.85f);
+                if(showNorth)face(data,x+1,y,z,x,y,z,x,y+1,z,x+1,y+1,z,block.textureForFace(BlockModels.Face.NORTH),.75f);
+                if(showEast)face(data,x+1,y,z+1,x+1,y,z,x+1,y+1,z,x+1,y+1,z+1,block.textureForFace(BlockModels.Face.EAST),.8f);
+                if(showWest)face(data,x,y,z,x,y,z+1,x,y+1,z+1,x,y+1,z,block.textureForFace(BlockModels.Face.WEST),.8f);
+                if(showTop)face(data,x,y+1,z+1,x+1,y+1,z+1,x+1,y+1,z,x,y+1,z,block.textureForFace(BlockModels.Face.UP),1f);
                 if(showBottom)face(data,x,y,z,x+1,y,z,x+1,y,z+1,x,y,z+1,
-                        block.isLog()?block.textureForAxis(1):block.getBottomTextureLayer(),.55f);
+                        block.textureForFace(BlockModels.Face.DOWN),.55f);
             }
         }
         appendFoliage(snap,data,section);

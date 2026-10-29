@@ -231,44 +231,27 @@ public enum BlockType {
         return dropCount;
     }
 
-    /** Face axis: 0 = X face, 1 = Y face, 2 = Z face. */
+    /**
+     * Compatibility adapter for the original axis-oriented log block IDs.
+     * The logical state (wood species + axis) lives in BlockState; legacy ID
+     * values are preserved on disk until an explicitly versioned migration.
+     */
     public int textureForAxis(int faceAxis) {
-        boolean xAxis = switch(this) {
-            case OAK_LOG_X,PINE_LOG_X,MAPLE_LOG_X,WILLOW_LOG_X,CYPRESS_LOG_X,
-                 BIRCH_LOG_X, SPRUCE_LOG_X, ACACIA_LOG_X, ALDER_LOG_X, MANGROVE_LOG_X, PALM_LOG_X -> true;
-            default -> false;
-        };
-        boolean zAxis = switch(this) {
-            case OAK_LOG_Z,PINE_LOG_Z,MAPLE_LOG_Z,WILLOW_LOG_Z,CYPRESS_LOG_Z,
-                 BIRCH_LOG_Z, SPRUCE_LOG_Z, ACACIA_LOG_Z, ALDER_LOG_Z, MANGROVE_LOG_Z, PALM_LOG_Z -> true;
-            default -> false;
-        };
-        if (xAxis || zAxis)
-            return (xAxis ? faceAxis==0 : faceAxis==2) ? topTextureLayer : sideTextureLayer;
-        return faceAxis==1 ? topTextureLayer : sideTextureLayer;
+        return BlockModels.textureForAxis(BlockState.fromLegacy(this), faceAxis);
     }
-    public boolean isLog() {return switch(this) {
-        case OAK_LOG,OAK_LOG_X,OAK_LOG_Z,PINE_LOG,PINE_LOG_X,PINE_LOG_Z,
-             MAPLE_LOG,MAPLE_LOG_X,MAPLE_LOG_Z,WILLOW_LOG,WILLOW_LOG_X,WILLOW_LOG_Z,
-             CYPRESS_LOG,CYPRESS_LOG_X,CYPRESS_LOG_Z,
-                 BIRCH_LOG_Z, SPRUCE_LOG_Z, ACACIA_LOG_Z, ALDER_LOG_Z, MANGROVE_LOG_Z, PALM_LOG_Z -> true;
-        default -> false;
-    };}
-    public BlockType orientedLog(int axis) {
-        return switch(this) {
-            case OAK_LOG,OAK_LOG_X,OAK_LOG_Z -> axis==0?OAK_LOG_X:axis==2?OAK_LOG_Z:OAK_LOG;
-            case PINE_LOG,PINE_LOG_X,PINE_LOG_Z -> axis==0?PINE_LOG_X:axis==2?PINE_LOG_Z:PINE_LOG;
-            case MAPLE_LOG,MAPLE_LOG_X,MAPLE_LOG_Z -> axis==0?MAPLE_LOG_X:axis==2?MAPLE_LOG_Z:MAPLE_LOG;
-            case WILLOW_LOG,WILLOW_LOG_X,WILLOW_LOG_Z -> axis==0?WILLOW_LOG_X:axis==2?WILLOW_LOG_Z:WILLOW_LOG;
-            case CYPRESS_LOG,CYPRESS_LOG_X,CYPRESS_LOG_Z -> axis==0?CYPRESS_LOG_X:axis==2?CYPRESS_LOG_Z:CYPRESS_LOG;
-            case BIRCH_LOG,BIRCH_LOG_X,BIRCH_LOG_Z -> axis==0?BIRCH_LOG_X:axis==2?BIRCH_LOG_Z:BIRCH_LOG;
-            case SPRUCE_LOG,SPRUCE_LOG_X,SPRUCE_LOG_Z -> axis==0?SPRUCE_LOG_X:axis==2?SPRUCE_LOG_Z:SPRUCE_LOG;
-            case ACACIA_LOG,ACACIA_LOG_X,ACACIA_LOG_Z -> axis==0?ACACIA_LOG_X:axis==2?ACACIA_LOG_Z:ACACIA_LOG;
-            case ALDER_LOG,ALDER_LOG_X,ALDER_LOG_Z -> axis==0?ALDER_LOG_X:axis==2?ALDER_LOG_Z:ALDER_LOG;
-            case MANGROVE_LOG,MANGROVE_LOG_X,MANGROVE_LOG_Z -> axis==0?MANGROVE_LOG_X:axis==2?MANGROVE_LOG_Z:MANGROVE_LOG;
-            case PALM_LOG,PALM_LOG_X,PALM_LOG_Z -> axis==0?PALM_LOG_X:axis==2?PALM_LOG_Z:PALM_LOG;
-            default -> this;
-        };
+
+    /** Returns the actual texture for an individual face, including DOWN. */
+    public int textureForFace(BlockModels.Face face) {
+        return BlockModels.textureForFace(BlockState.fromLegacy(this), face);
+    }
+
+    public boolean isLog() {
+        return BlockState.fromLegacy(this).isLog();
+    }
+
+    public BlockType orientedLog(int faceAxis) {
+        if (!isLog()) return this;
+        return BlockState.fromLegacy(this).withAxis(BlockState.Axis.fromFaceAxis(faceAxis)).toLegacyBlock();
     }
 
     public boolean isWater() { return this == WATER || this == FLOWING_WATER; }
@@ -295,21 +278,26 @@ public enum BlockType {
         return bottomTextureLayer;
     }
 
-    static BlockType fromId(byte id) {
+    // Constant-time unsigned byte lookup; also verifies save-stable IDs are unique.
+    private static final BlockType[] BY_ID = createIdLookup();
+
+    private static BlockType[] createIdLookup() {
+        BlockType[] result = new BlockType[256];
         for (BlockType type : values()) {
-            if (type.id == id) {
-                return type;
-            }
+            int id = Byte.toUnsignedInt(type.id);
+            if (result[id] != null)
+                throw new IllegalStateException("Duplicate legacy block ID " + id);
+            result[id] = type;
         }
-        return AIR;
+        return result;
+    }
+
+    static BlockType fromId(byte id) {
+        BlockType type = BY_ID[Byte.toUnsignedInt(id)];
+        return type == null ? AIR : type;
     }
 
     public static boolean isValidId(byte id) {
-        for (BlockType type : values()) {
-            if (type.id == id) {
-                return true;
-            }
-        }
-        return false;
+        return BY_ID[Byte.toUnsignedInt(id)] != null;
     }
 }

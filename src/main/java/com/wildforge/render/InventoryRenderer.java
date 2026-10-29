@@ -278,28 +278,9 @@ final class InventoryRenderer {
             float slotY,
             BlockType blockType) {
 
-        int topLayer;
-        int sideLayer;
-
-        switch (blockType) {
-            case GRASS -> {
-                topLayer = BlockTextures.GRASS_TOP;
-                sideLayer = BlockTextures.GRASS_SIDE;
-            }
-            case DIRT -> {
-                topLayer = BlockTextures.DIRT;
-                sideLayer = BlockTextures.DIRT;
-            }
-            case STONE -> {
-                topLayer = BlockTextures.STONE;
-                sideLayer = BlockTextures.STONE;
-            }
-            default -> {
-                // Use the block's texture layer for other block types.
-                topLayer = blockType.getTopTextureLayer();
-                sideLayer = blockType.getSideTextureLayer();
-            }
-        }
+        // Shared block model metadata drives all cube inventory previews.
+        int topLayer = blockType.textureForFace(com.wildforge.world.BlockModels.Face.UP);
+        int sideLayer = blockType.textureForFace(com.wildforge.world.BlockModels.Face.SOUTH);
 
         // A slightly taller isometric cube, seated lower in its 48x48 slot.
         // Keep a consistent silhouette for inventory, hotbar and cursor icons.
