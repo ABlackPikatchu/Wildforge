@@ -18,7 +18,7 @@ public final class DeveloperCommands {
         String raw=input.trim();
         if(raw.startsWith("/"))raw=raw.substring(1).trim();
         if(raw.isEmpty())return "EMPTY COMMAND - TYPE /HELP";
-        String[] parts=raw.split("\s+");
+        String[] parts=raw.split("\\s+");
         String command=parts[0].toLowerCase(Locale.ROOT);
         if (!cheatsEnabled && !(command.equals("help") || command.equals("?") ||
                 command.equals("pos") || command.equals("position") || command.equals("seed")))
@@ -72,6 +72,35 @@ public final class DeveloperCommands {
             return ex.getMessage() == null ? "COMMAND ERROR" : ex.getMessage().toUpperCase(Locale.ROOT);
         }
     }
+    /** Context-aware, bounded command completion for the in-game chat bar. */
+    public static java.util.List<String> suggestions(String input, boolean cheatsEnabled) {
+        String raw=input==null?"":input.stripLeading();
+        if(raw.startsWith("/"))raw=raw.substring(1);
+        String lower=raw.toLowerCase(Locale.ROOT);
+        String[] words=lower.split("\\s+",-1);
+        java.util.List<String> commands=cheatsEnabled ?
+            java.util.List.of("help","pos","seed","gamemode","fly","tp","give") :
+            java.util.List.of("help","pos","seed");
+        java.util.List<String> options=new java.util.ArrayList<>();
+        if(words.length<=1) {
+            for(String cmd:commands) if(cmd.startsWith(lower))options.add("/"+cmd);
+        } else if(cheatsEnabled) {
+            String prefix="/"+words[0]+" ";
+            java.util.List<String> values=switch(words[0]) {
+                case "gamemode","gm" -> java.util.List.of("survival","creative","spectator");
+                case "fly" -> java.util.List.of("on","off");
+                case "give" -> {java.util.List<String> result=new java.util.ArrayList<>();
+                    for(ItemType type:ItemType.values())result.add(type.name().toLowerCase(Locale.ROOT));
+                    yield result;}
+                case "tp","teleport" -> java.util.List.of("~ ~ ~");
+                default -> java.util.List.of();
+            };
+            if(words.length==2)for(String value:values)
+                if(value.startsWith(words[1]))options.add(prefix+value);
+        }
+        return java.util.List.copyOf(options.subList(0,Math.min(6,options.size())));
+    }
+
     private static float coordinate(String text, float base) {
         if(text.startsWith("~")) return base + (text.length()==1 ? 0f : Float.parseFloat(text.substring(1)));
         return Float.parseFloat(text);

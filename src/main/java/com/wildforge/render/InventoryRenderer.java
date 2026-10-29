@@ -168,7 +168,7 @@ final class InventoryRenderer {
                 1.2f, 0.70f, 0.71f, 0.69f, 0.86f);
     }
 
-    /** Searchable, paged creative inventory containing every registered item. */
+    /** Complete searchable creative browser with a drag target hotbar. */
     void drawCreative(List<Float> data,List<Float> dimData,List<Float> skinData,
             List<Float> iconData,List<Float> countData,List<Float> tooltipData,List<Float> tooltipSkin,
             int width,int height,float mouseX,float mouseY,Player player,
@@ -176,17 +176,16 @@ final class InventoryRenderer {
         var all=com.wildforge.ui.CreativeCatalog.items(search,category);
         int pages=Math.max(1,(all.size()+35)/36);
         page=Math.max(0,Math.min(page,pages-1));
-        float left=(width-568f)/2f,top=(height-360f)/2f;
+        float left=(width-568f)/2f,top=(height-456f)/2f;
         rect(dimData,0,0,width,height,0f,0f,0f,.55f);
-        uiSkin.panel(skinData,left,top,568,360);
-        menuText(data,"CREATIVE ITEMS  [ESC TO CLOSE]",width/2f,top+13,2.15f,.95f,.86f,.65f,1f);
-        menuText(data,"CLICK STACK / RIGHT CLICK ONE / 1-9 HOTBAR",width/2f,top+30,1.03f,.72f,.75f,.72f,1f);
-        String[] tabs={"ALL","BLOCKS","ITEMS","TOOLS"};
-        for(int k=0;k<4;k++){
-            float x=left+16+k*134;
-            rect(data,x,top+43,130,29,k==category?.22f:.10f,
+        uiSkin.panel(skinData,left,top,568,456);
+        menuText(data,"CREATIVE INVENTORY",width/2f,top+13,2.15f,.95f,.86f,.65f,1f);
+        menuText(data,"DRAG ITEMS TO HOTBAR / RIGHT CLICK FOR ONE",width/2f,top+30,1.03f,.72f,.75f,.72f,1f);
+        for(int k=0;k<com.wildforge.ui.CreativeCatalog.CATEGORY_COUNT;k++){
+            float x=left+16+k*90;
+            rect(data,x,top+43,87,29,k==category?.22f:.10f,
                 k==category?.29f:.13f,k==category?.27f:.17f,1f);
-            menuText(data,tabs[k],x+65,top+51,1.35f,.93f,.94f,.84f,1f);
+            menuText(data,com.wildforge.ui.CreativeCatalog.TABS[k],x+43.5f,top+51,1.12f,.93f,.94f,.84f,1f);
         }
         rect(data,left+51,top+77,468,28,.09f,.11f,.13f,.98f);
         menuText(data,"SEARCH: " + (search.isEmpty()?"TYPE TO FILTER":search+"_"),
@@ -202,7 +201,13 @@ final class InventoryRenderer {
         rect(data,left+427,top+320,130,34,.16f,.19f,.22f,1f);
         menuText(data,"PREVIOUS",left+79,top+328,1.3f,.95f,.9f,.76f,1f);
         menuText(data,"NEXT",left+492,top+328,1.3f,.95f,.9f,.76f,1f);
-        menuText(data,"PAGE "+(page+1)+"/"+pages+" | "+all.size()+" ITEMS",width/2f,top+329,1.05f,.89f,.9f,.8f,1f);
+        menuText(data,"PAGE "+(page+1)+"/"+pages+" / "+all.size()+" ITEMS",width/2f,top+329,1.05f,.89f,.9f,.8f,1f);
+        menuText(data,"HOTBAR - DRAG HERE",width/2f,top+360,1.2f,.90f,.85f,.70f,1f);
+        for(int i=0;i<9;i++){
+            float x=left+52+i*52,y=top+377;
+            uiSkin.slot(skinData,x,y,i==player.getSelectedSlot());
+            drawStack(data,iconData,countData,x,y,player.getInventoryStack(Player.HOTBAR_START_INDEX+i));
+        }
         int hovered=com.wildforge.ui.CreativeCatalog.hit(mouseX,mouseY,width,height);
         int index=page*36+hovered;
         if(hovered>=0 && index<all.size())
@@ -257,19 +262,14 @@ final class InventoryRenderer {
             return;
         }
 
-        // A simple item sprite is used for non-placeable items such as coal.
-        float ix = x + 10;
-        float iy = y + 13;
-        rect(data, ix + 5, iy + 8, 17, 15,
-                0.10f, 0.11f, 0.13f, 1f);
-        rect(data, ix + 9, iy + 4, 12, 21,
-                0.16f, 0.17f, 0.19f, 1f);
-        rect(data, ix + 7, iy + 12, 18, 12,
-                0.07f, 0.08f, 0.09f, 1f);
-        rect(data, ix + 12, iy + 7, 5, 3,
-                0.34f, 0.35f, 0.37f, 1f);
-        rect(data, ix + 17, iy + 18, 4, 3,
-                0.28f, 0.29f, 0.31f, 1f);
+        int layer=BlockTextures.itemTextureLayer(itemType);
+        if(layer>=0){
+            float ix=x+8,iy=y+8;
+            appendTexturedQuad(iconData,ix,iy,0f,0f,ix+32,iy,1f,0f,
+                ix+32,iy+32,1f,1f,ix,iy+32,0f,1f,layer,1f);
+        } else {
+            rect(data,x+13,y+13,22,22,.4f,.3f,.2f,1f);
+        }
     }
 
     private void drawTexturedBlockIcon(

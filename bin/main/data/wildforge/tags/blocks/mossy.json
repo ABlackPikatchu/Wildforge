@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:moss_block",
+    "wildforge:mossy_rock",
+    "wildforge:cave_moss",
+    "wildforge:alpine_moss",
+    "wildforge:lichen_stone",
+    "wildforge:mycelial_mat",
+    "wildforge:exposed_root_stone"
+  ]
+}

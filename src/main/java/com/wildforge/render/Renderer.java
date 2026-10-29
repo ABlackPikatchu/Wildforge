@@ -490,7 +490,10 @@ public final class Renderer {
             }
 
             BlockType blockType = getItemBlockType(item.getItemType());
-            offset = appendItemCube(vertices, offset, item, blockType);
+            int itemLayer = item.getItemType().getPlacedBlock()==null
+                    ? BlockTextures.itemTextureLayer(item.getItemType()) : -1;
+            offset = itemLayer>=0 ? appendItemSprite(vertices,offset,item,itemLayer)
+                : appendItemCube(vertices, offset, item, blockType);
         }
 
         if (offset == 0) {
@@ -544,6 +547,36 @@ public final class Renderer {
         }
 
         return BlockType.DIRT;
+    }
+
+    /** Crossed transparent sprite planes for existing resource/tool PNGs.
+     *  24 vertices per copy, so the existing 36-vertex cube buffer remains sufficient.
+     */
+    private int appendItemSprite(float[] out,int offset,DroppedItemEntity item,int layer){
+        int copies=getVisibleItemCopies(item.getCount());
+        for(int i=0;i<copies;i++){
+            float angle=item.getAge()*1.5f+i*.5f;
+            float cx=item.getX()+(i%2==0?-.04f:.04f);
+            float cy=item.getRenderY()+(i>1?.028f:0f);
+            float cz=item.getZ()+(i>1?.04f:-.04f);
+            float half=ITEM_HALF_SIZE*1.25f;
+            // Two perpendicular double-sided flat models, alpha from the item icon.
+            for(int plane=0;plane<2;plane++){
+                float r=angle+plane*(float)Math.PI*.5f;
+                float dx=(float)Math.cos(r)*half,dz=(float)Math.sin(r)*half;
+                float[][] v={{cx-dx,cy-half,cz-dz},{cx+dx,cy-half,cz+dz},
+                    {cx+dx,cy+half,cz+dz},{cx-dx,cy+half,cz-dz}};
+                int[] sides={0,1,2,0,2,3,2,1,0,3,2,0};
+                for(int j=0;j<sides.length;j++){
+                    int id=sides[j];
+                    out[offset++]=v[id][0];out[offset++]=v[id][1];out[offset++]=v[id][2];
+                    out[offset++]=(id==0||id==3)?0f:1f;
+                    out[offset++]=(id<2)?1f:0f;
+                    out[offset++]=layer;out[offset++]=1f;
+                }
+            }
+        }
+        return offset;
     }
 
     // Dropped block cubes must use the registry's face layers, not numeric block IDs.
@@ -939,6 +972,9 @@ public final class Renderer {
     }
 
     public void setCreativeInventoryState(String query,int page,int category){hud.setCreativeInventoryState(query,page,category);}
+    public void setCreativeDragItem(com.wildforge.item.ItemType item,int count){hud.setCreativeDragItem(item,count);}
+    public void setConsoleSuggestions(java.util.List<String> options){hud.setConsoleSuggestions(options);}
+
     public int creativeInventoryHit(float x,float y,int w,int h){return hud.creativeInventoryHit(x,y,w,h);}
 
     public void renderUi(

@@ -182,3 +182,12 @@ tasks.register('creativeCheck', JavaExec) {
     mainClass = 'com.wildforge.core.CreativeWorldRulesSmokeTest'
 }
 tasks.named('check') { dependsOn tasks.named('creativeCheck') }
+
+// Creative menu catalog coverage and chat command completion regression test.
+tasks.register('catalogCheck', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.ui.CreativeCatalogSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('catalogCheck') }

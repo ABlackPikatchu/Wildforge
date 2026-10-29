@@ -53,6 +53,7 @@ public final class Main implements InputController.Callbacks {
     private String consoleFeedback = "";
     private long consoleFeedbackNanos;
     private final java.util.ArrayDeque<String> consoleHistory = new java.util.ArrayDeque<>();
+    private int consoleHistoryCursor=-1;
     private final com.wildforge.core.FrameStats frameStats = new com.wildforge.core.FrameStats();
     private boolean uiScaleSliderDragging;
     // Physical track is held constant while the entire UI changes size.
@@ -99,6 +100,8 @@ public final class Main implements InputController.Callbacks {
     private final StringBuilder creativeSearch = new StringBuilder();
     private int creativePage = 0;
     private int creativeCategory = 0;
+    private com.wildforge.item.ItemType creativeDragging;
+    private int creativeDraggingCount=64;
     private String newWorldNamePending;
     private boolean focusRetryPending = true;
     private static long stableSeed(String text){
@@ -112,6 +115,7 @@ public final class Main implements InputController.Callbacks {
         String input=seedEntry.toString().trim();
         try{requestedNewSeed=input.isEmpty()?new java.security.SecureRandom().nextLong():Long.parseLong(input);}
         catch(NumberFormatException ex){requestedNewSeed=stableSeed(input);}
+        System.out.println("Creating new unique world seed: " + requestedNewSeed);
         newWorldNamePending=worldNameEntry.toString().trim();
         pendingCreateGameMode=selectedNewGameMode;
         pendingNewCheats=selectedNewCheats;
@@ -256,15 +260,27 @@ public final class Main implements InputController.Callbacks {
                     if(!command.isEmpty()) {
                         consoleFeedback=DeveloperCommands.execute(command,player,terrain,activeWorldCheats);
                         consoleFeedbackNanos=System.nanoTime();
-                        consoleHistory.addFirst(command);
+                        consoleHistory.addFirst(command);consoleHistoryCursor=-1;
                         while(consoleHistory.size()>16)consoleHistory.removeLast();
                     }
                     closeConsole();
                 } else if(key==GLFW_KEY_ESCAPE) {closeConsole();escapeWasDown=true;}
                 else if(key==GLFW_KEY_BACKSPACE && consoleInput.length()>0)
                     consoleInput.deleteCharAt(consoleInput.length()-1);
-                else if(key==GLFW_KEY_UP && !consoleHistory.isEmpty()) {
-                    consoleInput.setLength(0);consoleInput.append(consoleHistory.peekFirst());
+                else if(key==GLFW_KEY_TAB) {
+                    var options=DeveloperCommands.suggestions(consoleInput.toString(),activeWorldCheats);
+                    if(!options.isEmpty()){
+                        consoleInput.setLength(0);consoleInput.append(options.get(0));
+                    }
+                } else if(key==GLFW_KEY_UP && !consoleHistory.isEmpty()) {
+                    consoleHistoryCursor=Math.min(consoleHistoryCursor+1,consoleHistory.size()-1);
+                    consoleInput.setLength(0);
+                    consoleInput.append(new java.util.ArrayList<>(consoleHistory).get(consoleHistoryCursor));
+                } else if(key==GLFW_KEY_DOWN && consoleHistoryCursor>=0){
+                    consoleHistoryCursor--;
+                    consoleInput.setLength(0);
+                    if(consoleHistoryCursor>=0)
+                        consoleInput.append(new java.util.ArrayList<>(consoleHistory).get(consoleHistoryCursor));
                 }
             }
             return;
@@ -272,7 +288,9 @@ public final class Main implements InputController.Callbacks {
         if(screenMode==HudRenderer.ScreenMode.PLAYING && action==GLFW_PRESS &&
            (key==GLFW_KEY_SLASH || key==GLFW_KEY_T) && !player.isInventoryOpen()) {
             consoleOpen=true;consoleInput.setLength(0);
-            skipConsoleTriggerCharacter=true;
+            // T opens an empty chat input; slash opens command entry with '/' visible.
+            if(key==GLFW_KEY_SLASH)consoleInput.append('/');
+            skipConsoleTriggerCharacter=true;consoleHistoryCursor=-1;
             // GLFW delivers a character callback after the slash/T keypress.
             player.releaseMouse(window);
             return;
@@ -288,6 +306,11 @@ public final class Main implements InputController.Callbacks {
                 if(key==GLFW_KEY_BACKSPACE){StringBuilder entry=editingWorldName?worldNameEntry:seedEntry;if(entry.length()>0){entry.deleteCharAt(entry.length()-1);updateSeedText();}}
                 else if(key==GLFW_KEY_ESCAPE){screenMode=HudRenderer.ScreenMode.SAVE_SELECT;statusMessage="";escapeWasDown=true;}
                 else if(key==GLFW_KEY_TAB){editingWorldName=!editingWorldName;}
+                else if(key==GLFW_KEY_F5){
+                    seedEntry.setLength(0);
+                    seedEntry.append(new java.security.SecureRandom().nextLong());
+                    editingWorldName=false;updateSeedText();
+                }
                 
                 
                 else if(key==GLFW_KEY_ENTER || key==GLFW_KEY_KP_ENTER){createWorldFromMenu();}
@@ -297,7 +320,7 @@ public final class Main implements InputController.Callbacks {
         if(screenMode==HudRenderer.ScreenMode.PLAYING && player.isInventoryOpen() && player.getGameMode()==GameMode.CREATIVE) {
             if(action==GLFW_PRESS || action==GLFW_REPEAT) {
                 if(key==GLFW_KEY_BACKSPACE && creativeSearch.length()>0) {creativeSearch.deleteCharAt(creativeSearch.length()-1);creativePage=0;}
-                else if(key==GLFW_KEY_TAB) {creativeCategory=(creativeCategory+1)%4;creativePage=0;}
+                else if(key==GLFW_KEY_TAB) {creativeCategory=(creativeCategory+1)%com.wildforge.ui.CreativeCatalog.CATEGORY_COUNT;creativePage=0;}
                 else if(key==GLFW_KEY_PAGE_DOWN || key==GLFW_KEY_RIGHT) creativePage=Math.min(creativeMaxPage(),creativePage+1);
                 else if(key==GLFW_KEY_PAGE_UP || key==GLFW_KEY_LEFT) creativePage=Math.max(0,creativePage-1);
             }
@@ -497,7 +520,7 @@ public final class Main implements InputController.Callbacks {
             if (screenMode == HudRenderer.ScreenMode.PLAYING) {
                 if (player.isInventoryOpen()) {
                     player.setInventoryOpen(false);
-                    cancelInventoryDrag();
+                    cancelInventoryDrag();creativeDragging=null;
                 } else {
                     screenMode = HudRenderer.ScreenMode.PAUSED;
                     player.releaseMouse(window);
@@ -860,7 +883,7 @@ public final class Main implements InputController.Callbacks {
     }
 
     private void beginSaving(boolean closeAfterSave, boolean returnToMainMenuAfterSave) {
-        cancelInventoryDrag();
+        cancelInventoryDrag();creativeDragging=null;
         player.releaseMouse(window);
         screenMode = HudRenderer.ScreenMode.SAVING;
         statusMessage = "";
@@ -940,22 +963,39 @@ public final class Main implements InputController.Callbacks {
         return Math.max(0,(com.wildforge.ui.CreativeCatalog.items(creativeSearch.toString(),creativeCategory).size()-1)/36);
     }
     private void handleCreativeMouseButton(long handle, int button, int action) {
-        if(action!=GLFW_PRESS) return;
         glfwGetWindowSize(handle,windowWidth,windowHeight);
         glfwGetFramebufferSize(handle,framebufferWidth,framebufferHeight);
         if(windowWidth[0]<=0 || windowHeight[0]<=0)return;
         float px=(float)(mouseX*framebufferWidth[0]/windowWidth[0]);
         float py=(float)(mouseY*framebufferHeight[0]/windowHeight[0]);
         int hit=renderer.creativeInventoryHit(px,py,framebufferWidth[0],framebufferHeight[0]);
-        if(hit== -2)creativePage=Math.max(0,creativePage-1);
-        else if(hit== -3)creativePage=Math.min(creativeMaxPage(),creativePage+1);
-        else if(hit<=-10 && hit>=-13){creativeCategory=-10-hit;creativePage=0;}
-        else if(hit>=0){
+        if(button==GLFW_MOUSE_BUTTON_LEFT && action==GLFW_RELEASE){
+            if(creativeDragging!=null){
+                int hotbar=hit<=-100 && hit>=-108 ? -100-hit : player.getSelectedSlot();
+                player.selectHotbarSlot(hotbar);
+                player.creativeSelect(creativeDragging,creativeDraggingCount);
+                creativeDragging=null;
+            }
+            return;
+        }
+        if(action!=GLFW_PRESS)return;
+        if(hit==-2)creativePage=Math.max(0,creativePage-1);
+        else if(hit==-3)creativePage=Math.min(creativeMaxPage(),creativePage+1);
+        else if(hit<=-10 && hit>-10-com.wildforge.ui.CreativeCatalog.CATEGORY_COUNT){
+            creativeCategory=-10-hit;creativePage=0;
+        } else if(hit<=-100 && hit>=-108){
+            player.selectHotbarSlot(-100-hit);
+        } else if(hit>=0){
             var items=com.wildforge.ui.CreativeCatalog.items(creativeSearch.toString(),creativeCategory);
-            int pageCount=Math.max(1,(items.size()+35)/36);
-            creativePage=Math.min(creativePage,pageCount-1);
+            creativePage=Math.min(creativePage,Math.max(0,(items.size()-1)/36));
             int at=creativePage*36+hit;
-            if(at<items.size())player.creativeSelect(items.get(at),button==GLFW_MOUSE_BUTTON_RIGHT?1:64);
+            if(at<items.size()){
+                if(button==GLFW_MOUSE_BUTTON_RIGHT)player.creativeSelect(items.get(at),1);
+                else if(button==GLFW_MOUSE_BUTTON_LEFT){
+                    creativeDragging=items.get(at);
+                    creativeDraggingCount=Math.min(64,creativeDragging.getMaxStackSize());
+                }
+            }
         }
     }
 
@@ -1100,6 +1140,10 @@ public final class Main implements InputController.Callbacks {
                     consoleOpen,consoleInput.toString(),
                     System.nanoTime()-consoleFeedbackNanos<8_000_000_000L?consoleFeedback:"");
             renderer.setCreativeInventoryState(creativeSearch.toString(),creativePage,creativeCategory);
+            if(!player.isInventoryOpen())creativeDragging=null;
+            renderer.setCreativeDragItem(creativeDragging,creativeDraggingCount);
+            renderer.setConsoleSuggestions(consoleOpen?
+                DeveloperCommands.suggestions(consoleInput.toString(),activeWorldCheats):java.util.List.of());
             renderer.renderUi(
                     framebufferWidth[0],
                     framebufferHeight[0],

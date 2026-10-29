@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:coal",
+    "wildforge:diamond",
+    "wildforge:raw_gold",
+    "wildforge:raw_iron",
+    "wildforge:raw_silver",
+    "wildforge:gold_ingot",
+    "wildforge:iron_ingot",
+    "wildforge:silver_ingot"
+  ]
+}

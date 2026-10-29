@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:brick_block",
+    "wildforge:glass",
+    "wildforge:crafting_table",
+    "wildforge:furnace"
+  ]
+}

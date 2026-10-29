@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:water",
+    "wildforge:flowing_water",
+    "wildforge:lava",
+    "wildforge:flowing_lava"
+  ]
+}

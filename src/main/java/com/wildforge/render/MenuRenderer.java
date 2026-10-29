@@ -481,7 +481,7 @@ final class MenuRenderer {
         rect(data,x,height*0.48f,w,height*0.105f,!editingName?0.28f:0.12f,
                 !editingName?0.25f:0.15f,0.18f,1f);
         rect(data,x+2,height*0.48f+2,w-4,height*0.105f-4,0.075f,0.09f,0.11f,1f);
-        menuText(data,"WORLD SEED  -  OPTIONAL",width*0.5f,height*0.463f,1.4f,0.9f,0.85f,0.72f,1f);
+        menuText(data,"WORLD SEED - OPTIONAL / F5 RANDOMIZE",width*0.5f,height*0.463f,1.4f,0.9f,0.85f,0.72f,1f);
         menuText(data,(seed==null||seed.isEmpty()?"RANDOM SEED":seed)+(!editingName?"_":""),
                 width*0.5f,height*0.515f,1.7f,0.96f,0.96f,0.96f,1f);
         menuText(data,"GAME MODE: " + newGameMode.name() + "  [CLICK TO CHANGE]",width*0.5f,height*0.626f,1.4f,0.9f,0.85f,0.72f,1f);

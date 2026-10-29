@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:gravel",
+    "wildforge:scree",
+    "wildforge:sandstone_rubble",
+    "wildforge:limestone_rubble",
+    "wildforge:beach_pebbles",
+    "wildforge:pumice"
+  ]
+}

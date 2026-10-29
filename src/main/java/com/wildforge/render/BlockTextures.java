@@ -160,8 +160,100 @@ public final class BlockTextures implements AutoCloseable {
         "/textures/flower_lavender.png",
         "/textures/flower_bluebell.png",
         "/textures/water.png", // 133
-        "/textures/lava.png"  // 134
+        "/textures/lava.png", // 134
+        "/textures/coal.png",
+        "/textures/brick.png",
+        "/textures/diamond.png",
+        "/textures/gold_ingot.png",
+        "/textures/iron_ingot.png",
+        "/textures/silver_ingot.png",
+        "/textures/raw_gold.png",
+        "/textures/raw_iron.png",
+        "/textures/raw_silver.png",
+        "/textures/pine_cone.png",
+        "/textures/sea_shell.png",
+        "/textures/stick.png",
+        "/textures/wooden_axe.png",
+        "/textures/wooden_hoe.png",
+        "/textures/wooden_pickaxe.png",
+        "/textures/wooden_shovel.png",
+        "/textures/wooden_sword.png",
+        "/textures/stone_axe.png",
+        "/textures/stone_hoe.png",
+        "/textures/stone_pickaxe.png",
+        "/textures/stone_shovel.png",
+        "/textures/stone_sword.png",
+        "/textures/iron_axe.png",
+        "/textures/iron_hoe.png",
+        "/textures/iron_pickaxe.png",
+        "/textures/iron_shovel.png",
+        "/textures/iron_sword.png",
+        "/textures/gold_axe.png",
+        "/textures/gold_hoe.png",
+        "/textures/gold_pickaxe.png",
+        "/textures/gold_shovel.png",
+        "/textures/gold_sword.png",
+        "/textures/silver_axe.png",
+        "/textures/silver_hoe.png",
+        "/textures/silver_pickaxe.png",
+        "/textures/silver_shovel.png",
+        "/textures/silver_sword.png",
+        "/textures/diamond_axe.png",
+        "/textures/diamond_hoe.png",
+        "/textures/diamond_pickaxe.png",
+        "/textures/diamond_shovel.png",
+        "/textures/diamond_sword.png"
     };
+
+    /** Icon layers appended after terrain textures. IDs remain unchanged. */
+    public static int itemTextureLayer(com.wildforge.item.ItemType item) {
+        if(item==null)return -1;
+        return switch(item.name().toLowerCase(java.util.Locale.ROOT)) {
+            case "coal" -> 135;
+            case "brick" -> 136;
+            case "diamond" -> 137;
+            case "gold_ingot" -> 138;
+            case "iron_ingot" -> 139;
+            case "silver_ingot" -> 140;
+            case "raw_gold" -> 141;
+            case "raw_iron" -> 142;
+            case "raw_silver" -> 143;
+            case "pine_cone" -> 144;
+            case "sea_shell" -> 145;
+            case "stick" -> 146;
+            case "wooden_axe" -> 147;
+            case "wooden_hoe" -> 148;
+            case "wooden_pickaxe" -> 149;
+            case "wooden_shovel" -> 150;
+            case "wooden_sword" -> 151;
+            case "stone_axe" -> 152;
+            case "stone_hoe" -> 153;
+            case "stone_pickaxe" -> 154;
+            case "stone_shovel" -> 155;
+            case "stone_sword" -> 156;
+            case "iron_axe" -> 157;
+            case "iron_hoe" -> 158;
+            case "iron_pickaxe" -> 159;
+            case "iron_shovel" -> 160;
+            case "iron_sword" -> 161;
+            case "gold_axe" -> 162;
+            case "gold_hoe" -> 163;
+            case "gold_pickaxe" -> 164;
+            case "gold_shovel" -> 165;
+            case "gold_sword" -> 166;
+            case "silver_axe" -> 167;
+            case "silver_hoe" -> 168;
+            case "silver_pickaxe" -> 169;
+            case "silver_shovel" -> 170;
+            case "silver_sword" -> 171;
+            case "diamond_axe" -> 172;
+            case "diamond_hoe" -> 173;
+            case "diamond_pickaxe" -> 174;
+            case "diamond_shovel" -> 175;
+            case "diamond_sword" -> 176;
+            default -> -1;
+        };
+    }
 
     /** Metadata accessors let verification run without creating an OpenGL context. */
     public static int layerCount() {

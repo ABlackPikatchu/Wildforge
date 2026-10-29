@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:oak_planks",
+    "wildforge:pine_planks",
+    "wildforge:maple_planks",
+    "wildforge:willow_planks",
+    "wildforge:cypress_planks"
+  ]
+}

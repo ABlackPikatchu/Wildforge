@@ -1,0 +1,18 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:grass",
+    "wildforge:dirt",
+    "wildforge:tundra_grass",
+    "wildforge:snow_grass",
+    "wildforge:rich_humus",
+    "wildforge:peat",
+    "wildforge:fertile_loam",
+    "wildforge:mud",
+    "wildforge:wet_mud",
+    "wildforge:silt",
+    "wildforge:red_clay",
+    "wildforge:cracked_earth",
+    "wildforge:root_mat"
+  ]
+}

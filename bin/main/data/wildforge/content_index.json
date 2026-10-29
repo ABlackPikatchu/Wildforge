@@ -272,11 +272,32 @@
     "data/wildforge/items/diamond_sword.json"
   ],
   "block_tags": [
+    "data/wildforge/tags/blocks/crafted_blocks.json",
+    "data/wildforge/tags/blocks/fluids.json",
+    "data/wildforge/tags/blocks/geological.json",
+    "data/wildforge/tags/blocks/lava.json",
+    "data/wildforge/tags/blocks/logs.json",
+    "data/wildforge/tags/blocks/loose_rock.json",
+    "data/wildforge/tags/blocks/mossy.json",
     "data/wildforge/tags/blocks/natural_stone.json",
-    "data/wildforge/tags/blocks/stone.json"
+    "data/wildforge/tags/blocks/ores.json",
+    "data/wildforge/tags/blocks/planks.json",
+    "data/wildforge/tags/blocks/sediment.json",
+    "data/wildforge/tags/blocks/snow_ice.json",
+    "data/wildforge/tags/blocks/soil.json",
+    "data/wildforge/tags/blocks/stone.json",
+    "data/wildforge/tags/blocks/water.json"
   ],
   "item_tags": [
     "data/wildforge/tags/items/building_blocks.json",
-    "data/wildforge/tags/items/stone_blocks.json"
+    "data/wildforge/tags/items/crafting_materials.json",
+    "data/wildforge/tags/items/decoration_blocks.json",
+    "data/wildforge/tags/items/mineral_items.json",
+    "data/wildforge/tags/items/ore_blocks.json",
+    "data/wildforge/tags/items/placeable_blocks.json",
+    "data/wildforge/tags/items/stone_blocks.json",
+    "data/wildforge/tags/items/terrain_blocks.json",
+    "data/wildforge/tags/items/tools.json",
+    "data/wildforge/tags/items/wood_blocks.json"
   ]
 }

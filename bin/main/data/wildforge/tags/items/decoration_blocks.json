@@ -1,0 +1,16 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:moss_block_block",
+    "wildforge:mossy_rock_block",
+    "wildforge:cave_moss_block",
+    "wildforge:alpine_moss_block",
+    "wildforge:lichen_stone_block",
+    "wildforge:mycelial_mat_block",
+    "wildforge:exposed_root_stone_block",
+    "wildforge:leaf_litter_block",
+    "wildforge:autumn_leaf_litter_block",
+    "wildforge:pine_needle_litter_block",
+    "wildforge:cactus_block"
+  ]
+}

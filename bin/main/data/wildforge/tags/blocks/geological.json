@@ -1,0 +1,22 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:fossil_shale",
+    "wildforge:fault_breccia",
+    "wildforge:iron_stained_stone",
+    "wildforge:cracked_basalt",
+    "wildforge:basalt_column",
+    "wildforge:magma_crust",
+    "wildforge:obsidian",
+    "wildforge:scoria",
+    "wildforge:volcanic_ash",
+    "wildforge:sulfur_rock",
+    "wildforge:quartz_vein",
+    "wildforge:gypsum",
+    "wildforge:rock_salt",
+    "wildforge:salt_crust",
+    "wildforge:mineral_matrix",
+    "wildforge:flowstone",
+    "wildforge:coal_dust_deposit"
+  ]
+}

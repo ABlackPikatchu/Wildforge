@@ -1,7 +1,21 @@
 {
   "replace": false,
   "values": [
-    "#wildforge:stone",
-    "wildforge:sandstone"
+    "wildforge:stone",
+    "wildforge:andesite",
+    "wildforge:basalt",
+    "wildforge:diorite",
+    "wildforge:gabbro",
+    "wildforge:limestone",
+    "wildforge:shale",
+    "wildforge:slate",
+    "wildforge:granite",
+    "wildforge:chalk",
+    "wildforge:sandstone",
+    "wildforge:siltstone",
+    "wildforge:calcite",
+    "wildforge:wet_rock",
+    "wildforge:wet_slate",
+    "wildforge:frosted_rock"
   ]
 }

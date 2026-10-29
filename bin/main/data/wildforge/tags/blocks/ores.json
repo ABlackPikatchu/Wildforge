@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:coal_ore",
+    "wildforge:iron_ore",
+    "wildforge:gold_ore",
+    "wildforge:silver_ore",
+    "wildforge:diamond_ore"
+  ]
+}

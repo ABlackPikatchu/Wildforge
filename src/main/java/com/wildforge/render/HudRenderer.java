@@ -71,7 +71,7 @@ public final class HudRenderer {
     private int creativePage=0,creativeCategory=0;
     public void setCreativeInventoryState(String query,int page,int category){
         creativeSearch=query==null?"":query;
-        creativePage=Math.max(0,page);creativeCategory=Math.max(0,Math.min(3,category));
+        creativePage=Math.max(0,page);creativeCategory=Math.max(0,Math.min(com.wildforge.ui.CreativeCatalog.CATEGORY_COUNT-1,category));
     }
     public int creativeInventoryHit(float x,float y,int w,int h){
         if(w<=0||h<=0)return -1;
@@ -86,6 +86,15 @@ public final class HudRenderer {
     private boolean debugOverlay;
     private boolean consoleOpen;
     private String consoleInput="",consoleFeedback="";
+    private java.util.List<String> consoleSuggestions=java.util.List.of();
+    private com.wildforge.item.ItemType creativeDragItem;
+    private int creativeDragCount;
+    public void setConsoleSuggestions(java.util.List<String> suggestions) {
+        consoleSuggestions=suggestions==null?java.util.List.of():suggestions;
+    }
+    public void setCreativeDragItem(com.wildforge.item.ItemType item,int count){
+        creativeDragItem=item;creativeDragCount=count;
+    }
     private String debugBiome="",debugMode="",debugFacing="";
     private long debugSeed;
     private int debugX,debugY,debugZ,debugFluidQueue;
@@ -129,7 +138,7 @@ public final class HudRenderer {
      * Menu panels have their own proportional fit rules in virtual coordinates.
      */
     static float effectiveUiScale(int width, int height) {
-        return Math.min(interfaceScale, Math.min(width / 610f, height / 400f));
+        return Math.min(interfaceScale, Math.min(width / 610f, height / 480f));
     }
 
     static int virtualSize(int physicalSize, float scale) {
@@ -244,10 +253,23 @@ public final class HudRenderer {
                 menuText(data,"SEED " + debugSeed,px,y0+202f,.95f,.94f,.94f,.78f,1f);
             }
             if(consoleOpen || !consoleFeedback.isBlank()) {
-                float bottom=height-86f;
-                rect(data,8f,bottom,Math.min(width-16f,585f),consoleOpen?75f:48f,.04f,.05f,.07f,.80f);
-                if(!consoleFeedback.isBlank()) menuText(data,consoleFeedback,Math.min(width*.5f,290f),bottom+7f,1.05f,.92f,.89f,.71f,1f);
-                if(consoleOpen) menuText(data,"/" + consoleInput + "_",Math.min(width*.5f,290f),bottom+42f,1.4f,1f,1f,1f,1f);
+                // A left-aligned chat-style input bar. Slash is a supported pixel glyph.
+                float barWidth=Math.min(width-20f,750f);
+                float barY=height-62f;
+                rect(data,10f,barY,barWidth,48f,.035f,.045f,.065f,.84f);
+                if(consoleOpen) {
+                    menuText(data,consoleInput+"_",10f+barWidth/2f,barY+16f,1.7f,.96f,.98f,.95f,1f);
+                    int display=Math.min(5,consoleSuggestions.size());
+                    if(display>0){
+                        float top=barY-display*25f-6f;
+                        rect(data,10f,top,barWidth,display*25f+3f,.03f,.04f,.055f,.80f);
+                        for(int i=0;i<display;i++)
+                            menuText(data,consoleSuggestions.get(i),10f+barWidth/2f,top+i*25f+7f,
+                                1.12f,i==0?.99f:.70f,i==0?.88f:.75f,.80f,1f);
+                    }
+                } else if(!consoleFeedback.isBlank()) {
+                    menuText(data,consoleFeedback,10f+barWidth/2f,barY+16f,1.28f,.90f,.90f,.77f,1f);
+                }
             }
 
             if (player.isInventoryOpen()) {
@@ -258,6 +280,10 @@ public final class HudRenderer {
                         data, dimData, skinData, iconData, countData,
                         width, height, player, settings);
 
+                if(player.getGameMode()==com.wildforge.player.GameMode.CREATIVE && creativeDragItem!=null){
+                    inventory.drawItemIcon(data,iconData,mouseX-24f,mouseY-24f,creativeDragItem);
+                    drawNumber(countData,mouseX-24f,mouseY-24f,creativeDragCount);
+                }
                 // Draw the held stack above the inventory and cursor.
                 ItemStack cursorStack = player.getGameMode()==com.wildforge.player.GameMode.CREATIVE?null:player.getCursorStack();
                 if (cursorStack != null) {

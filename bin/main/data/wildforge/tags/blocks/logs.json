@@ -1,0 +1,21 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:oak_log",
+    "wildforge:pine_log",
+    "wildforge:maple_log",
+    "wildforge:willow_log",
+    "wildforge:cypress_log",
+    "wildforge:rotten_wood",
+    "wildforge:oak_log_x",
+    "wildforge:oak_log_z",
+    "wildforge:pine_log_x",
+    "wildforge:pine_log_z",
+    "wildforge:maple_log_x",
+    "wildforge:maple_log_z",
+    "wildforge:willow_log_x",
+    "wildforge:willow_log_z",
+    "wildforge:cypress_log_x",
+    "wildforge:cypress_log_z"
+  ]
+}

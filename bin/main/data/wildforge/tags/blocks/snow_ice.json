@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:snow",
+    "wildforge:snow_grass",
+    "wildforge:packed_snow",
+    "wildforge:snow_crust",
+    "wildforge:ice",
+    "wildforge:glacial_ice",
+    "wildforge:permafrost",
+    "wildforge:frozen_peat"
+  ]
+}

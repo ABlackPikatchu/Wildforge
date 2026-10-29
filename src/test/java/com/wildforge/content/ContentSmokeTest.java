@@ -65,8 +65,11 @@ public final class ContentSmokeTest {
                 "Stone drop must point to legacy stone item");
         // Tag membership comes from generated JSON, including nested #tag references.
         TagRegistry tags = content.tags();
-        check(tags.blockTagCount() == 2 && tags.itemTagCount() == 2,
-                "Expected two block tags and two item tags");
+        // Keep these totals aligned with ContentDataGenerator's expanded catalogs.
+        check(tags.blockTagCount() == 15 && tags.itemTagCount() == 10,
+                "Expected 15 block tags and 10 item tags, found "
+                        + tags.blockTagCount() + " block tags and "
+                        + tags.itemTagCount() + " item tags");
         check(tags.containsBlock("wildforge:stone", "wildforge:stone"),
                 "Stone must belong to the stone tag");
         check(tags.containsBlock("wildforge:stone", "wildforge:andesite"),
@@ -75,6 +78,16 @@ public final class ContentSmokeTest {
                 "Nested natural_stone tag must include basalt");
         check(tags.containsBlock("wildforge:natural_stone", "wildforge:sandstone"),
                 "Natural stone must include sandstone");
+        check(tags.containsBlock("wildforge:logs", "wildforge:oak_log_x"),
+                "Sideways oak logs must belong to logs tag");
+        check(tags.containsBlock("wildforge:water", "wildforge:flowing_water"),
+                "Flowing water must belong to water tag");
+        check(tags.containsBlock("wildforge:ores", "wildforge:iron_ore"),
+                "Iron ore must belong to ores tag");
+        check(tags.containsItem("wildforge:tools", "wildforge:iron_pickaxe"),
+                "Iron pickaxe must belong to tools tag");
+        check(tags.containsItem("wildforge:decoration_blocks", "wildforge:cave_moss_block"),
+                "Cave moss must belong to decoration blocks tag");
         check(!tags.containsBlock("wildforge:stone", "wildforge:dirt"),
                 "Dirt must not match the stone tag");
         check(tags.containsItem("wildforge:building_blocks", "wildforge:stone_block"),

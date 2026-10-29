@@ -1,0 +1,16 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:oak_log_block",
+    "wildforge:pine_log_block",
+    "wildforge:maple_log_block",
+    "wildforge:willow_log_block",
+    "wildforge:cypress_log_block",
+    "wildforge:rotten_wood_block",
+    "wildforge:oak_planks_block",
+    "wildforge:pine_planks_block",
+    "wildforge:maple_planks_block",
+    "wildforge:willow_planks_block",
+    "wildforge:cypress_planks_block"
+  ]
+}

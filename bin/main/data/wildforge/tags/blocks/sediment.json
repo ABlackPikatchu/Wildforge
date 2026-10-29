@@ -1,0 +1,16 @@
+{
+  "replace": false,
+  "values": [
+    "wildforge:sand",
+    "wildforge:red_sand",
+    "wildforge:gravel",
+    "wildforge:riverbed_sediment",
+    "wildforge:shell_sand",
+    "wildforge:beach_pebbles",
+    "wildforge:wet_sand",
+    "wildforge:submerged_scree",
+    "wildforge:silt",
+    "wildforge:cave_clay",
+    "wildforge:clay"
+  ]
+}
