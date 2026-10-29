@@ -16,7 +16,7 @@ public final class WorldGenCrossSection {
         long seed = args.length > 1 ? Long.parseLong(args[1]) : 20261028L;
         int z = args.length > 2 ? Integer.parseInt(args[2]) : 0;
         int startX = args.length > 3 ? Integer.parseInt(args[3]) : -512;
-        int width = 1024, minY = 0, maxY = 255;
+        int width = 1024, minY = 0, maxY = 511;
         WorldGenerator gen = WorldGenRegistry.loadBuiltIn().generator(seed);
         BufferedImage picture = new BufferedImage(width, maxY-minY+1, BufferedImage.TYPE_INT_RGB);
         for (int px=0;px<width;px++) {

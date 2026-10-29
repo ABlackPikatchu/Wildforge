@@ -1,0 +1,65 @@
+{
+  "id": "wildforge:fernshade_ravine",
+  "name": "Fernshade Ravine",
+  "map_color": "3f715e",
+  "criteria": {
+    "temperature": [
+      0.22,
+      0.76
+    ],
+    "rainfall": [
+      0.58,
+      1.0
+    ],
+    "height_above_sea": [
+      5,
+      85
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 14
+  },
+  "surface": {
+    "top": "wet_rock",
+    "filler": "stone"
+  },
+  "decorations": {
+    "tree_density": 0.26,
+    "plant_density": 0.83,
+    "max_tree_slope": 2,
+    "max_plant_slope": 5,
+    "trees": [
+      {
+        "id": "oak",
+        "weight": 5
+      },
+      {
+        "id": "maple",
+        "weight": 3
+      },
+      {
+        "id": "willow",
+        "weight": 2
+      }
+    ],
+    "plants": [
+      {
+        "id": "fern",
+        "weight": 14
+      },
+      {
+        "id": "dripping_lichen",
+        "weight": 3
+      },
+      {
+        "id": "small_grass",
+        "weight": 3
+      },
+      {
+        "id": "forest_mushroom",
+        "weight": 2
+      }
+    ]
+  }
+}

@@ -476,26 +476,17 @@ public final class Renderer {
         return BlockType.DIRT;
     }
 
+    // Dropped block cubes must use the registry's face layers, not numeric block IDs.
     private int getTopTextureLayer(BlockType blockType) {
-        if (blockType == BlockType.GRASS) {
-            return 0;
-        }
-        return getSideTextureLayer(blockType);
+        return blockType.getTopTextureLayer();
     }
 
     private int getBottomTextureLayer(BlockType blockType) {
-        if (blockType == BlockType.GRASS) {
-            return 2;
-        }
-        return getSideTextureLayer(blockType);
+        return blockType.getBottomTextureLayer();
     }
 
     private int getSideTextureLayer(BlockType blockType) {
-        if (blockType == BlockType.GRASS) {
-            return 1;
-        }
-
-        return blockType.getId();
+        return blockType.getSideTextureLayer();
     }
 
     private int appendItemCube(

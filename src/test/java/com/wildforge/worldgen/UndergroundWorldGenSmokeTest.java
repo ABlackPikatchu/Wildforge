@@ -9,9 +9,9 @@ public final class UndergroundWorldGenSmokeTest {
 
     public static void main(String[] args) throws Exception {
         WorldGenRegistry registry = WorldGenRegistry.loadBuiltIn();
-        if (registry.surfaceBiomes().all().size() != 12
+        if (registry.surfaceBiomes().all().size() != 35
                 || registry.undergroundBiomes().all().size() != 12) {
-            throw new AssertionError("Expected exactly 12 surface + 12 underground biomes");
+            throw new AssertionError("Expected exactly 35 surface + 12 underground biomes");
         }
 
         int newTextures = 0;

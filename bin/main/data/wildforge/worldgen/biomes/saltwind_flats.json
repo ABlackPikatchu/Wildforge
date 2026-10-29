@@ -1,0 +1,48 @@
+{
+  "id": "wildforge:saltwind_flats",
+  "name": "Saltwind Flats",
+  "map_color": "c9cab0",
+  "criteria": {
+    "temperature": [
+      0.35,
+      0.98
+    ],
+    "rainfall": [
+      0.1,
+      0.7
+    ],
+    "height_above_sea": [
+      -6,
+      15
+    ],
+    "geology": [],
+    "coastal": true,
+    "floodplain": false,
+    "priority": 18
+  },
+  "surface": {
+    "top": "salt_crust",
+    "filler": "silt"
+  },
+  "decorations": {
+    "tree_density": 0.0,
+    "plant_density": 0.14,
+    "max_tree_slope": 2,
+    "max_plant_slope": 2,
+    "trees": [],
+    "plants": [
+      {
+        "id": "dune_grass",
+        "weight": 4
+      },
+      {
+        "id": "dry_scrub",
+        "weight": 1
+      },
+      {
+        "id": "seaweed",
+        "weight": 2
+      }
+    ]
+  }
+}

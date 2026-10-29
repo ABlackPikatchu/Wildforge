@@ -1,0 +1,61 @@
+{
+  "id": "wildforge:blackwater_bog",
+  "name": "Blackwater Bog",
+  "map_color": "355d51",
+  "criteria": {
+    "temperature": [
+      0.16,
+      0.8
+    ],
+    "rainfall": [
+      0.73,
+      1.0
+    ],
+    "height_above_sea": [
+      -5,
+      24
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": true,
+    "priority": 18
+  },
+  "surface": {
+    "top": "peat",
+    "filler": "wet_mud"
+  },
+  "decorations": {
+    "tree_density": 0.28,
+    "plant_density": 0.57,
+    "max_tree_slope": 2,
+    "max_plant_slope": 3,
+    "trees": [
+      {
+        "id": "cypress",
+        "weight": 6
+      },
+      {
+        "id": "willow",
+        "weight": 2
+      }
+    ],
+    "plants": [
+      {
+        "id": "marsh_reeds",
+        "weight": 5
+      },
+      {
+        "id": "forest_mushroom",
+        "weight": 3
+      },
+      {
+        "id": "cattails",
+        "weight": 2
+      },
+      {
+        "id": "lichen_patch",
+        "weight": 2
+      }
+    ]
+  }
+}

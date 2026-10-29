@@ -1,0 +1,40 @@
+{
+  "id": "wildforge:glimmerfrost_glacier",
+  "name": "Glimmerfrost Glacier",
+  "map_color": "b3d8e4",
+  "criteria": {
+    "temperature": [
+      0.0,
+      0.25
+    ],
+    "rainfall": [
+      0.32,
+      1.0
+    ],
+    "height_above_sea": [
+      45,
+      185
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 29
+  },
+  "surface": {
+    "top": "glacial_ice",
+    "filler": "packed_snow"
+  },
+  "decorations": {
+    "tree_density": 0.0,
+    "plant_density": 0.02,
+    "max_tree_slope": 6,
+    "max_plant_slope": 5,
+    "trees": [],
+    "plants": [
+      {
+        "id": "snow_grass",
+        "weight": 1
+      }
+    ]
+  }
+}

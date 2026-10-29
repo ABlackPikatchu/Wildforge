@@ -1,0 +1,57 @@
+{
+  "id": "wildforge:sunwash_strand",
+  "name": "Sunwash Strand",
+  "map_color": "dbc393",
+  "criteria": {
+    "temperature": [
+      0.55,
+      1.0
+    ],
+    "rainfall": [
+      0.15,
+      0.8
+    ],
+    "height_above_sea": [
+      -7,
+      24
+    ],
+    "geology": [],
+    "coastal": true,
+    "floodplain": false,
+    "priority": 17
+  },
+  "surface": {
+    "top": "shell_sand",
+    "filler": "sand"
+  },
+  "decorations": {
+    "tree_density": 0.01,
+    "plant_density": 0.26,
+    "max_tree_slope": 4,
+    "max_plant_slope": 4,
+    "trees": [
+      {
+        "id": "oak",
+        "weight": 1
+      }
+    ],
+    "plants": [
+      {
+        "id": "dune_grass",
+        "weight": 6
+      },
+      {
+        "id": "seaweed",
+        "weight": 2
+      },
+      {
+        "id": "desert_succulent",
+        "weight": 2
+      },
+      {
+        "id": "dead_bush",
+        "weight": 1
+      }
+    ]
+  }
+}

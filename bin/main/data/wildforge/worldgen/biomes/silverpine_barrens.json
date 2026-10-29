@@ -1,0 +1,61 @@
+{
+  "id": "wildforge:silverpine_barrens",
+  "name": "Silverpine Barrens",
+  "map_color": "6a806c",
+  "criteria": {
+    "temperature": [
+      0.06,
+      0.56
+    ],
+    "rainfall": [
+      0.21,
+      0.61
+    ],
+    "height_above_sea": [
+      20,
+      115
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 14
+  },
+  "surface": {
+    "top": "lichen_stone",
+    "filler": "gravel"
+  },
+  "decorations": {
+    "tree_density": 0.44,
+    "plant_density": 0.28,
+    "max_tree_slope": 5,
+    "max_plant_slope": 5,
+    "trees": [
+      {
+        "id": "pine",
+        "weight": 10
+      },
+      {
+        "id": "oak",
+        "weight": 1
+      }
+    ],
+    "plants": [
+      {
+        "id": "evergreen_shrub",
+        "weight": 5
+      },
+      {
+        "id": "lichen_patch",
+        "weight": 5
+      },
+      {
+        "id": "dry_scrub",
+        "weight": 2
+      },
+      {
+        "id": "fern",
+        "weight": 1
+      }
+    ]
+  }
+}

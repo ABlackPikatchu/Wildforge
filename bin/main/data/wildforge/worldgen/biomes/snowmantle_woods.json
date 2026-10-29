@@ -1,0 +1,57 @@
+{
+  "id": "wildforge:snowmantle_woods",
+  "name": "Snowmantle Woods",
+  "map_color": "9ab3b7",
+  "criteria": {
+    "temperature": [
+      0.02,
+      0.29
+    ],
+    "rainfall": [
+      0.4,
+      0.87
+    ],
+    "height_above_sea": [
+      18,
+      98
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 17
+  },
+  "surface": {
+    "top": "snow_crust",
+    "filler": "permafrost"
+  },
+  "decorations": {
+    "tree_density": 0.69,
+    "plant_density": 0.25,
+    "max_tree_slope": 4,
+    "max_plant_slope": 4,
+    "trees": [
+      {
+        "id": "pine",
+        "weight": 10
+      }
+    ],
+    "plants": [
+      {
+        "id": "snow_grass",
+        "weight": 5
+      },
+      {
+        "id": "frost_shrub",
+        "weight": 3
+      },
+      {
+        "id": "flower_snowdrop",
+        "weight": 2
+      },
+      {
+        "id": "evergreen_shrub",
+        "weight": 1
+      }
+    ]
+  }
+}

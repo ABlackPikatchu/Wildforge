@@ -1,0 +1,46 @@
+{
+  "id": "wildforge:granite_crown",
+  "name": "Granite Crown",
+  "map_color": "848b95",
+  "criteria": {
+    "temperature": [
+      0.02,
+      0.62
+    ],
+    "rainfall": [
+      0.11,
+      0.83
+    ],
+    "height_above_sea": [
+      65,
+      185
+    ],
+    "geology": [
+      "GRANITE"
+    ],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 26
+  },
+  "surface": {
+    "top": "granite",
+    "filler": "stone"
+  },
+  "decorations": {
+    "tree_density": 0.0,
+    "plant_density": 0.1,
+    "max_tree_slope": 6,
+    "max_plant_slope": 5,
+    "trees": [],
+    "plants": [
+      {
+        "id": "lichen_patch",
+        "weight": 5
+      },
+      {
+        "id": "snow_grass",
+        "weight": 2
+      }
+    ]
+  }
+}

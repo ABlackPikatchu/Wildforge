@@ -2,7 +2,7 @@ package com.wildforge.worldgen;
 
 import java.util.Locale;
 
-/** The twelve surface biomes. Ocean water is a hydrology layer, not a thirteenth biome. */
+/** Thirty-five surface biomes. Ocean water is a hydrology layer, not a separate biome. */
 public enum Biome {
     GREENHEART_FOREST,
     NEEDLEWOOD_TAIGA,
@@ -15,7 +15,30 @@ public enum Biome {
     MISTFEN_WETLANDS,
     WHITECLIFF_COAST,
     CINDERFALL_VOLCANIC_FIELDS,
-    HOLLOWSTONE_KARST;
+    HOLLOWSTONE_KARST,
+    ELDERROOT_GROVE,
+    BRACKENWOOD_THICKET,
+    MOSSVEIL_RAINWOOD,
+    FERNSHADE_RAVINE,
+    SILVERPINE_BARRENS,
+    SNOWMANTLE_WOODS,
+    GOLDGRASS_STEPPE,
+    BRIARFIELD_HEATH,
+    THORNSCRUB_SAVANNA,
+    MISTBLOOM_MEADOW,
+    BLACKWATER_BOG,
+    FLOODROOT_FOREST,
+    REEDWATER_DELTA,
+    STORMBREAK_COAST,
+    SALTWIND_FLATS,
+    SUNWASH_STRAND,
+    SHALECREST_FOOTHILLS,
+    GRANITE_CROWN,
+    GLIMMERFROST_GLACIER,
+    VERMILION_CANYON,
+    SUNSCORCH_SALTPAN,
+    EMBERGLASS_WASTES,
+    ASHENWOOD_RECOVERY;
 
     public String id() {
         return "wildforge:" + name().toLowerCase(Locale.ROOT);

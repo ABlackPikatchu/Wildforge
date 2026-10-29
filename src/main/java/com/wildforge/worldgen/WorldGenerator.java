@@ -7,7 +7,7 @@ import java.util.Objects;
  * the 64x64 legacy test world; streamed chunk generation comes next.
  *
  * Surface biome = climate + elevation + hydrology + independent geology.
- * Undersea water is not counted as one of the twelve surface biomes.
+ * Undersea water is not counted as one of the 35 surface biomes.
  */
 public final class WorldGenerator {
     private static final long CONTINENT = 0x10fa42L;
@@ -132,6 +132,29 @@ public final class WorldGenerator {
         return new Geography(c, erosion, ridge, highland, detail, riverStrength(x,z));
     }
 
+    /** Large-scale geographic character, independent of surface block palette. */
+    public enum Landform { OCEAN_SHELF, COASTAL_LOWLAND, PLAIN, ROLLING_UPLAND,
+                           FOOTHILLS, MOUNTAIN_RANGE, ERODED_PLATEAU, BASIN }
+
+    /** Deterministic regional classification; never depends on chunk-load order. */
+    public Landform landformAt(int x, int z) {
+        Geography g = geographyAt(x, z);
+        double c = g.continentalness();
+        double shoreline = smoothstep(settings.oceanThreshold() - 0.13,
+                settings.oceanThreshold() + 0.18, c);
+        if (c < settings.oceanThreshold() - 0.075) return Landform.OCEAN_SHELF;
+        if (shoreline < 0.70) return Landform.COASTAL_LOWLAND;
+        double upland = smoothstep(-0.16, 0.40, g.upland() + c * 0.45);
+        double rugged = 1.0 - smoothstep(-0.22, 0.40, g.erosion());
+        if (upland > 0.63 && rugged > 0.50 && g.ridges() > 0.48)
+            return Landform.MOUNTAIN_RANGE;
+        if (upland > 0.50 && rugged > 0.48) return Landform.FOOTHILLS;
+        if (upland > 0.58 && rugged < 0.42) return Landform.ERODED_PLATEAU;
+        if (g.erosion() > 0.24 && g.upland() < -0.05) return Landform.BASIN;
+        if (upland > 0.33) return Landform.ROLLING_UPLAND;
+        return Landform.PLAIN;
+    }
+
     private double terrainHeight(int x, int z) {
         double continent = continentalness(x, z);
         double sea = settings.seaLevel();
@@ -156,15 +179,43 @@ public final class WorldGenerator {
         double peakField = noise.fbm2(x / 260.0, z / 260.0, 3, PEAKS);
         double mountainRegion = highland * smoothstep(0.08, 0.48,
                 highlandField + continent * 0.50 + peakField * 0.18);
-        double peaks = shoreline * mountainRegion * (13.0 + 46.0 * ruggedness)
-                * Math.pow(clamp(ridges, 0.0, 1.0), 3.0);
+        // The expanded 512-block world permits real mountain massifs, rather than
+        // merely moving the old 256-block landscape up by 160 blocks.
+        // Broad lift forms a connected highland base; two ridge frequencies
+        // create main summits and subordinate spurs without single-cell spikes.
+        double massif = smoothstep(0.25, 0.77, highlandField + continent * 0.48);
+        double ruggedLift = shoreline * massif * (14.0 + 40.0 * ruggedness);
+        double ridgeSpurs = 1.0 - Math.abs(noise.fbm2(x / 360.0, z / 360.0, 3, PEAKS + 17));
+        double summitMask = smoothstep(0.40, 0.82, massif * ruggedness + 0.18 * peakField);
+        double peaks = shoreline * mountainRegion * (24.0 + 90.0 * ruggedness)
+                * Math.pow(clamp(ridges, 0.0, 1.0), 3.0)
+                * (0.72 + 0.28 * clamp(ridgeSpurs, 0.0, 1.0));
+        double spurs = shoreline * summitMask * 19.0
+                * Math.pow(clamp(ridgeSpurs, 0.0, 1.0), 4.0);
+        // Erosion-resistant ridgelines develop craggy shoulders and narrow saddles.
+        // This modulation is masked to mountains and fades to zero in lowlands.
+        double alpine = shoreline * mountainRegion * smoothstep(0.35,0.78,massif);
+        double crest = 1.0 - Math.abs(noise.fbm2(x/155.0,z/155.0,3,PEAKS+31));
+        double ribs = 1.0 - Math.abs(noise.fbm2(x/77.0,z/77.0,2,MOUNTAIN+43));
+        double crags = alpine * ruggedness * (10.0*Math.pow(clamp(crest,0,1),5.0)
+                + 5.0*Math.pow(clamp(ribs,0,1),6.0)-3.5);
 
         // Small-scale relief is attenuated on plains and near the shoreline.
         double hills = noise.fbm2(x / settings.hillsScale(), z / settings.hillsScale(), 4, HILLS);
         double detail = noise.fbm2(x / settings.detailScale(), z / settings.detailScale(), 3, DETAIL);
         double localRelief = shoreline * (3.0 + highland * 7.0) * hills
                 + shoreline * (1.2 + 1.8 * highland) * detail;
-        double land = continentalHeight + foothills + peaks + localRelief;
+        // Broad geological landforms complement the narrow noise ridges. These
+        // smooth fields make recognizable plateaus and low basins rather than
+        // randomly scattering large mountains into plains.
+        double plateauMask = smoothstep(0.23, 0.60, highlandField + continent * 0.40)
+                * smoothstep(-0.10, 0.38, erosionField);
+        double basinMask = smoothstep(0.12, -0.35, highlandField)
+                * smoothstep(-0.05, 0.40, erosionField);
+        double plateauHeight = 9.0 * plateauMask * shoreline;
+        double basinLowering = 5.0 * basinMask * shoreline;
+        double land = continentalHeight + foothills + ruggedLift + peaks + spurs + crags
+                + localRelief + plateauHeight - basinLowering;
 
         // Incised valleys soften the surrounding terrain; don't create deep dry trenches
         // across submerged shelves or excessively broad cuts on mountain slopes.
@@ -271,13 +322,103 @@ public final class WorldGenerator {
                 - (bestZ / 10000.0) * 0.14, 0, 1);
         double rain = clamp(0.5 + noise.fbm2((bestX + 8000) / settings.climateScale(),
                 (bestZ - 8000) / settings.climateScale(), 3, MOISTURE) * .60, 0, 1);
-        Biome regional = biomes.select(t, rain, regionY-settings.seaLevel(),
-                geologyAt(bestX,bestZ), coastal, floodplain);
-        // Respect extreme highlands and regionally restricted coastline/volcanic geology.
-        if (coastal || floodplain || height > 95 || geology == Geology.VOLCANIC) {
-            return biomes.select(temperature,rainfall,height,geology,coastal,floodplain);
+        // Evaluate eligibility at the regional anchor, not independently for every
+        // surface column. This prevents single-column volcanic/coastal intrusions.
+        Geology siteGeology = geologyAt(bestX, bestZ);
+        Landform siteLandform = landformAt(bestX, bestZ);
+        double siteContinent = continentalness(bestX, bestZ);
+        boolean siteCoastal = siteLandform == Landform.COASTAL_LOWLAND
+                || (siteContinent <= settings.oceanThreshold() + 0.11
+                    && regionY >= settings.seaLevel() - 10
+                    && regionY <= settings.seaLevel() + 23);
+        boolean siteFloodplain = riverStrength(bestX, bestZ) > 0.32
+                && regionY <= settings.seaLevel() + 22;
+        return selectLandformBiome(t, rain, regionY - settings.seaLevel(),
+                siteGeology, siteCoastal, siteFloodplain, siteLandform, bestX, bestZ);
+    }
+
+    /**
+     * Selects only biomes whose authored climate/geology constraints match the
+     * regional anchor, then prefers the ones fitting that anchor's landform.
+     * Affinity is a soft preference, not a new unconditional biome override.
+     */
+    private Biome selectLandformBiome(double temp, double rain, int height,
+                                      Geology geology, boolean coastal,
+                                      boolean floodplain, Landform landform, int siteX, int siteZ) {
+        Biome bestBiome = null;
+        double bestScore = Double.NEGATIVE_INFINITY;
+        for (Biome candidate : Biome.values()) {
+            BiomeProfile p = biomes.get(candidate);
+            if (!p.matches(temp, rain, height, geology, coastal, floodplain)) continue;
+            double tempMid = (p.temperature().min() + p.temperature().max()) * 0.5;
+            double rainMid = (p.rainfall().min() + p.rainfall().max()) * 0.5;
+            // A preference of up to ~5 points can overcome a small priority
+            // difference, but not completely override the authored requirements.
+            // Balance overlapping climate ranges and preferred terrain. The old
+            // priority*10 term caused one high-priority biome to monopolize broad
+            // regions, an especially noticeable problem with 35 profiles.
+            double tempHalf = Math.max(.12, (p.temperature().max()-p.temperature().min())*.5);
+            double rainHalf = Math.max(.12, (p.rainfall().max()-p.rainfall().min())*.5);
+            double climateFit = 5.0
+                    - 2.3*Math.abs(temp-tempMid)/tempHalf
+                    - 2.0*Math.abs(rain-rainMid)/rainHalf;
+            // Coarse region-only variation: never per-block random selection.
+            double variation = (noise.unit(siteX, candidate.ordinal(), siteZ,
+                    REGION ^ 0x35b10eL)-.5)*3.2;
+            double score = p.priority()*.045 + climateFit
+                    + landformAffinity(candidate, landform)*.85 + variation;
+            if (score > bestScore) {
+                bestScore = score;
+                bestBiome = candidate;
+            }
         }
-        return regional;
+        // Keep the existing catalog fallback for climates with no matching profile.
+        return bestBiome != null ? bestBiome
+                : biomes.select(temp, rain, height, geology, coastal, floodplain);
+    }
+
+    private static double landformAffinity(Biome biome, Landform landform) {
+        return switch (biome) {
+            case FROSTSPIRE_HIGHLANDS -> landform == Landform.MOUNTAIN_RANGE ? 5.0
+                    : landform == Landform.FOOTHILLS ? 2.5 : -4.0;
+            case NEEDLEWOOD_TAIGA -> landform == Landform.FOOTHILLS
+                    || landform == Landform.ROLLING_UPLAND ? 3.0 : 0.0;
+            case SUNMEADOW_PLAINS -> landform == Landform.PLAIN
+                    || landform == Landform.BASIN ? 3.5 : -1.0;
+            case GREENHEART_FOREST, EMBERLEAF_WOODLAND ->
+                    landform == Landform.ROLLING_UPLAND || landform == Landform.PLAIN ? 2.5 : 0.0;
+            case MISTFEN_WETLANDS -> landform == Landform.BASIN
+                    || landform == Landform.COASTAL_LOWLAND ? 4.0 : -1.5;
+            case WHITECLIFF_COAST -> landform == Landform.COASTAL_LOWLAND ? 5.0 : -3.0;
+            case REDSCAR_BADLANDS -> landform == Landform.ERODED_PLATEAU ? 4.5 : 0.0;
+            case SUNCRACK_DESERT -> landform == Landform.PLAIN
+                    || landform == Landform.BASIN ? 2.0 : 0.0;
+            case HOLLOWSTONE_KARST -> landform == Landform.ERODED_PLATEAU
+                    || landform == Landform.ROLLING_UPLAND ? 3.0 : 0.0;
+            case CINDERFALL_VOLCANIC_FIELDS -> landform == Landform.MOUNTAIN_RANGE
+                    || landform == Landform.ERODED_PLATEAU ? 3.0 : 0.0;
+            case FROSTMOOR_TUNDRA -> landform == Landform.PLAIN
+                    || landform == Landform.ROLLING_UPLAND ? 2.5 : 0.0;
+            case ELDERROOT_GROVE, BRACKENWOOD_THICKET, MOSSVEIL_RAINWOOD ->
+                    landform == Landform.ROLLING_UPLAND || landform == Landform.BASIN ? 3.3 : 0.2;
+            case FERNSHADE_RAVINE -> landform == Landform.ERODED_PLATEAU
+                    || landform == Landform.FOOTHILLS ? 4.3 : -1.0;
+            case SILVERPINE_BARRENS, SNOWMANTLE_WOODS ->
+                    landform == Landform.FOOTHILLS || landform == Landform.ROLLING_UPLAND ? 3.0 : -0.7;
+            case GOLDGRASS_STEPPE, BRIARFIELD_HEATH,
+                    THORNSCRUB_SAVANNA, MISTBLOOM_MEADOW ->
+                    landform == Landform.PLAIN || landform == Landform.ROLLING_UPLAND ? 3.2 : -1.0;
+            case BLACKWATER_BOG, FLOODROOT_FOREST, REEDWATER_DELTA ->
+                    landform == Landform.BASIN || landform == Landform.COASTAL_LOWLAND ? 4.0 : -2.5;
+            case STORMBREAK_COAST, SALTWIND_FLATS, SUNWASH_STRAND ->
+                    landform == Landform.COASTAL_LOWLAND ? 4.8 : -4.0;
+            case SHALECREST_FOOTHILLS -> landform == Landform.FOOTHILLS ? 4.0 : 0.0;
+            case GRANITE_CROWN, GLIMMERFROST_GLACIER -> landform == Landform.MOUNTAIN_RANGE ? 4.2 : -2.7;
+            case VERMILION_CANYON -> landform == Landform.ERODED_PLATEAU ? 5.0 : -1.0;
+            case SUNSCORCH_SALTPAN -> landform == Landform.BASIN ? 5.0 : -2.0;
+            case EMBERGLASS_WASTES, ASHENWOOD_RECOVERY ->
+                    landform == Landform.ERODED_PLATEAU || landform == Landform.MOUNTAIN_RANGE ? 3.4 : 0.0;
+        };
     }
 
     // First-stage solid-density model. The heightfield supplies the broad landform,
@@ -340,14 +481,35 @@ public final class WorldGenerator {
         Surface surface = surface(x, z);
         if (surface.waterBody() != WaterBody.LAND) return null;
         BiomeProfile profile = biomes.get(surface.biome());
-        if (slopeAt(x,z) > profile.maxTreeSlope()) return null;
+        int treeSlope=slopeAt(x,z);
+        if (treeSlope > profile.maxTreeSlope()) return null;
+        // No mature trees on bare alpine cliffs or exposed upper snowfields.
+        // Pine survives in sheltered lower slopes, but thins near the treeline.
+        if (surface.biome()==Biome.FROSTSPIRE_HIGHLANDS) {
+            if (treeSlope>2 || surface.surfaceY()>settings.seaLevel()+94) return null;
+        }
         double local = clamp(0.85 + noise.noise2(x / 150.0, z / 150.0, TREES) * 0.5, 0.20, 1.0);
         double chance = profile.treeDensity() * settings.treeDensity() * local;
         if (noise.unit(cellX, 2, cellZ, TREES) >= chance) return null;
         String tree = BiomeProfile.chooseFeature(profile.trees(), noise.unit(cellX, 3, cellZ, TREES));
         if (tree == null) return null;
         TreeType type = TreeType.valueOf(tree.toUpperCase(java.util.Locale.ROOT));
-        int height = 5 + (int)(noise.unit(cellX, 4, cellZ, TREES) * 4);
+        // Distinct tree species and young/mature/ancient sizes. Heights are
+        // measured in blocks and remain stable for a given seed and cell.
+        double sizeRoll = noise.unit(cellX, 4, cellZ, TREES);
+        int min = switch (type) {
+            case OAK, MAPLE -> 9;
+            case PINE -> 12;
+            case WILLOW -> 8;
+            case CYPRESS -> 13;
+        };
+        int max = switch (type) {
+            case OAK, MAPLE -> 16;
+            case PINE -> 22;
+            case WILLOW -> 15;
+            case CYPRESS -> 23;
+        };
+        int height = min + (int)Math.floor(sizeRoll * (max - min + 1));
         return new Tree(x, z, height, type);
     }
 

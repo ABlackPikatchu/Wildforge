@@ -1,0 +1,65 @@
+{
+  "id": "wildforge:mistbloom_meadow",
+  "name": "Mistbloom Meadow",
+  "map_color": "8ab897",
+  "criteria": {
+    "temperature": [
+      0.28,
+      0.78
+    ],
+    "rainfall": [
+      0.62,
+      0.97
+    ],
+    "height_above_sea": [
+      -2,
+      25
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": true,
+    "priority": 16
+  },
+  "surface": {
+    "top": "fertile_loam",
+    "filler": "silt"
+  },
+  "decorations": {
+    "tree_density": 0.08,
+    "plant_density": 0.94,
+    "max_tree_slope": 2,
+    "max_plant_slope": 3,
+    "trees": [
+      {
+        "id": "willow",
+        "weight": 2
+      }
+    ],
+    "plants": [
+      {
+        "id": "flower_daisy",
+        "weight": 5
+      },
+      {
+        "id": "flower_cornflower",
+        "weight": 5
+      },
+      {
+        "id": "flower_orchid",
+        "weight": 2
+      },
+      {
+        "id": "tall_grass",
+        "weight": 4
+      },
+      {
+        "id": "clover",
+        "weight": 5
+      },
+      {
+        "id": "small_grass",
+        "weight": 6
+      }
+    ]
+  }
+}

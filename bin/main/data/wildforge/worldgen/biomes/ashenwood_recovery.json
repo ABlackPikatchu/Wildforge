@@ -1,0 +1,63 @@
+{
+  "id": "wildforge:ashenwood_recovery",
+  "name": "Ashenwood Recovery",
+  "map_color": "667a58",
+  "criteria": {
+    "temperature": [
+      0.29,
+      0.79
+    ],
+    "rainfall": [
+      0.39,
+      0.83
+    ],
+    "height_above_sea": [
+      8,
+      92
+    ],
+    "geology": [
+      "VOLCANIC"
+    ],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 20
+  },
+  "surface": {
+    "top": "volcanic_ash",
+    "filler": "basalt"
+  },
+  "decorations": {
+    "tree_density": 0.23,
+    "plant_density": 0.43,
+    "max_tree_slope": 4,
+    "max_plant_slope": 4,
+    "trees": [
+      {
+        "id": "pine",
+        "weight": 7
+      },
+      {
+        "id": "oak",
+        "weight": 1
+      }
+    ],
+    "plants": [
+      {
+        "id": "small_grass",
+        "weight": 6
+      },
+      {
+        "id": "lichen_patch",
+        "weight": 4
+      },
+      {
+        "id": "evergreen_shrub",
+        "weight": 4
+      },
+      {
+        "id": "fern",
+        "weight": 2
+      }
+    ]
+  }
+}

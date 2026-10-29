@@ -10,7 +10,7 @@ public final class WorldGenSmokeTest {
         WorldGenRegistry registry = WorldGenRegistry.loadBuiltIn();
         WorldGenSettings settings = registry.terrain();
         BiomeCatalog catalog = registry.surfaceBiomes();
-        if (catalog.all().size() != 12) throw new AssertionError("Surface biome count must be 12");
+        if (catalog.all().size() != 35) throw new AssertionError("Surface biome count must be 35");
         WorldGenerator a = new WorldGenerator(12345678L, settings, catalog);
         WorldGenerator b = new WorldGenerator(12345678L, settings, catalog);
 
@@ -71,7 +71,7 @@ public final class WorldGenSmokeTest {
             }
         }
 
-        System.out.println("Worldgen passed: 12 data-generated biomes, independent geology,"
+        System.out.println("Worldgen passed: 35 data-generated biomes, independent geology,"
                 + " hydrology, deterministic caves and slope-filtered decorations");
     }
 }

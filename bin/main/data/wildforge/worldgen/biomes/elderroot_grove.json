@@ -1,0 +1,61 @@
+{
+  "id": "wildforge:elderroot_grove",
+  "name": "Elderroot Grove",
+  "map_color": "386843",
+  "criteria": {
+    "temperature": [
+      0.32,
+      0.72
+    ],
+    "rainfall": [
+      0.65,
+      1.0
+    ],
+    "height_above_sea": [
+      8,
+      70
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 14
+  },
+  "surface": {
+    "top": "forest_loam",
+    "filler": "rich_humus"
+  },
+  "decorations": {
+    "tree_density": 0.57,
+    "plant_density": 0.48,
+    "max_tree_slope": 4,
+    "max_plant_slope": 5,
+    "trees": [
+      {
+        "id": "oak",
+        "weight": 10
+      },
+      {
+        "id": "maple",
+        "weight": 1
+      }
+    ],
+    "plants": [
+      {
+        "id": "fern",
+        "weight": 7
+      },
+      {
+        "id": "forest_mushroom",
+        "weight": 5
+      },
+      {
+        "id": "small_grass",
+        "weight": 2
+      },
+      {
+        "id": "lichen_patch",
+        "weight": 2
+      }
+    ]
+  }
+}

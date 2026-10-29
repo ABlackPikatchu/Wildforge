@@ -2,17 +2,17 @@ package com.wildforge.world;
 
 import java.util.Arrays;
 
-/** Compact, mutable 16x256x16 resident block storage. No save-format changes. */
+/** Compact, mutable 16x512x16 resident block storage. No save-format changes. */
 final class PaletteColumn {
-    private static final int SECTIONS = 16, WIDTH = 16, CELLS = 4096;
+    private static final int SECTIONS = TerrainMesh.SECTION_COUNT, WIDTH = 16, CELLS = 4096, HEIGHT = TerrainMesh.WORLD_HEIGHT;
     private final Section[] sections = new Section[SECTIONS];
 
     PaletteColumn(byte[] source) {
-        if (source.length != 65536) throw new IllegalArgumentException("Invalid column length");
+        if (source.length != WIDTH * WIDTH * HEIGHT) throw new IllegalArgumentException("Invalid column length");
         for (int sy = 0; sy < SECTIONS; sy++) {
             byte[] values = new byte[CELLS];
             for (int x = 0; x < WIDTH; x++) for (int z = 0; z < WIDTH; z++) {
-                System.arraycopy(source, (x * WIDTH + z) * 256 + sy * 16,
+                System.arraycopy(source, (x * WIDTH + z) * HEIGHT + sy * 16,
                     values, (x * WIDTH + z) * 16, 16);
             }
             sections[sy] = Section.encode(values);
@@ -20,15 +20,15 @@ final class PaletteColumn {
     }
 
     byte get(int sourceIndex) {
-        int y = sourceIndex & 255;
-        int column = sourceIndex >>> 8;
+        int y = sourceIndex % HEIGHT;
+        int column = sourceIndex / HEIGHT;
         return sections[y >>> 4].get(column * 16 + (y & 15));
     }
 
     void set(int sourceIndex, byte value) {
-        int y = sourceIndex & 255;
+        int y = sourceIndex % HEIGHT;
         int section = y >>> 4;
-        int i = (sourceIndex >>> 8) * 16 + (y & 15);
+        int i = (sourceIndex / HEIGHT) * 16 + (y & 15);
         Section old = sections[section];
         if (old.get(i) == value) return;
         byte[] values = old.decode();
@@ -37,12 +37,12 @@ final class PaletteColumn {
     }
 
     byte[] copyRaw() {
-        byte[] raw = new byte[65536];
+        byte[] raw = new byte[WIDTH * WIDTH * HEIGHT];
         for (int sy = 0; sy < SECTIONS; sy++) {
             byte[] values = sections[sy].decode();
             for (int x = 0; x < WIDTH; x++) for (int z = 0; z < WIDTH; z++) {
                 System.arraycopy(values, (x * WIDTH + z) * 16, raw,
-                    (x * WIDTH + z) * 256 + sy * 16, 16);
+                    (x * WIDTH + z) * HEIGHT + sy * 16, 16);
             }
         }
         return raw;

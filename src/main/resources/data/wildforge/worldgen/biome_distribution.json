@@ -45,7 +45,7 @@
       ],
       "subsurface": "Dirt over mixed stone; damp mossy pockets",
       "generation": "Place clumped trees on fertile slopes, clear narrow stream corridors, scatter fallen logs in old stands",
-      "share": 18,
+      "share": 12,
       "top": {
         "grass_top": 50,
         "forest_loam": 25,
@@ -94,7 +94,7 @@
           5
         ]
       },
-      "feature": "Leaf-litter patches beneath tree crowns; moss on shaded slopes; fallen logs 0\u20132/chunk; streams in valleys.",
+      "feature": "Leaf-litter patches beneath tree crowns; moss on shaded slopes; fallen logs 0–2/chunk; streams in valleys.",
       "texture_face_rules": {
         "grass_top": "grass_side",
         "dry_grass_top": "dry_grass_side"
@@ -127,7 +127,7 @@
       ],
       "subsurface": "Stone, gravel, local slate veins",
       "generation": "Dense conifer clusters; thinning at treeline, fallen pine cones and boulder clearings",
-      "share": 12,
+      "share": 9,
       "top": {
         "grass_top": 25,
         "pine_needle_litter": 43,
@@ -204,7 +204,7 @@
       ],
       "subsurface": "Loam and stone with occasional clay pockets",
       "generation": "Use red or gold leaf variants by local climate/season; short slopes and uneven canopy patches",
-      "share": 9,
+      "share": 6,
       "top": {
         "grass_top": 35,
         "autumn_leaf_litter": 40,
@@ -286,7 +286,7 @@
       ],
       "subsurface": "Deep productive soil then mixed sediment",
       "generation": "Keep sightlines; cluster flowers and grain on fertile patches, isolated trees by stream",
-      "share": 17,
+      "share": 10,
       "top": {
         "grass_top": 78,
         "fertile_loam": 14,
@@ -385,7 +385,7 @@
       ],
       "subsurface": "Slate in uplifted belts; mountain rock and sparse ores",
       "generation": "Altitude/latitude-driven snow, scree below cliffs, overhangs and alpine patches on sheltered slopes",
-      "share": 8,
+      "share": 6,
       "top": {
         "slate": 30,
         "scree": 25,
@@ -426,7 +426,7 @@
           5
         ]
       },
-      "feature": "Snow overlays: exposed cold surfaces 20\u201380% by altitude; scree below cliffs; vegetation only protected ledges.",
+      "feature": "Snow overlays: exposed cold surfaces 20–80% by altitude; scree below cliffs; vegetation only protected ledges.",
       "texture_face_rules": {
         "grass_top": "grass_side",
         "dry_grass_top": "dry_grass_side"
@@ -461,7 +461,7 @@
       ],
       "subsurface": "Frozen peat above coarse sediment and stone",
       "generation": "Low plants, permafrost bands, shallow ice pockets with sparse sheltering shrubs",
-      "share": 5,
+      "share": 4,
       "top": {
         "permafrost": 45,
         "snow_crust": 30,
@@ -529,7 +529,7 @@
       "vegetation": [],
       "subsurface": "Red sedimentary layers and iron-stained stone",
       "generation": "Stratified formations, canyon walls, exposed iron veins and flat-topped mesas",
-      "share": 6,
+      "share": 3,
       "top": {
         "red_sand": 25,
         "red_sandstone": 23,
@@ -600,7 +600,7 @@
       ],
       "subsurface": "Sand, sandstone, gypsum deposits and dry stone",
       "generation": "Dune fields downwind of ridges; hardpan in low basins; rare water-access vegetation",
-      "share": 8,
+      "share": 4,
       "top": {
         "sand": 65,
         "cracked_earth": 14,
@@ -684,7 +684,7 @@
       ],
       "subsurface": "Peat over silt and clay",
       "generation": "Low relief, braided shallow water, shore-dependent reeds, trees on dry hummocks",
-      "share": 6,
+      "share": 3,
       "top": {
         "mud": 25,
         "wet_mud": 27,
@@ -737,7 +737,7 @@
           5
         ]
       },
-      "feature": "Water covers 25\u201345% of lowland columns; reeds by water and lily pads on still water; peat in raised bog patches.",
+      "feature": "Water covers 25–45% of lowland columns; reeds by water and lily pads on still water; peat in raised bog patches.",
       "texture_face_rules": {
         "grass_top": "grass_side",
         "dry_grass_top": "dry_grass_side"
@@ -772,7 +772,7 @@
       ],
       "subsurface": "Limestone lenses and chalk strata, seawater caves",
       "generation": "Slope-dependent cliffs, beaches at tide level; seaweed underwater, pebble bars near rough coast",
-      "share": 4,
+      "share": 3,
       "top": {
         "limestone": 32,
         "chalk": 22,
@@ -852,7 +852,7 @@
       "vegetation": [],
       "subsurface": "Basalt flows and magma chambers, vents are rare",
       "generation": "Volcanic geological province controls this biome; hot pockets isolated from starting regions",
-      "share": 3,
+      "share": 2,
       "top": {
         "basalt": 30,
         "cracked_basalt": 20,
@@ -880,7 +880,7 @@
       },
       "trees": {},
       "plants": {},
-      "feature": "Cooled basalt dominates; obsidian confined to old lava contact; hot vents 0\u20131 per 3\u20135 chunks and lava 0\u20133% near active vents.",
+      "feature": "Cooled basalt dominates; obsidian confined to old lava contact; hot vents 0–1 per 3–5 chunks and lava 0–3% near active vents.",
       "texture_face_rules": {
         "grass_top": "grass_side",
         "dry_grass_top": "dry_grass_side"
@@ -916,7 +916,7 @@
       ],
       "subsurface": "Limestone caverns, calcite veins and underground streams",
       "generation": "Geology-conditioned overlay: can underlie forest, meadow or coast rather than replacing all surface biomes",
-      "share": 4,
+      "share": 3,
       "top": {
         "grass_top": 30,
         "weathered_limestone": 27,
@@ -962,6 +962,1795 @@
         ]
       },
       "feature": "Frequent sinkholes and rock exposures; tree density adapted to climate; calcite in seams rather than vast surface carpets.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "elderroot_grove",
+      "name": "Elderroot Grove",
+      "temperature": [
+        0.32,
+        0.72
+      ],
+      "moisture": [
+        0.65,
+        1
+      ],
+      "elevation": [
+        8,
+        70
+      ],
+      "terrain": "Rare old-growth oak groves with vaulted crowns, broad root buttresses, mossed logs and shaded floor.",
+      "canopy": "oak, maple",
+      "surface": [
+        "forest_loam"
+      ],
+      "vegetation": [
+        "fern",
+        "forest_mushroom",
+        "small_grass",
+        "lichen_patch"
+      ],
+      "subsurface": "rich_humus",
+      "generation": "Giant elder trees use ancient oak variant; 5-12 block canopy clearings and fallen trunks.",
+      "share": 2,
+      "top": {
+        "grass_top": 40,
+        "forest_loam": 35,
+        "moss_block": 15,
+        "rich_humus": 10
+      },
+      "soil": [
+        4,
+        7
+      ],
+      "under": {
+        "dirt": 45,
+        "rich_humus": 40,
+        "clay": 15
+      },
+      "rock": {
+        "stone": 50,
+        "granite": 25,
+        "limestone": 25
+      },
+      "trees": {
+        "oak": [
+          0,
+          10
+        ],
+        "maple": [
+          0,
+          1
+        ]
+      },
+      "plants": {
+        "fern": [
+          0,
+          7
+        ],
+        "forest_mushroom": [
+          0,
+          5
+        ],
+        "small_grass": [
+          0,
+          2
+        ],
+        "lichen_patch": [
+          0,
+          2
+        ]
+      },
+      "feature": "Giant elder trees use ancient oak variant; 5-12 block canopy clearings and fallen trunks.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "brackenwood_thicket",
+      "name": "Brackenwood Thicket",
+      "temperature": [
+        0.32,
+        0.84
+      ],
+      "moisture": [
+        0.52,
+        0.92
+      ],
+      "elevation": [
+        4,
+        48
+      ],
+      "terrain": "Dense, low hardwood thicket with tangled saplings, fern carpets and narrow sightlines.",
+      "canopy": "oak, maple",
+      "surface": [
+        "grass_top"
+      ],
+      "vegetation": [
+        "fern",
+        "small_grass",
+        "clover",
+        "flower_bluebell"
+      ],
+      "subsurface": "dirt",
+      "generation": "Short trees and high understory density; avoid huge trunks.",
+      "share": 2,
+      "top": {
+        "grass_top": 65,
+        "forest_loam": 20,
+        "moss_block": 10,
+        "gravel": 5
+      },
+      "soil": [
+        3,
+        6
+      ],
+      "under": {
+        "dirt": 65,
+        "forest_loam": 25,
+        "clay": 10
+      },
+      "rock": {
+        "stone": 45,
+        "andesite": 30,
+        "granite": 25
+      },
+      "trees": {
+        "oak": [
+          0,
+          6
+        ],
+        "maple": [
+          0,
+          4
+        ]
+      },
+      "plants": {
+        "fern": [
+          0,
+          12
+        ],
+        "small_grass": [
+          0,
+          8
+        ],
+        "clover": [
+          0,
+          2
+        ],
+        "flower_bluebell": [
+          0,
+          1
+        ]
+      },
+      "feature": "Short trees and high understory density; avoid huge trunks.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "mossveil_rainwood",
+      "name": "Mossveil Rainwood",
+      "temperature": [
+        0.45,
+        0.92
+      ],
+      "moisture": [
+        0.78,
+        1
+      ],
+      "elevation": [
+        3,
+        52
+      ],
+      "terrain": "Very wet lowland forest with draping foliage, moss on wood and abundant shade-loving plants.",
+      "canopy": "oak, willow, maple",
+      "surface": [
+        "moss_block"
+      ],
+      "vegetation": [
+        "fern",
+        "forest_mushroom",
+        "flower_orchid",
+        "dripping_lichen",
+        "small_grass"
+      ],
+      "subsurface": "forest_loam",
+      "generation": "Moss climbs trunks and stone; ravines and local streams; canopies nearly overlap.",
+      "share": 2,
+      "top": {
+        "grass_top": 43,
+        "moss_block": 37,
+        "forest_loam": 15,
+        "wet_mud": 5
+      },
+      "soil": [
+        3,
+        7
+      ],
+      "under": {
+        "forest_loam": 40,
+        "dirt": 35,
+        "clay": 25
+      },
+      "rock": {
+        "stone": 40,
+        "limestone": 30,
+        "wet_rock": 30
+      },
+      "trees": {
+        "oak": [
+          0,
+          4
+        ],
+        "willow": [
+          0,
+          4
+        ],
+        "maple": [
+          0,
+          2
+        ]
+      },
+      "plants": {
+        "fern": [
+          0,
+          8
+        ],
+        "forest_mushroom": [
+          0,
+          4
+        ],
+        "flower_orchid": [
+          0,
+          2
+        ],
+        "dripping_lichen": [
+          0,
+          2
+        ],
+        "small_grass": [
+          0,
+          3
+        ]
+      },
+      "feature": "Moss climbs trunks and stone; ravines and local streams; canopies nearly overlap.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "fernshade_ravine",
+      "name": "Fernshade Ravine",
+      "temperature": [
+        0.22,
+        0.76
+      ],
+      "moisture": [
+        0.58,
+        1
+      ],
+      "elevation": [
+        5,
+        85
+      ],
+      "terrain": "Steep and shadowed, stream-carved fern gullies beneath mixed hardwood forest.",
+      "canopy": "oak, maple, willow",
+      "surface": [
+        "wet_rock"
+      ],
+      "vegetation": [
+        "fern",
+        "dripping_lichen",
+        "small_grass",
+        "forest_mushroom"
+      ],
+      "subsurface": "stone",
+      "generation": "Required erosion corridor: 6-20 block gullies; ferns on ledges, no trees in steep channel bottom.",
+      "share": 2,
+      "top": {
+        "stone": 32,
+        "wet_rock": 28,
+        "moss_block": 23,
+        "forest_loam": 17
+      },
+      "soil": [
+        1,
+        3
+      ],
+      "under": {
+        "dirt": 40,
+        "stone": 40,
+        "clay": 20
+      },
+      "rock": {
+        "stone": 60,
+        "andesite": 20,
+        "limestone": 20
+      },
+      "trees": {
+        "oak": [
+          0,
+          5
+        ],
+        "maple": [
+          0,
+          3
+        ],
+        "willow": [
+          0,
+          2
+        ]
+      },
+      "plants": {
+        "fern": [
+          0,
+          14
+        ],
+        "dripping_lichen": [
+          0,
+          3
+        ],
+        "small_grass": [
+          0,
+          3
+        ],
+        "forest_mushroom": [
+          0,
+          2
+        ]
+      },
+      "feature": "Required erosion corridor: 6-20 block gullies; ferns on ledges, no trees in steep channel bottom.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "silverpine_barrens",
+      "name": "Silverpine Barrens",
+      "temperature": [
+        0.06,
+        0.56
+      ],
+      "moisture": [
+        0.21,
+        0.61
+      ],
+      "elevation": [
+        20,
+        115
+      ],
+      "terrain": "Sparse upland pine woodland on thin stony soils with pale lichen and open, windy ridges.",
+      "canopy": "pine, oak",
+      "surface": [
+        "lichen_stone"
+      ],
+      "vegetation": [
+        "evergreen_shrub",
+        "lichen_patch",
+        "dry_scrub",
+        "fern"
+      ],
+      "subsurface": "gravel",
+      "generation": "Low crown density, isolated tall pines, rocky crest clearings.",
+      "share": 2,
+      "top": {
+        "pine_needle_litter": 36,
+        "gravel": 25,
+        "lichen_stone": 24,
+        "grass_top": 15
+      },
+      "soil": [
+        1,
+        3
+      ],
+      "under": {
+        "gravel": 35,
+        "dirt": 35,
+        "stone": 30
+      },
+      "rock": {
+        "stone": 45,
+        "slate": 30,
+        "granite": 25
+      },
+      "trees": {
+        "pine": [
+          0,
+          10
+        ],
+        "oak": [
+          0,
+          1
+        ]
+      },
+      "plants": {
+        "evergreen_shrub": [
+          0,
+          5
+        ],
+        "lichen_patch": [
+          0,
+          5
+        ],
+        "dry_scrub": [
+          0,
+          2
+        ],
+        "fern": [
+          0,
+          1
+        ]
+      },
+      "feature": "Low crown density, isolated tall pines, rocky crest clearings.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "snowmantle_woods",
+      "name": "Snowmantle Woods",
+      "temperature": [
+        0.02,
+        0.29
+      ],
+      "moisture": [
+        0.4,
+        0.87
+      ],
+      "elevation": [
+        18,
+        98
+      ],
+      "terrain": "Snow-laden pine forest below permanent alpine tundra, with snowdrifts and pockets of frozen soil.",
+      "canopy": "pine",
+      "surface": [
+        "snow_crust"
+      ],
+      "vegetation": [
+        "snow_grass",
+        "frost_shrub",
+        "flower_snowdrop",
+        "evergreen_shrub"
+      ],
+      "subsurface": "permafrost",
+      "generation": "Snow accumulation is slope/aspect biased; snow overlay under pine branches.",
+      "share": 2,
+      "top": {
+        "snow_crust": 42,
+        "pine_needle_litter": 23,
+        "permafrost": 20,
+        "packed_snow": 15
+      },
+      "soil": [
+        2,
+        5
+      ],
+      "under": {
+        "permafrost": 52,
+        "dirt": 25,
+        "gravel": 23
+      },
+      "rock": {
+        "stone": 40,
+        "slate": 35,
+        "shale": 25
+      },
+      "trees": {
+        "pine": [
+          0,
+          10
+        ]
+      },
+      "plants": {
+        "snow_grass": [
+          0,
+          5
+        ],
+        "frost_shrub": [
+          0,
+          3
+        ],
+        "flower_snowdrop": [
+          0,
+          2
+        ],
+        "evergreen_shrub": [
+          0,
+          1
+        ]
+      },
+      "feature": "Snow accumulation is slope/aspect biased; snow overlay under pine branches.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "goldgrass_steppe",
+      "name": "Goldgrass Steppe",
+      "temperature": [
+        0.48,
+        0.9
+      ],
+      "moisture": [
+        0.16,
+        0.48
+      ],
+      "elevation": [
+        1,
+        65
+      ],
+      "terrain": "Broad dry temperate grassland with sun-faded grasses, shallow soils and very few trees.",
+      "canopy": "oak",
+      "surface": [
+        "grass_top"
+      ],
+      "vegetation": [
+        "dune_grass",
+        "wild_wheat",
+        "tall_grass",
+        "dry_scrub",
+        "small_grass"
+      ],
+      "subsurface": "dirt",
+      "generation": "Windswept rolling grass; long bare sightlines and dry patches in low relief.",
+      "share": 2,
+      "top": {
+        "grass_top": 52,
+        "fertile_loam": 12,
+        "cracked_earth": 21,
+        "gravel": 15
+      },
+      "soil": [
+        2,
+        4
+      ],
+      "under": {
+        "dirt": 48,
+        "compacted_sediment": 35,
+        "gravel": 17
+      },
+      "rock": {
+        "stone": 45,
+        "sandstone": 35,
+        "shale": 20
+      },
+      "trees": {
+        "oak": [
+          0,
+          1
+        ]
+      },
+      "plants": {
+        "dune_grass": [
+          0,
+          7
+        ],
+        "wild_wheat": [
+          0,
+          6
+        ],
+        "tall_grass": [
+          0,
+          4
+        ],
+        "dry_scrub": [
+          0,
+          2
+        ],
+        "small_grass": [
+          0,
+          3
+        ]
+      },
+      "feature": "Windswept rolling grass; long bare sightlines and dry patches in low relief.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "briarfield_heath",
+      "name": "Briarfield Heath",
+      "temperature": [
+        0.18,
+        0.7
+      ],
+      "moisture": [
+        0.3,
+        0.77
+      ],
+      "elevation": [
+        15,
+        94
+      ],
+      "terrain": "Windy upland heath of poor soils, heathy scrub, scattered flowers and eroded rock.",
+      "canopy": "pine, oak",
+      "surface": [
+        "peat"
+      ],
+      "vegetation": [
+        "dry_scrub",
+        "meadow_thistle",
+        "flower_lavender",
+        "tundra_grass"
+      ],
+      "subsurface": "dirt",
+      "generation": "Scrub forms broad patches on breezy crests; narrow wooded gullies.",
+      "share": 2,
+      "top": {
+        "peat": 28,
+        "grass_top": 40,
+        "gravel": 17,
+        "shale": 15
+      },
+      "soil": [
+        1,
+        4
+      ],
+      "under": {
+        "peat": 35,
+        "dirt": 40,
+        "gravel": 25
+      },
+      "rock": {
+        "shale": 40,
+        "stone": 40,
+        "slate": 20
+      },
+      "trees": {
+        "pine": [
+          0,
+          1
+        ],
+        "oak": [
+          0,
+          1
+        ]
+      },
+      "plants": {
+        "dry_scrub": [
+          0,
+          7
+        ],
+        "meadow_thistle": [
+          0,
+          5
+        ],
+        "flower_lavender": [
+          0,
+          5
+        ],
+        "tundra_grass": [
+          0,
+          2
+        ]
+      },
+      "feature": "Scrub forms broad patches on breezy crests; narrow wooded gullies.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "thornscrub_savanna",
+      "name": "Thornscrub Savanna",
+      "temperature": [
+        0.65,
+        1
+      ],
+      "moisture": [
+        0.18,
+        0.54
+      ],
+      "elevation": [
+        0,
+        62
+      ],
+      "terrain": "Warm semiarid mosaic of open hardpan, hardy shrubs and isolated gnarled oaks.",
+      "canopy": "oak",
+      "surface": [
+        "cracked_earth"
+      ],
+      "vegetation": [
+        "dry_scrub",
+        "dune_grass",
+        "desert_succulent",
+        "small_grass"
+      ],
+      "subsurface": "dirt",
+      "generation": "Trees clump close to seasonal channels; drought-resistant plants otherwise.",
+      "share": 2,
+      "top": {
+        "cracked_earth": 33,
+        "grass_top": 37,
+        "sand": 10,
+        "gravel": 20
+      },
+      "soil": [
+        2,
+        4
+      ],
+      "under": {
+        "dirt": 35,
+        "compacted_sediment": 45,
+        "sand": 20
+      },
+      "rock": {
+        "sandstone": 45,
+        "stone": 35,
+        "shale": 20
+      },
+      "trees": {
+        "oak": [
+          0,
+          3
+        ]
+      },
+      "plants": {
+        "dry_scrub": [
+          0,
+          7
+        ],
+        "dune_grass": [
+          0,
+          5
+        ],
+        "desert_succulent": [
+          0,
+          3
+        ],
+        "small_grass": [
+          0,
+          2
+        ]
+      },
+      "feature": "Trees clump close to seasonal channels; drought-resistant plants otherwise.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "mistbloom_meadow",
+      "name": "Mistbloom Meadow",
+      "temperature": [
+        0.28,
+        0.78
+      ],
+      "moisture": [
+        0.62,
+        0.97
+      ],
+      "elevation": [
+        -2,
+        25
+      ],
+      "terrain": "Flower-rich, moist riverside meadow with dew, low grasses, reeds and almost no canopy.",
+      "canopy": "willow",
+      "surface": [
+        "fertile_loam"
+      ],
+      "vegetation": [
+        "flower_daisy",
+        "flower_cornflower",
+        "flower_orchid",
+        "tall_grass",
+        "clover",
+        "small_grass"
+      ],
+      "subsurface": "silt",
+      "generation": "Tame broad floodplain grass with large mixed flower carpets, shallow seasonal puddles.",
+      "share": 2,
+      "top": {
+        "grass_top": 66,
+        "fertile_loam": 23,
+        "silt": 7,
+        "wet_mud": 4
+      },
+      "soil": [
+        3,
+        6
+      ],
+      "under": {
+        "fertile_loam": 45,
+        "silt": 35,
+        "clay": 20
+      },
+      "rock": {
+        "stone": 45,
+        "limestone": 30,
+        "siltstone": 25
+      },
+      "trees": {
+        "willow": [
+          0,
+          2
+        ]
+      },
+      "plants": {
+        "flower_daisy": [
+          0,
+          5
+        ],
+        "flower_cornflower": [
+          0,
+          5
+        ],
+        "flower_orchid": [
+          0,
+          2
+        ],
+        "tall_grass": [
+          0,
+          4
+        ],
+        "clover": [
+          0,
+          5
+        ],
+        "small_grass": [
+          0,
+          6
+        ]
+      },
+      "feature": "Tame broad floodplain grass with large mixed flower carpets, shallow seasonal puddles.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "blackwater_bog",
+      "name": "Blackwater Bog",
+      "temperature": [
+        0.16,
+        0.8
+      ],
+      "moisture": [
+        0.73,
+        1
+      ],
+      "elevation": [
+        -5,
+        24
+      ],
+      "terrain": "Dark acidic peat bog with low islands, still pools and sparse cypress growth.",
+      "canopy": "cypress, willow",
+      "surface": [
+        "peat"
+      ],
+      "vegetation": [
+        "marsh_reeds",
+        "forest_mushroom",
+        "cattails",
+        "lichen_patch"
+      ],
+      "subsurface": "wet_mud",
+      "generation": "40-60% still dark pools in bog basins; trees rooted on peat islands.",
+      "share": 1,
+      "top": {
+        "peat": 42,
+        "wet_mud": 26,
+        "mud": 19,
+        "silt": 13
+      },
+      "soil": [
+        3,
+        7
+      ],
+      "under": {
+        "peat": 55,
+        "wet_mud": 20,
+        "silt": 25
+      },
+      "rock": {
+        "shale": 45,
+        "limestone": 30,
+        "stone": 25
+      },
+      "trees": {
+        "cypress": [
+          0,
+          6
+        ],
+        "willow": [
+          0,
+          2
+        ]
+      },
+      "plants": {
+        "marsh_reeds": [
+          0,
+          5
+        ],
+        "forest_mushroom": [
+          0,
+          3
+        ],
+        "cattails": [
+          0,
+          2
+        ],
+        "lichen_patch": [
+          0,
+          2
+        ]
+      },
+      "feature": "40-60% still dark pools in bog basins; trees rooted on peat islands.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "floodroot_forest",
+      "name": "Floodroot Forest",
+      "temperature": [
+        0.28,
+        0.91
+      ],
+      "moisture": [
+        0.72,
+        1
+      ],
+      "elevation": [
+        -3,
+        27
+      ],
+      "terrain": "Floodplain hardwood forest with exposed roots, muddy channels, high willow crowns and damp hollows.",
+      "canopy": "willow, cypress, oak",
+      "surface": [
+        "wet_mud"
+      ],
+      "vegetation": [
+        "fern",
+        "cattails",
+        "marsh_reeds",
+        "forest_mushroom"
+      ],
+      "subsurface": "silt",
+      "generation": "Branching side channels and raised tree hummocks; rooted trees tolerate shallow water.",
+      "share": 2,
+      "top": {
+        "wet_mud": 34,
+        "silt": 23,
+        "grass_top": 28,
+        "root_mat": 15
+      },
+      "soil": [
+        3,
+        7
+      ],
+      "under": {
+        "silt": 40,
+        "mud": 40,
+        "clay": 20
+      },
+      "rock": {
+        "stone": 35,
+        "limestone": 40,
+        "siltstone": 25
+      },
+      "trees": {
+        "willow": [
+          0,
+          7
+        ],
+        "cypress": [
+          0,
+          3
+        ],
+        "oak": [
+          0,
+          2
+        ]
+      },
+      "plants": {
+        "fern": [
+          0,
+          5
+        ],
+        "cattails": [
+          0,
+          4
+        ],
+        "marsh_reeds": [
+          0,
+          5
+        ],
+        "forest_mushroom": [
+          0,
+          1
+        ]
+      },
+      "feature": "Branching side channels and raised tree hummocks; rooted trees tolerate shallow water.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "reedwater_delta",
+      "name": "Reedwater Delta",
+      "temperature": [
+        0.4,
+        1
+      ],
+      "moisture": [
+        0.55,
+        1
+      ],
+      "elevation": [
+        -7,
+        12
+      ],
+      "terrain": "Coastal and river-mouth delta of shifting sandbars, silt islands, reed beds and shallow channels.",
+      "canopy": "willow, cypress",
+      "surface": [
+        "silt"
+      ],
+      "vegetation": [
+        "marsh_reeds",
+        "cattails",
+        "lily_pad",
+        "seaweed"
+      ],
+      "subsurface": "wet_mud",
+      "generation": "Braided tidal and freshwater channels; reeds on sheltered shallow banks.",
+      "share": 2,
+      "top": {
+        "silt": 43,
+        "wet_mud": 27,
+        "wet_sand": 20,
+        "shell_sand": 10
+      },
+      "soil": [
+        4,
+        8
+      ],
+      "under": {
+        "silt": 50,
+        "sand": 25,
+        "clay": 25
+      },
+      "rock": {
+        "siltstone": 45,
+        "sandstone": 30,
+        "limestone": 25
+      },
+      "trees": {
+        "willow": [
+          0,
+          4
+        ],
+        "cypress": [
+          0,
+          2
+        ]
+      },
+      "plants": {
+        "marsh_reeds": [
+          0,
+          9
+        ],
+        "cattails": [
+          0,
+          6
+        ],
+        "lily_pad": [
+          0,
+          3
+        ],
+        "seaweed": [
+          0,
+          2
+        ]
+      },
+      "feature": "Braided tidal and freshwater channels; reeds on sheltered shallow banks.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "stormbreak_coast",
+      "name": "Stormbreak Coast",
+      "temperature": [
+        0.12,
+        0.76
+      ],
+      "moisture": [
+        0.28,
+        0.9
+      ],
+      "elevation": [
+        -8,
+        29
+      ],
+      "terrain": "Storm-worn dark rocky coastline of slate bluffs, gravel coves and sea spray.",
+      "canopy": "none",
+      "surface": [
+        "slate"
+      ],
+      "vegetation": [
+        "dry_scrub",
+        "lichen_patch",
+        "small_grass"
+      ],
+      "subsurface": "gravel",
+      "generation": "Wave-cut shelves, sea arches and windward bare cliffs; pebble coves in shelter.",
+      "share": 1,
+      "top": {
+        "slate": 38,
+        "gabbro": 25,
+        "beach_pebbles": 25,
+        "gravel": 12
+      },
+      "soil": [
+        0,
+        2
+      ],
+      "under": {
+        "gravel": 45,
+        "slate": 35,
+        "stone": 20
+      },
+      "rock": {
+        "slate": 40,
+        "gabbro": 35,
+        "stone": 25
+      },
+      "trees": {},
+      "plants": {
+        "dry_scrub": [
+          0,
+          3
+        ],
+        "lichen_patch": [
+          0,
+          3
+        ],
+        "small_grass": [
+          0,
+          1
+        ]
+      },
+      "feature": "Wave-cut shelves, sea arches and windward bare cliffs; pebble coves in shelter.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "saltwind_flats",
+      "name": "Saltwind Flats",
+      "temperature": [
+        0.35,
+        0.98
+      ],
+      "moisture": [
+        0.1,
+        0.7
+      ],
+      "elevation": [
+        -6,
+        15
+      ],
+      "terrain": "Flat saline tidal margins with salt crusts, damp sands, brackish pools and little vegetation.",
+      "canopy": "none",
+      "surface": [
+        "salt_crust"
+      ],
+      "vegetation": [
+        "dune_grass",
+        "dry_scrub",
+        "seaweed"
+      ],
+      "subsurface": "silt",
+      "generation": "Tidal polygons, ephemeral shallow water, dried salt bands above tidal reach.",
+      "share": 1,
+      "top": {
+        "salt_crust": 38,
+        "wet_sand": 27,
+        "silt": 20,
+        "shell_sand": 15
+      },
+      "soil": [
+        2,
+        5
+      ],
+      "under": {
+        "silt": 45,
+        "wet_sand": 35,
+        "gypsum": 20
+      },
+      "rock": {
+        "sandstone": 55,
+        "limestone": 25,
+        "siltstone": 20
+      },
+      "trees": {},
+      "plants": {
+        "dune_grass": [
+          0,
+          4
+        ],
+        "dry_scrub": [
+          0,
+          1
+        ],
+        "seaweed": [
+          0,
+          2
+        ]
+      },
+      "feature": "Tidal polygons, ephemeral shallow water, dried salt bands above tidal reach.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "sunwash_strand",
+      "name": "Sunwash Strand",
+      "temperature": [
+        0.55,
+        1
+      ],
+      "moisture": [
+        0.15,
+        0.8
+      ],
+      "elevation": [
+        -7,
+        24
+      ],
+      "terrain": "Warm sandy littoral beaches with dunes, shell patches and occasional coastal scrub.",
+      "canopy": "oak",
+      "surface": [
+        "shell_sand"
+      ],
+      "vegetation": [
+        "dune_grass",
+        "seaweed",
+        "desert_succulent",
+        "dead_bush"
+      ],
+      "subsurface": "sand",
+      "generation": "Dry backshore dunes, wet foreshore and shell drifts; vegetation only landward of tide.",
+      "share": 1,
+      "top": {
+        "sand": 50,
+        "shell_sand": 23,
+        "wet_sand": 15,
+        "sandstone": 12
+      },
+      "soil": [
+        3,
+        9
+      ],
+      "under": {
+        "sand": 65,
+        "sandstone": 25,
+        "gravel": 10
+      },
+      "rock": {
+        "sandstone": 60,
+        "limestone": 25,
+        "stone": 15
+      },
+      "trees": {
+        "oak": [
+          0,
+          1
+        ]
+      },
+      "plants": {
+        "dune_grass": [
+          0,
+          6
+        ],
+        "seaweed": [
+          0,
+          2
+        ],
+        "desert_succulent": [
+          0,
+          2
+        ],
+        "dead_bush": [
+          0,
+          1
+        ]
+      },
+      "feature": "Dry backshore dunes, wet foreshore and shell drifts; vegetation only landward of tide.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "shalecrest_foothills",
+      "name": "Shalecrest Foothills",
+      "temperature": [
+        0.16,
+        0.69
+      ],
+      "moisture": [
+        0.24,
+        0.77
+      ],
+      "elevation": [
+        30,
+        115
+      ],
+      "terrain": "Rugged rolling foothills of weathered shale, scree fans and scattered conifers.",
+      "canopy": "pine, oak",
+      "surface": [
+        "shale"
+      ],
+      "vegetation": [
+        "lichen_patch",
+        "fern",
+        "small_grass"
+      ],
+      "subsurface": "stone",
+      "generation": "Eroded rock ribs and scree fans; trees cling to sheltered slopes.",
+      "share": 1,
+      "top": {
+        "shale": 34,
+        "grass_top": 20,
+        "scree": 31,
+        "gravel": 15
+      },
+      "soil": [
+        1,
+        3
+      ],
+      "under": {
+        "shale": 45,
+        "gravel": 30,
+        "stone": 25
+      },
+      "rock": {
+        "shale": 55,
+        "slate": 25,
+        "stone": 20
+      },
+      "trees": {
+        "pine": [
+          0,
+          7
+        ],
+        "oak": [
+          0,
+          2
+        ]
+      },
+      "plants": {
+        "lichen_patch": [
+          0,
+          6
+        ],
+        "fern": [
+          0,
+          2
+        ],
+        "small_grass": [
+          0,
+          3
+        ]
+      },
+      "feature": "Eroded rock ribs and scree fans; trees cling to sheltered slopes.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "granite_crown",
+      "name": "Granite Crown",
+      "temperature": [
+        0.02,
+        0.62
+      ],
+      "moisture": [
+        0.11,
+        0.83
+      ],
+      "elevation": [
+        65,
+        185
+      ],
+      "terrain": "Bald uplifted granite ridges, tors, sharp summits and rare sheltered pockets.",
+      "canopy": "none",
+      "surface": [
+        "granite"
+      ],
+      "vegetation": [
+        "lichen_patch",
+        "snow_grass"
+      ],
+      "subsurface": "stone",
+      "generation": "Bare exposed granitic ridge crests; boulder fields, large cliffs and few plants.",
+      "share": 1,
+      "top": {
+        "granite": 61,
+        "scree": 20,
+        "stone": 12,
+        "packed_snow": 7
+      },
+      "soil": [
+        0,
+        1
+      ],
+      "under": {
+        "granite": 55,
+        "stone": 30,
+        "scree": 15
+      },
+      "rock": {
+        "granite": 70,
+        "gabbro": 20,
+        "stone": 10
+      },
+      "trees": {},
+      "plants": {
+        "lichen_patch": [
+          0,
+          5
+        ],
+        "snow_grass": [
+          0,
+          2
+        ]
+      },
+      "feature": "Bare exposed granitic ridge crests; boulder fields, large cliffs and few plants.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "glimmerfrost_glacier",
+      "name": "Glimmerfrost Glacier",
+      "temperature": [
+        0.0,
+        0.25
+      ],
+      "moisture": [
+        0.32,
+        1
+      ],
+      "elevation": [
+        45,
+        185
+      ],
+      "terrain": "Perennial ice sheets and cracked blue glacial tongues between peaks.",
+      "canopy": "none",
+      "surface": [
+        "glacial_ice"
+      ],
+      "vegetation": [
+        "snow_grass"
+      ],
+      "subsurface": "packed_snow",
+      "generation": "Glacier flowline ridges and narrow crevasses; limited to very cold upland regions.",
+      "share": 1,
+      "top": {
+        "glacial_ice": 47,
+        "packed_snow": 28,
+        "ice": 18,
+        "frosted_rock": 7
+      },
+      "soil": [
+        0,
+        3
+      ],
+      "under": {
+        "glacial_ice": 60,
+        "packed_snow": 25,
+        "ice": 15
+      },
+      "rock": {
+        "slate": 40,
+        "granite": 35,
+        "stone": 25
+      },
+      "trees": {},
+      "plants": {
+        "snow_grass": [
+          0,
+          1
+        ]
+      },
+      "feature": "Glacier flowline ridges and narrow crevasses; limited to very cold upland regions.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "vermilion_canyon",
+      "name": "Vermilion Canyon",
+      "temperature": [
+        0.55,
+        1
+      ],
+      "moisture": [
+        0.02,
+        0.4
+      ],
+      "elevation": [
+        10,
+        110
+      ],
+      "terrain": "Deep dry red sandstone canyons with layered cliffs, talus slopes and winding sandy washes.",
+      "canopy": "none",
+      "surface": [
+        "red_sandstone"
+      ],
+      "vegetation": [
+        "dead_bush",
+        "dry_scrub",
+        "desert_succulent"
+      ],
+      "subsurface": "red_sandstone",
+      "generation": "Canyon carving requires erosion/height stage; huge stepped cliffs and narrow winding washes.",
+      "share": 1,
+      "top": {
+        "red_sandstone": 37,
+        "red_clay": 30,
+        "red_sand": 18,
+        "sandstone_rubble": 15
+      },
+      "soil": [
+        0,
+        3
+      ],
+      "under": {
+        "red_sandstone": 55,
+        "red_clay": 25,
+        "sandstone": 20
+      },
+      "rock": {
+        "red_sandstone": 60,
+        "sandstone": 25,
+        "shale": 15
+      },
+      "trees": {},
+      "plants": {
+        "dead_bush": [
+          0,
+          4
+        ],
+        "dry_scrub": [
+          0,
+          3
+        ],
+        "desert_succulent": [
+          0,
+          1
+        ]
+      },
+      "feature": "Canyon carving requires erosion/height stage; huge stepped cliffs and narrow winding washes.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "sunscorch_saltpan",
+      "name": "Sunscorch Saltpan",
+      "temperature": [
+        0.7,
+        1
+      ],
+      "moisture": [
+        0.0,
+        0.28
+      ],
+      "elevation": [
+        -10,
+        22
+      ],
+      "terrain": "Blinding inland dry salt basin with polygonal crusts, gypsum fringes and shallow seasonal pools.",
+      "canopy": "none",
+      "surface": [
+        "salt_crust"
+      ],
+      "vegetation": [
+        "dead_bush",
+        "desert_succulent"
+      ],
+      "subsurface": "gypsum",
+      "generation": "Lowest arid basins with large coherent polygonal pans; vegetation nearly absent.",
+      "share": 1,
+      "top": {
+        "salt_crust": 58,
+        "gypsum": 23,
+        "cracked_earth": 15,
+        "rock_salt": 4
+      },
+      "soil": [
+        1,
+        4
+      ],
+      "under": {
+        "gypsum": 35,
+        "silt": 40,
+        "rock_salt": 25
+      },
+      "rock": {
+        "sandstone": 45,
+        "gypsum": 30,
+        "limestone": 25
+      },
+      "trees": {},
+      "plants": {
+        "dead_bush": [
+          0,
+          2
+        ],
+        "desert_succulent": [
+          0,
+          1
+        ]
+      },
+      "feature": "Lowest arid basins with large coherent polygonal pans; vegetation nearly absent.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "emberglass_wastes",
+      "name": "Emberglass Wastes",
+      "temperature": [
+        0.23,
+        1
+      ],
+      "moisture": [
+        0.0,
+        0.65
+      ],
+      "elevation": [
+        7,
+        155
+      ],
+      "terrain": "Glassy obsidian fields, cooled black lava and isolated hot fractures around old eruption cores.",
+      "canopy": "none",
+      "surface": [
+        "obsidian"
+      ],
+      "vegetation": [
+        "dry_scrub"
+      ],
+      "subsurface": "basalt",
+      "generation": "Obsidian localized near former lava flows; avoid placing massive lava carpets.",
+      "share": 1,
+      "top": {
+        "obsidian": 42,
+        "basalt": 22,
+        "cracked_basalt": 22,
+        "scoria": 14
+      },
+      "soil": [
+        0,
+        2
+      ],
+      "under": {
+        "obsidian": 30,
+        "basalt": 45,
+        "scoria": 25
+      },
+      "rock": {
+        "basalt": 50,
+        "gabbro": 30,
+        "obsidian": 20
+      },
+      "trees": {},
+      "plants": {
+        "dry_scrub": [
+          0,
+          1
+        ]
+      },
+      "feature": "Obsidian localized near former lava flows; avoid placing massive lava carpets.",
+      "texture_face_rules": {
+        "grass_top": "grass_side",
+        "dry_grass_top": "dry_grass_side"
+      }
+    },
+    {
+      "id": "ashenwood_recovery",
+      "name": "Ashenwood Recovery",
+      "temperature": [
+        0.29,
+        0.79
+      ],
+      "moisture": [
+        0.39,
+        0.83
+      ],
+      "elevation": [
+        8,
+        92
+      ],
+      "terrain": "Old volcanic soil colonized by pioneer grasses, sparse pine and patchy green regeneration.",
+      "canopy": "pine, oak",
+      "surface": [
+        "volcanic_ash"
+      ],
+      "vegetation": [
+        "small_grass",
+        "lichen_patch",
+        "evergreen_shrub",
+        "fern"
+      ],
+      "subsurface": "basalt",
+      "generation": "Successional ecology: sparse pines and moss patches colonize older ash fields.",
+      "share": 1,
+      "top": {
+        "volcanic_ash": 31,
+        "grass_top": 25,
+        "moss_block": 18,
+        "basalt": 16,
+        "pumice": 10
+      },
+      "soil": [
+        1,
+        4
+      ],
+      "under": {
+        "volcanic_ash": 35,
+        "dirt": 35,
+        "scoria": 30
+      },
+      "rock": {
+        "basalt": 55,
+        "gabbro": 25,
+        "scoria": 20
+      },
+      "trees": {
+        "pine": [
+          0,
+          7
+        ],
+        "oak": [
+          0,
+          1
+        ]
+      },
+      "plants": {
+        "small_grass": [
+          0,
+          6
+        ],
+        "lichen_patch": [
+          0,
+          4
+        ],
+        "evergreen_shrub": [
+          0,
+          4
+        ],
+        "fern": [
+          0,
+          2
+        ]
+      },
+      "feature": "Successional ecology: sparse pines and moss patches colonize older ash fields.",
       "texture_face_rules": {
         "grass_top": "grass_side",
         "dry_grass_top": "dry_grass_side"
@@ -1036,7 +2825,7 @@
           6
         ]
       },
-      "notes": "Root mats only beneath forested land within 6\u201318 blocks of surface; organic floor pockets and 0\u20132 fallen branch clusters/room."
+      "notes": "Root mats only beneath forested land within 6–18 blocks of surface; organic floor pockets and 0–2 fallen branch clusters/room."
     },
     {
       "id": "seepstone_grottos",
@@ -1256,7 +3045,7 @@
           3
         ]
       },
-      "notes": "Large chambers 12\u201340 radius uncommon; columns form at paired ceiling/floor positions; calcite concentrated around flowstone."
+      "notes": "Large chambers 12–40 radius uncommon; columns form at paired ceiling/floor positions; calcite concentrated around flowstone."
     },
     {
       "id": "coalshade_galleries",
@@ -1734,7 +3523,7 @@
           4
         ]
       },
-      "notes": "Lava pockets 0\u20134% only near active systems, vents 0\u20132 per large cave; most tubes are cooled."
+      "notes": "Lava pockets 0–4% only near active systems, vents 0–2 per large cave; most tubes are cooled."
     },
     {
       "id": "stillwater_abyss",
@@ -1802,7 +3591,7 @@
           8
         ]
       },
-      "notes": "Large lake chambers, high water fill (2\u201312 blocks deep typical), dry rim path around some portions, underwater ledges."
+      "notes": "Large lake chambers, high water fill (2–12 blocks deep typical), dry rim path around some portions, underwater ledges."
     }
   ],
   "resource_rules": {

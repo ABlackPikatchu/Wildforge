@@ -1,0 +1,65 @@
+{
+  "id": "wildforge:floodroot_forest",
+  "name": "Floodroot Forest",
+  "map_color": "417d65",
+  "criteria": {
+    "temperature": [
+      0.28,
+      0.91
+    ],
+    "rainfall": [
+      0.72,
+      1.0
+    ],
+    "height_above_sea": [
+      -3,
+      27
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": true,
+    "priority": 18
+  },
+  "surface": {
+    "top": "wet_mud",
+    "filler": "silt"
+  },
+  "decorations": {
+    "tree_density": 0.56,
+    "plant_density": 0.68,
+    "max_tree_slope": 2,
+    "max_plant_slope": 3,
+    "trees": [
+      {
+        "id": "willow",
+        "weight": 7
+      },
+      {
+        "id": "cypress",
+        "weight": 3
+      },
+      {
+        "id": "oak",
+        "weight": 2
+      }
+    ],
+    "plants": [
+      {
+        "id": "fern",
+        "weight": 5
+      },
+      {
+        "id": "cattails",
+        "weight": 4
+      },
+      {
+        "id": "marsh_reeds",
+        "weight": 5
+      },
+      {
+        "id": "forest_mushroom",
+        "weight": 1
+      }
+    ]
+  }
+}

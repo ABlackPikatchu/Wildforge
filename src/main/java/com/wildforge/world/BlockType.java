@@ -66,7 +66,7 @@ public enum BlockType {
     BEACH_PEBBLES(53, 54, 1, true, true, 53, 53, 53),
     CALCITE(54, 55, 1, true, true, 54, 54, 54),
     CAVE_CLAY(55, 56, 1, true, true, 55, 55, 55),
-    CAVE_MOSS(56, 57, 1, true, true, 56, 56, 56),
+    CAVE_MOSS(56, 57, 1, true, true, 27, 27, 27),
     COAL_DUST_DEPOSIT(57, 58, 1, true, true, 57, 57, 57),
     COMPACTED_SEDIMENT(58, 59, 1, true, true, 58, 58, 58),
     CRACKED_BASALT(59, 60, 1, true, true, 59, 59, 59),

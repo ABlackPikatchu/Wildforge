@@ -28,6 +28,8 @@ public final class WorldGenPreview {
         BufferedImage erosion = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         BufferedImage ridges = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         BufferedImage relief = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        BufferedImage landformTypes = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        EnumMap<WorldGenerator.Landform, Integer> landformCounts = new EnumMap<>(WorldGenerator.Landform.class);
         EnumMap<Biome, Integer> counts = new EnumMap<>(Biome.class);
         EnumMap<Geology, Integer> geologicalCounts = new EnumMap<>(Geology.class);
         int waterSamples = 0;
@@ -43,6 +45,9 @@ public final class WorldGenPreview {
                 erosion.setRGB(px,pz,gradient(g.erosion()).getRGB());
                 ridges.setRGB(px,pz,gradient(g.ridges()*2.0-1.0).getRGB());
                 relief.setRGB(px,pz,reliefColor(g).getRGB());
+                WorldGenerator.Landform form = generator.landformAt(x,z);
+                landformTypes.setRGB(px,pz,landformColor(form).getRGB());
+                landformCounts.merge(form,1,Integer::sum);
                 int y = surface.surfaceY();
                 minY = Math.min(minY, y);
                 maxY = Math.max(maxY, y);
@@ -77,6 +82,7 @@ public final class WorldGenPreview {
         ImageIO.write(erosion, "png", destination.resolve("erosion_seed_"+seed+".png").toFile());
         ImageIO.write(ridges, "png", destination.resolve("ridges_seed_"+seed+".png").toFile());
         ImageIO.write(relief, "png", destination.resolve("landforms_seed_"+seed+".png").toFile());
+        ImageIO.write(landformTypes, "png", destination.resolve("landform_types_seed_"+seed+".png").toFile());
         System.out.println("Worldgen preview for seed " + seed);
         try {
             System.out.println("Suggested safe spawn: " + SpawnFinder.find(generator, 768));
@@ -87,6 +93,8 @@ public final class WorldGenPreview {
         System.out.printf("Ocean water coverage: %.1f%%%n", waterSamples * 100.0 / (width * height));
         counts.forEach((biome, count) -> System.out.printf("  %-29s %5.1f%%%n",
                 biome.name(), count * 100.0 / (width * height)));
+        System.out.println("Landform coverage:");
+        landformCounts.forEach((form,count) -> System.out.printf("  %-29s %5.1f%%%n",form.name(),count*100.0/(width*height)));
         System.out.println("Geology distribution:");
         geologicalCounts.forEach((rock, count) -> System.out.printf("  %-14s %5.1f%%%n",
                 rock.name(), count * 100.0 / (width * height)));
@@ -105,6 +113,19 @@ public final class WorldGenPreview {
         if (g.upland() > 0.05) return new Color(165,148,109);
         if (rugged > 0.65) return new Color(106,137,84);
         return new Color(103,166,90);
+    }
+
+    private static Color landformColor(WorldGenerator.Landform form) {
+        return switch(form) {
+            case OCEAN_SHELF -> new Color(37,79,141);
+            case COASTAL_LOWLAND -> new Color(93,166,175);
+            case PLAIN -> new Color(112,177,93);
+            case ROLLING_UPLAND -> new Color(152,173,95);
+            case FOOTHILLS -> new Color(170,145,96);
+            case MOUNTAIN_RANGE -> new Color(205,204,203);
+            case ERODED_PLATEAU -> new Color(173,125,85);
+            case BASIN -> new Color(81,133,86);
+        };
     }
 
     private static Color shade(Color c, double amount) {

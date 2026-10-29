@@ -1,0 +1,57 @@
+{
+  "id": "wildforge:thornscrub_savanna",
+  "name": "Thornscrub Savanna",
+  "map_color": "b29a63",
+  "criteria": {
+    "temperature": [
+      0.65,
+      1.0
+    ],
+    "rainfall": [
+      0.18,
+      0.54
+    ],
+    "height_above_sea": [
+      0,
+      62
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 14
+  },
+  "surface": {
+    "top": "cracked_earth",
+    "filler": "dirt"
+  },
+  "decorations": {
+    "tree_density": 0.09,
+    "plant_density": 0.49,
+    "max_tree_slope": 3,
+    "max_plant_slope": 4,
+    "trees": [
+      {
+        "id": "oak",
+        "weight": 3
+      }
+    ],
+    "plants": [
+      {
+        "id": "dry_scrub",
+        "weight": 7
+      },
+      {
+        "id": "dune_grass",
+        "weight": 5
+      },
+      {
+        "id": "desert_succulent",
+        "weight": 3
+      },
+      {
+        "id": "small_grass",
+        "weight": 2
+      }
+    ]
+  }
+}

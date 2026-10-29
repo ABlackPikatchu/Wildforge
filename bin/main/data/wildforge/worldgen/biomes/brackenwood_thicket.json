@@ -1,0 +1,61 @@
+{
+  "id": "wildforge:brackenwood_thicket",
+  "name": "Brackenwood Thicket",
+  "map_color": "477946",
+  "criteria": {
+    "temperature": [
+      0.32,
+      0.84
+    ],
+    "rainfall": [
+      0.52,
+      0.92
+    ],
+    "height_above_sea": [
+      4,
+      48
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 12
+  },
+  "surface": {
+    "top": "grass_top",
+    "filler": "dirt"
+  },
+  "decorations": {
+    "tree_density": 0.7,
+    "plant_density": 0.9,
+    "max_tree_slope": 3,
+    "max_plant_slope": 4,
+    "trees": [
+      {
+        "id": "oak",
+        "weight": 6
+      },
+      {
+        "id": "maple",
+        "weight": 4
+      }
+    ],
+    "plants": [
+      {
+        "id": "fern",
+        "weight": 12
+      },
+      {
+        "id": "small_grass",
+        "weight": 8
+      },
+      {
+        "id": "clover",
+        "weight": 2
+      },
+      {
+        "id": "flower_bluebell",
+        "weight": 1
+      }
+    ]
+  }
+}

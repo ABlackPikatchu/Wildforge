@@ -69,9 +69,21 @@ public final class BiomeDistribution {
         } else if (biome==Biome.FROSTMOOR_TUNDRA) {
             if(slope<=2 && exposure>0.15) return BlockType.SNOW_CRUST;
         } else if (biome==Biome.GREENHEART_FOREST || biome==Biome.SUNMEADOW_PLAINS ||
-                   biome==Biome.EMBERLEAF_WOODLAND || biome==Biome.NEEDLEWOOD_TAIGA) {
-            // Steep surfaces show a little host rock; gentle land keeps fertile soil.
-            if(slope>=7) return exposure>0.25 ? BlockType.STONE : BlockType.GRAVEL;
+                   biome==Biome.EMBERLEAF_WOODLAND || biome==Biome.NEEDLEWOOD_TAIGA ||
+                   biome==Biome.ELDERROOT_GROVE || biome==Biome.BRACKENWOOD_THICKET ||
+                   biome==Biome.MISTBLOOM_MEADOW) {
+            // Temperate landscapes keep a continuous grassy surface. Rock belongs
+            // on cliff faces and rare outcrops, not broad exposed level carpets.
+            if(slope>=8) return exposure>0.10 ? BlockType.STONE : BlockType.GRAVEL;
+            if(slope>=5 && exposure>0.48) return BlockType.STONE;
+            double variation=noise.fbm2(x/43.0,z/43.0,3,0x4ad091L);
+            double smallPatch=noise.fbm2(x/13.0,z/13.0,2,0x5279L);
+            // Keep species-specific litter in the tree-local feature pass.
+            if(slope<=3 && variation+0.32*smallPatch<0.62)
+                return BlockType.GRASS;
+            if(chosen==BlockType.STONE || chosen==BlockType.SLATE ||
+               chosen==BlockType.SHALE || chosen==BlockType.SCREE)
+                return BlockType.GRASS;
         }
         return chosen;
     }
@@ -84,7 +96,13 @@ public final class BiomeDistribution {
     }
     public BlockType top(Biome biome,int x,int z,BlockType fallback) {
         Palette p=surface.get(biome.name().toLowerCase(Locale.ROOT));
-        return p==null?fallback:pick(p.top,x,z,"top",fallback);
+        if(p==null)return fallback;
+        // Leaf litter is a feature beneath individual trees, not a biome-wide surface.
+        Map<String,Integer> ground=new LinkedHashMap<>(p.top);
+        ground.remove("leaf_litter");
+        ground.remove("autumn_leaf_litter");
+        ground.remove("pine_needle_litter");
+        return pick(ground,x,z,"top",fallback);
     }
     public BlockType under(Biome biome,int x,int z,BlockType fallback) {
         Palette p=surface.get(biome.name().toLowerCase(Locale.ROOT));

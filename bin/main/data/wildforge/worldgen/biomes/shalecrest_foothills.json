@@ -1,0 +1,59 @@
+{
+  "id": "wildforge:shalecrest_foothills",
+  "name": "Shalecrest Foothills",
+  "map_color": "7d8180",
+  "criteria": {
+    "temperature": [
+      0.16,
+      0.69
+    ],
+    "rainfall": [
+      0.24,
+      0.77
+    ],
+    "height_above_sea": [
+      30,
+      115
+    ],
+    "geology": [
+      "SHALE"
+    ],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 21
+  },
+  "surface": {
+    "top": "shale",
+    "filler": "stone"
+  },
+  "decorations": {
+    "tree_density": 0.25,
+    "plant_density": 0.34,
+    "max_tree_slope": 5,
+    "max_plant_slope": 4,
+    "trees": [
+      {
+        "id": "pine",
+        "weight": 7
+      },
+      {
+        "id": "oak",
+        "weight": 2
+      }
+    ],
+    "plants": [
+      {
+        "id": "lichen_patch",
+        "weight": 6
+      },
+      {
+        "id": "fern",
+        "weight": 2
+      },
+      {
+        "id": "small_grass",
+        "weight": 3
+      }
+    ]
+  }
+}

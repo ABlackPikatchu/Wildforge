@@ -1,0 +1,61 @@
+{
+  "id": "wildforge:briarfield_heath",
+  "name": "Briarfield Heath",
+  "map_color": "957b79",
+  "criteria": {
+    "temperature": [
+      0.18,
+      0.7
+    ],
+    "rainfall": [
+      0.3,
+      0.77
+    ],
+    "height_above_sea": [
+      15,
+      94
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 13
+  },
+  "surface": {
+    "top": "peat",
+    "filler": "dirt"
+  },
+  "decorations": {
+    "tree_density": 0.05,
+    "plant_density": 0.57,
+    "max_tree_slope": 5,
+    "max_plant_slope": 4,
+    "trees": [
+      {
+        "id": "pine",
+        "weight": 1
+      },
+      {
+        "id": "oak",
+        "weight": 1
+      }
+    ],
+    "plants": [
+      {
+        "id": "dry_scrub",
+        "weight": 7
+      },
+      {
+        "id": "meadow_thistle",
+        "weight": 5
+      },
+      {
+        "id": "flower_lavender",
+        "weight": 5
+      },
+      {
+        "id": "tundra_grass",
+        "weight": 2
+      }
+    ]
+  }
+}

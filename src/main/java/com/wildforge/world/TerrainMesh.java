@@ -1,9 +1,13 @@
 package com.wildforge.world;
 
+import com.wildforge.worldgen.Biome;
+
 import com.wildforge.worldgen.WorldGenerator;
 import com.wildforge.worldgen.WorldGenConfigLoader;
 import com.wildforge.worldgen.BiomeDistribution;
 import com.wildforge.worldgen.SeededNoise;
+import com.wildforge.worldgen.CaveCarvers;
+import com.wildforge.worldgen.CaveBiomePainter;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
@@ -11,11 +15,11 @@ import java.util.concurrent.*;
 
 /** Bounded, player-centered chunk cache with persistent sparse edits and v1 imports. */
 public final class TerrainMesh {
-    public static final int CHUNK_SIZE=16, WORLD_HEIGHT=256, SECTION_HEIGHT=16, SECTION_COUNT=WORLD_HEIGHT/SECTION_HEIGHT;
+    public static final int CHUNK_SIZE=16, WORLD_HEIGHT=512, SECTION_HEIGHT=16, SECTION_COUNT=WORLD_HEIGHT/SECTION_HEIGHT;
     // Legacy constants are retained only for old save import and source compatibility.
     public static final int WORLD_CHUNKS=4, WORLD_SIZE=64;
     public static final int FLOATS_PER_VERTEX=7;
-    private static final int MAGIC=0x57464F52, SAVE_VERSION=2;
+    private static final int MAGIC=0x57464F52, SAVE_VERSION=3;
     private static final long DEFAULT_SEED=0x57494C44464F5247L;
     private final LinkedHashMap<Long,Chunk> chunks = new LinkedHashMap<>();
     private final HashMap<Long,HashMap<Integer,Byte>> edits = new HashMap<>();
@@ -23,6 +27,8 @@ public final class TerrainMesh {
     private BiomeDistribution distribution;
     private SeededNoise depositNoise;
     private long seed=DEFAULT_SEED;
+    private boolean legacyVerticalMigration=false;
+    public boolean needsLegacyPlayerHeightShift(){return legacyVerticalMigration;}
     private int version=0, renderDistance=8, simulationDistance=5;
     private int centerX=1,centerZ=1;
     private boolean streamed=false;
@@ -128,7 +134,7 @@ public final class TerrainMesh {
     public int simulationDistance(){return simulationDistance;}
     public int loadedChunkCount(){return chunks.size();}
     /** Approximate encoded block payload, excluding object overhead and CPU meshes. */
-    public long residentBlockPayloadBytes(){long bytes=0;for(Chunk c:chunks.values())bytes+=c.compact==null?65536:c.compact.storedBytes();return bytes;}
+    public long residentBlockPayloadBytes(){long bytes=0;for(Chunk c:chunks.values())bytes+=c.compact==null?CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT:c.compact.storedBytes();return bytes;}
     /** Count of outstanding terrain generation jobs; queried on the game thread. */
     public int pendingGenerationCount(){return pending.size();}
     /** True only when a terrain column is actually resident in memory. */
@@ -137,7 +143,7 @@ public final class TerrainMesh {
     }
 
     public long seed(){return seed;}
-    public void resetWorld(){cancelGeneration();edits.clear();seed=DEFAULT_SEED;initializeGenerator();chunks.clear();streamed=false;generateSpawnChunk(16,27);version++;}
+    public void resetWorld(){legacyVerticalMigration=false;cancelGeneration();edits.clear();seed=DEFAULT_SEED;initializeGenerator();chunks.clear();streamed=false;generateSpawnChunk(16,27);version++;}
     /** Nonblocking player-centered streaming: one worker produces raw columns, main thread owns meshes. */
     public void streamAround(float x,float z){
         int cx=Math.floorDiv((int)Math.floor(x),CHUNK_SIZE);
@@ -284,6 +290,18 @@ public final class TerrainMesh {
     private void rebuildNeighborSection(int x,int z,int section){Chunk c=chunks.get(key(x,z));if(c!=null)rebuildSection(c,section);}
     private Chunk generate(int cx,int cz){
         Chunk c=new Chunk(cx,cz);
+        // Cache nearby tree anchors once per column to avoid repeatedly sampling
+        // tree candidates for each surface block. Includes anchors across seams.
+        java.util.List<WorldGenerator.Tree> litterTrees = new java.util.ArrayList<>();
+        final int litterRadius = 3;
+        int wx0=cx*CHUNK_SIZE, wz0=cz*CHUNK_SIZE;
+        for(int tcx=Math.floorDiv(wx0-litterRadius,WorldGenerator.TREE_CELL_SIZE);
+                tcx<=Math.floorDiv(wx0+CHUNK_SIZE-1+litterRadius,WorldGenerator.TREE_CELL_SIZE);tcx++)
+            for(int tcz=Math.floorDiv(wz0-litterRadius,WorldGenerator.TREE_CELL_SIZE);
+                    tcz<=Math.floorDiv(wz0+CHUNK_SIZE-1+litterRadius,WorldGenerator.TREE_CELL_SIZE);tcz++) {
+                WorldGenerator.Tree tree=generator.treeForCell(tcx,tcz);
+                if(tree!=null)litterTrees.add(tree);
+            }
         for(int lx=0;lx<CHUNK_SIZE;lx++)for(int lz=0;lz<CHUNK_SIZE;lz++){
             int wx=cx*CHUNK_SIZE+lx,wz=cz*CHUNK_SIZE+lz;
             WorldGenerator.Surface surface=generator.surface(wx,wz);
@@ -291,10 +309,40 @@ public final class TerrainMesh {
             int slope=generator.slopeAt(wx,wz);
             BlockType topBlock=distribution.exposedTop(surface.biome(),wx,wz,top,generator.settings().seaLevel(),
                     slope,material(surface.topTexture(), BlockType.GRASS));
+            // Small irregular litter patches immediately beneath matching trees.
+            // Tree anchors are deterministic in world coordinates, including borders.
+            if(slope<=3 && surface.waterBody()==WorldGenerator.WaterBody.LAND) {
+                for(WorldGenerator.Tree tree:litterTrees) {
+                    int dx=wx-tree.x(),dz=wz-tree.z();
+                    if(dx*dx+dz*dz>9)continue;
+                    if(Math.abs(top-generator.surface(tree.x(),tree.z()).surfaceY())>2)continue;
+                    BlockType litter=switch(tree.type()) {
+                        case PINE -> BlockType.PINE_NEEDLE_LITTER;
+                        case MAPLE -> surface.biome()==Biome.EMBERLEAF_WOODLAND
+                                ? BlockType.AUTUMN_LEAF_LITTER : BlockType.LEAF_LITTER;
+                        case OAK -> BlockType.LEAF_LITTER;
+                        default -> null;
+                    };
+                    if(litter==null)continue;
+                    long h=((long)wx*0x9E3779B97F4A7C15L)^((long)wz*0xC2B2AE3D27D4EB4FL)
+                            ^((long)tree.x()*0x165667B19E3779F9L)^((long)tree.z()*0xD6E8FEB86659FD93L);
+                    h^=h>>>33;h*=0xff51afd7ed558ccdL;h^=h>>>33;
+                    if((h&15L)<(dx*dx+dz*dz<=2?13:7))topBlock=litter;
+                    break;
+                }
+            }
             BlockType filler=distribution.under(surface.biome(),wx,wz,material(surface.fillerTexture(), BlockType.DIRT));
             BlockType baseRock=material(surface.baseRockTexture(), BlockType.STONE);
-            BlockType rock=distribution.rock(surface.biome(),wx,wz,baseRock);
+            // Surface geology is a shallow regional accent, not the entire 512-block column.
+            BlockType geologicalRock=distribution.rock(surface.biome(),wx,wz,baseRock);
             int soilDepth=distribution.soilDepth(surface.biome(),wx,wz);
+            // Shallow, exposed ridges lose soil; sheltered and wet valleys build it up.
+            if(slope>=7) soilDepth=Math.min(soilDepth,1);
+            else if(slope>=4) soilDepth=Math.min(soilDepth,2);
+            else if(surface.waterBody()!=WorldGenerator.WaterBody.LAND)soilDepth=Math.min(8,soilDepth+2);
+            else if(slope<=1 && surface.rainfall()>0.68)soilDepth=Math.min(8,soilDepth+1);
+            if(slope>=7 && topBlock!=BlockType.PACKED_SNOW && topBlock!=BlockType.SNOW_CRUST)
+                topBlock=baseRock;
             // The first 3D density pass works above and below the old heightmap.
             // Sample only the upper terrain band; deep rock remains inexpensive.
             int highest=Math.min(WORLD_HEIGHT-2,top+8);
@@ -303,10 +351,17 @@ public final class TerrainMesh {
                 if(y>3 && generator.isCave(wx,y,wz,top))continue;
                 // Rock overhangs above the original height receive rock faces,
                 // rather than floating copies of biome topsoil.
+                // Ordinary stone dominates the crust. Deeper strata transition to
+                // darker slate; biome-specific rock occurs as sparse coherent lenses.
+                BlockType rock=naturalRock(wx,y,wz,top,geologicalRock);
                 BlockType b=y==0?BlockType.BEDROCK:y>top?rock:y==top?topBlock:y>=top-soilDepth?filler:rock;
                 c.blocks[index(lx,y,lz)]=b.id;
             }
         }
+        // Directed regional tunnels and ravines supplement existing 3D noise caves.
+        new CaveCarvers(seed).carve(c.blocks,cx,cz,generator);
+        // Paint exposed cave surfaces after ALL carving, before features and ores.
+        CaveBiomePainter.paint(c.blocks, cx, cz, generator, WORLD_HEIGHT);
         // Populate only cells belonging to this chunk. Candidates are sampled in
         // world coordinates, including adjacent cells whose crowns overlap us.
         populateFeatures(c);
@@ -314,14 +369,45 @@ public final class TerrainMesh {
         // Edits are applied when the completed chunk is installed on the main thread.
         return c;
     }
+    /** Main host rock for 512-block worlds. No new block IDs or save migration.
+     * Low-cost world-space hash gives broad strata and small geological lenses.
+     * Deep sections are slate-rich, with stone still present and rare host-rock veins.
+     */
+    private static BlockType naturalRock(int x,int y,int z,int top,BlockType accent) {
+        // Stratification is mostly altitude-dependent; slight spatial variation
+        // prevents a perfectly horizontal line at the deep-rock boundary.
+        int deepBoundary=126 + (int)(rockHash(Math.floorDiv(x,32),0,Math.floorDiv(z,32)) & 23L)-12;
+        long province=rockHash(Math.floorDiv(x,18),Math.floorDiv(y,12),Math.floorDiv(z,18));
+        int roll=(int)((province>>>24)&255L);
+        if(y<deepBoundary-28) {
+            if(roll<14 && accent!=BlockType.AIR) return accent;
+            return roll<190 ? BlockType.SLATE : BlockType.STONE;
+        }
+        if(y<deepBoundary+16) {
+            int slateChance=Math.max(0,Math.min(190,(deepBoundary+16-y)*4));
+            if(roll<slateChance)return BlockType.SLATE;
+            if(roll>244 && accent!=BlockType.AIR)return accent;
+            return BlockType.STONE;
+        }
+        // Surface geology affects only a small fraction of upper host rock.
+        if(roll<24 && accent!=BlockType.AIR)return accent;
+        return BlockType.STONE;
+    }
+    private static long rockHash(int x,int y,int z) {
+        long v=((long)x*0x9E3779B97F4A7C15L)^((long)y*0xD6E8FEB86659FD93L)
+            ^((long)z*0xC2B2AE3D27D4EB4FL);
+        v=(v^(v>>>30))*0xbf58476d1ce4e5b9L;
+        v=(v^(v>>>27))*0x94d049bb133111ebL;
+        return v^(v>>>31);
+    }
     /** Deterministic feature population, independent of chunk generation order. */
     private void populateFeatures(Chunk c) {
         int minX=c.cx*CHUNK_SIZE, minZ=c.cz*CHUNK_SIZE;
         int maxX=minX+CHUNK_SIZE-1, maxZ=minZ+CHUNK_SIZE-1;
         int treeCell=WorldGenerator.TREE_CELL_SIZE;
-        // A tree canopy reaches at most three blocks beyond its anchor.
-        for(int tx=Math.floorDiv(minX-3,treeCell);tx<=Math.floorDiv(maxX+3,treeCell);tx++)
-            for(int tz=Math.floorDiv(minZ-3,treeCell);tz<=Math.floorDiv(maxZ+3,treeCell);tz++) {
+        // Large species crowns may extend eight blocks across chunk borders.
+        for(int tx=Math.floorDiv(minX-9,treeCell);tx<=Math.floorDiv(maxX+9,treeCell);tx++)
+            for(int tz=Math.floorDiv(minZ-9,treeCell);tz<=Math.floorDiv(maxZ+9,treeCell);tz++) {
                 WorldGenerator.Tree tree=generator.treeForCell(tx,tz);
                 if(tree!=null) placeTree(c,tree,minX,minZ);
             }
@@ -349,6 +435,39 @@ public final class TerrainMesh {
             default -> BlockType.OAK_LOG;
         };
         for(int h=0;h<t.trunkHeight();h++)putFeature(c,x,y+h,z,log,minX,minZ);
+        // Branch-first broadleaf construction. Branch geometry is sampled only from
+        // the immutable tree anchor, so neighboring chunks produce identical limbs.
+        if (t.type()==WorldGenerator.TreeType.OAK || t.type()==WorldGenerator.TreeType.MAPLE
+                || t.type()==WorldGenerator.TreeType.WILLOW) {
+            int count=branchCount(t);
+            for(int b=0;b<count;b++) {
+                int[] tip=branchTip(t,b);
+                int startY=y+(int)(t.trunkHeight()*.57)+(b%3);
+                int endY=y+t.trunkHeight()+tip[1];
+                int steps=Math.max(Math.abs(tip[0]),Math.max(Math.abs(tip[2]),Math.abs(endY-startY)))*2;
+                for(int i=0;i<=steps;i++) {
+                    double f=i/(double)Math.max(1,steps);
+                    int bx=x+(int)Math.round(tip[0]*f), bz=z+(int)Math.round(tip[2]*f);
+                    int by=(int)Math.round(startY+(endY-startY)*f);
+                    putFeature(c,bx,by,bz,log,minX,minZ);
+                }
+            }
+        }
+    }
+    private static int branchCount(WorldGenerator.Tree tree) {
+        return switch(tree.type()) {case OAK -> 4; case MAPLE -> 6; case WILLOW -> 6; default -> 0;};
+    }
+    /** Returns relative X, vertical displacement from the trunk tip, and Z. */
+    private static int[] branchTip(WorldGenerator.Tree t,int branch) {
+        long v=((long)t.x()*0x9E3779B97F4A7C15L)^((long)t.z()*0xC2B2AE3D27D4EB4FL)
+                ^((long)branch*0x165667B19E3779F9L);
+        v ^= v>>>30; v*=0xbf58476d1ce4e5b9L;v^=v>>>27;
+        double angle=2*Math.PI*(branch+.23+((v>>>12)&255)/1024.0)/branchCount(t);
+        int length=switch(t.type()) {case OAK->3+(int)((v>>>24)&3);case MAPLE->3+(int)((v>>>24)&3);
+            case WILLOW->5+(int)((v>>>24)&3);default->2;};
+        int rise=switch(t.type()) {case OAK->-2+(branch%3);case MAPLE->-1+(branch%3);
+            case WILLOW->-2+(branch%2);default->0;};
+        return new int[]{(int)Math.round(length*Math.cos(angle)),rise,(int)Math.round(length*Math.sin(angle))};
     }
     private void placePlant(Chunk c,WorldGenerator.Plant p,int minX,int minZ) {
         int x=p.x(),z=p.z();
@@ -457,54 +576,63 @@ public final class TerrainMesh {
      * This intentionally omits underground cave walls and decorative foliage.
      */
     private float[] buildDistantMesh(Chunk c) {
+        // Sample the LAND SURFACE, not the tallest log. Trunks are modeled separately.
+        // The same world-space height sampler is used on either side of chunk seams.
         final int step=2, tiles=CHUNK_SIZE/step;
-        final int[][] top=new int[tiles][tiles], layer=new int[tiles][tiles];
-        for(int tx=0;tx<tiles;tx++)for(int tz=0;tz<tiles;tz++){
-            int[] heights=new int[step*step];
-            int count=0;
-            int chosenX=tx*step,chosenZ=tz*step;
-            for(int dx=0;dx<step;dx++)for(int dz=0;dz<step;dz++){
-                int lx=tx*step+dx,lz=tz*step+dz;
-                int base=index(lx,0,lz),h=-1;
-                for(int y=WORLD_HEIGHT-1;y>=0;y--){
-                    byte id=c.get(base+y);
-                    if(id!=BlockType.AIR.id){h=y;break;}
-                }
-                heights[count++]=h;
-                if(dx==0&&dz==0){chosenX=lx;chosenZ=lz;}
-            }
-            Arrays.sort(heights);
-            int h=heights[heights.length/2];
+        int[][] top=new int[tiles][tiles], layer=new int[tiles][tiles];
+        int ox=c.cx*CHUNK_SIZE, oz=c.cz*CHUNK_SIZE;
+        for(int tx=0;tx<tiles;tx++)for(int tz=0;tz<tiles;tz++) {
+            int wx=ox+tx*step, wz=oz+tz*step;
+            int h=generator.surface(wx,wz).surfaceY();
             top[tx][tz]=h;
-            byte block=h<0?BlockType.AIR.id:c.get(index(chosenX,Math.min(h,WORLD_HEIGHT-1),chosenZ));
-            // Use the actual highest block on the sampled column for visible material.
-            if(h>=0){
-                for(int y=WORLD_HEIGHT-1;y>=0;y--){
-                    byte candidate=c.get(index(chosenX,y,chosenZ));
-                    if(candidate!=BlockType.AIR.id){block=candidate;break;}
-                }
-            }
-            layer[tx][tz]=BlockType.fromId(block).getTopTextureLayer();
+            byte id=c.get(index(tx*step,Math.max(0,Math.min(WORLD_HEIGHT-1,h)),tz*step));
+            layer[tx][tz]=BlockType.fromId(id).getTopTextureLayer();
         }
         FloatArrayBuilder out=new FloatArrayBuilder();
-        int ox=c.cx*CHUNK_SIZE,oz=c.cz*CHUNK_SIZE;
-        for(int tx=0;tx<tiles;tx++)for(int tz=0;tz<tiles;tz++){
-            int h=top[tx][tz]; if(h<0)continue;
-            int x=ox+tx*step,z=oz+tz*step;
+        for(int tx=0;tx<tiles;tx++)for(int tz=0;tz<tiles;tz++) {
+            int h=top[tx][tz],x=ox+tx*step,z=oz+tz*step;
+            if(h<0)continue;
             float y=h+1f;
             int tex=layer[tx][tz];
             face(out,x,y,z+step,x+step,y,z+step,x+step,y,z,x,y,z,tex,1f);
-            // Expose short side bands where neighboring LOD tiles drop in height.
-            int south=tz+1<tiles?top[tx][tz+1]:h-1;
-            int north=tz>0?top[tx][tz-1]:h-1;
-            int east=tx+1<tiles?top[tx+1][tz]:h-1;
-            int west=tx>0?top[tx-1][tz]:h-1;
-            int sideTex=tex;
-            if(h>south)face(out,x,south+1,z+step,x+step,south+1,z+step,x+step,y,z+step,x,y,z+step,sideTex,.85f);
-            if(h>north)face(out,x+step,north+1,z,x,north+1,z,x,y,z,x+step,y,z,sideTex,.75f);
-            if(h>east)face(out,x+step,east+1,z+step,x+step,east+1,z,x+step,y,z,x+step,y,z+step,sideTex,.80f);
-            if(h>west)face(out,x,west+1,z,x,west+1,z+step,x,y,z+step,x,y,z,sideTex,.80f);
+            // Boundary neighbors are sampled in world space, not defaulted to h-1.
+            // This prevents seam walls when adjacent LOD columns load separately.
+            int south=tz+1<tiles?top[tx][tz+1]:generator.surface(x,z+step).surfaceY();
+            int north=tz>0?top[tx][tz-1]:generator.surface(x,z-step).surfaceY();
+            int east=tx+1<tiles?top[tx+1][tz]:generator.surface(x+step,z).surfaceY();
+            int west=tx>0?top[tx-1][tz]:generator.surface(x-step,z).surfaceY();
+            if(h>south)face(out,x,south+1,z+step,x+step,south+1,z+step,x+step,y,z+step,x,y,z+step,tex,.85f);
+            if(h>north)face(out,x+step,north+1,z,x,north+1,z,x,y,z,x+step,y,z,tex,.75f);
+            if(h>east)face(out,x+step,east+1,z+step,x+step,east+1,z,x+step,y,z,x+step,y,z+step,tex,.80f);
+            if(h>west)face(out,x,west+1,z,x,west+1,z+step,x,y,z+step,x,y,z,tex,.80f);
         }
+        // Very cheap, coherent tree proxies replace naked trunk spikes at long range.
+        // Only the anchor's own chunk emits a proxy: no cross-chunk duplicates.
+        int tc=WorldGenerator.TREE_CELL_SIZE;
+        for(int tx=Math.floorDiv(ox,tc);tx<=Math.floorDiv(ox+CHUNK_SIZE-1,tc);tx++)
+            for(int tz=Math.floorDiv(oz,tc);tz<=Math.floorDiv(oz+CHUNK_SIZE-1,tc);tz++) {
+                WorldGenerator.Tree tree=generator.treeForCell(tx,tz);
+                if(tree==null||tree.x()<ox||tree.x()>=ox+CHUNK_SIZE||tree.z()<oz||tree.z()>=oz+CHUNK_SIZE)continue;
+                int ground=generator.surface(tree.x(),tree.z()).surfaceY()+1;
+                int crownY=ground+tree.trunkHeight();
+                int r=switch(tree.type()) {case OAK,MAPLE->4;case WILLOW->5;case PINE,CYPRESS->2;};
+                int depth=switch(tree.type()) {case PINE,CYPRESS->7;default->4;};
+                int logTex=switch(tree.type()) {
+                    case OAK->BlockType.OAK_LOG.getSideTextureLayer();
+                    case MAPLE->BlockType.MAPLE_LOG.getSideTextureLayer();
+                    case PINE->BlockType.PINE_LOG.getSideTextureLayer();
+                    case WILLOW->BlockType.WILLOW_LOG.getSideTextureLayer();
+                    case CYPRESS->BlockType.CYPRESS_LOG.getSideTextureLayer();
+                };
+                // Two crossed trunk planes and two crossed cutout crown planes.
+                float x=tree.x()+.5f,z=tree.z()+.5f;
+                face(out,x-.5f,ground,z,x+.5f,ground,z,x+.5f,crownY,z,x-.5f,crownY,z,logTex,.85f);
+                face(out,x,ground,z-.5f,x,ground,z+.5f,x,crownY,z+.5f,x,crownY,z-.5f,logTex,.85f);
+                int leaf=leafLayer(tree.type());
+                float bottom=crownY-depth,topY=crownY+1;
+                face(out,x-r,bottom,z,x+r,bottom,z,x+r,topY,z,x-r,topY,z,leaf,1f);
+                face(out,x,bottom,z-r,x,bottom,z+r,x,topY,z+r,x,topY,z-r,leaf,1f);
+            }
         return out.toArray();
     }
 
@@ -595,7 +723,7 @@ public final class TerrainMesh {
         Path p=path.toAbsolutePath();Files.createDirectories(p.getParent());Path temp=p.resolveSibling(p.getFileName()+".tmp");
         try{
             try(DataOutputStream out=new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(temp)))){
-                out.writeInt(MAGIC);out.writeInt(SAVE_VERSION);out.writeLong(seed);out.writeInt(edits.size());
+                out.writeInt(MAGIC);out.writeInt(SAVE_VERSION);out.writeLong(seed);out.writeInt(WORLD_HEIGHT);out.writeInt(edits.size());
                 for(var entry:edits.entrySet()){
                     out.writeLong(entry.getKey());out.writeInt(entry.getValue().size());
                     for(var change:entry.getValue().entrySet()){out.writeInt(change.getKey());out.writeByte(change.getValue());}
@@ -606,20 +734,23 @@ public final class TerrainMesh {
         }finally{Files.deleteIfExists(temp);}
     }
     public void loadFrom(Path path)throws IOException{
-        HashMap<Long,HashMap<Integer,Byte>> incoming=new HashMap<>();long newSeed=DEFAULT_SEED;
+        HashMap<Long,HashMap<Integer,Byte>> incoming=new HashMap<>();long newSeed=DEFAULT_SEED;boolean migrateLegacy=false;
         try(DataInputStream in=new DataInputStream(new BufferedInputStream(Files.newInputStream(path)))){
             if(in.readInt()!=MAGIC)throw new IOException("Not a Wildforge world save");
             int v=in.readInt();
+            migrateLegacy=v<3;
             if(v==1){
                 int width=in.readInt(),height=in.readInt(),depth=in.readInt();
                 if(width!=64||height!=32||depth!=64)throw new IOException("Unexpected legacy world dimensions");
                 for(int x=0;x<64;x++)for(int y=0;y<32;y++)for(int z=0;z<64;z++){
                     byte b=in.readByte();if(!BlockType.isValidId(b))throw new IOException("Invalid legacy block id");
-                    int cx=x/16,cz=z/16,i=index(x%16,y,z%16);
+                    int cx=x/16,cz=z/16,i=index(x%16,y+160,z%16);
                     incoming.computeIfAbsent(key(cx,cz),k->new HashMap<>()).put(i,b);
                 }
-            }else if(v==2){
-                newSeed=in.readLong();int count=in.readInt();
+            }else if(v==2 || v==3){
+                newSeed=in.readLong();
+                if(v==3){int savedHeight=in.readInt();if(savedHeight!=WORLD_HEIGHT)throw new IOException("Unsupported saved world height: "+savedHeight);}
+                int count=in.readInt();
                 if(count<0||count>1000000)throw new IOException("Invalid chunk count");
                 for(int n=0;n<count;n++){
                     long k=in.readLong();int size=in.readInt();
@@ -627,14 +758,19 @@ public final class TerrainMesh {
                     HashMap<Integer,Byte> changes=incoming.computeIfAbsent(k,ignore->new HashMap<>());
                     for(int j=0;j<size;j++){
                         int idx=in.readInt();byte b=in.readByte();
-                        if(idx<0||idx>=CHUNK_SIZE*CHUNK_SIZE*WORLD_HEIGHT||!BlockType.isValidId(b))throw new IOException("Invalid edit");
-                        changes.put(idx,b);
+                        int limit=CHUNK_SIZE*CHUNK_SIZE*(v==2?256:WORLD_HEIGHT);
+                        if(idx<0||idx>=limit||!BlockType.isValidId(b))throw new IOException("Invalid edit");
+                        // Upgrade v2 column-major edits to new 512-block columns,
+                        // shifting legacy surfaces upward by 160 blocks.
+                        int upgraded=v==2?(idx/256)*WORLD_HEIGHT+(idx%256)+160:idx;
+                        changes.put(upgraded,b);
                     }
                 }
             }else throw new IOException("Unsupported world save version: "+v);
             if(in.read()!=-1)throw new IOException("World save has trailing data");
         }
         // Commit only after complete validation.
+        legacyVerticalMigration=migrateLegacy;
         cancelGeneration();seed=newSeed;initializeGenerator();edits.clear();edits.putAll(incoming);
         chunks.clear();streamed=false;generateSpawnChunk(16,27);version++;
     }
@@ -702,23 +838,92 @@ public final class TerrainMesh {
     private void appendFoliage(MeshSnapshot snap, FloatArrayBuilder data, int section) {
         int minX=snap.cx()*CHUNK_SIZE, minZ=snap.cz()*CHUNK_SIZE;
         int maxX=minX+CHUNK_SIZE-1, maxZ=minZ+CHUNK_SIZE-1;
-        // Scan neighboring anchor cells so crowns naturally cross chunk boundaries.
+        // Include entire large tree crowns across chunk boundaries.
         int tc=WorldGenerator.TREE_CELL_SIZE;
-        for(int tx=Math.floorDiv(minX-3,tc);tx<=Math.floorDiv(maxX+3,tc);tx++)
-            for(int tz=Math.floorDiv(minZ-3,tc);tz<=Math.floorDiv(maxZ+3,tc);tz++) {
+        for(int tx=Math.floorDiv(minX-9,tc);tx<=Math.floorDiv(maxX+9,tc);tx++)
+            for(int tz=Math.floorDiv(minZ-9,tc);tz<=Math.floorDiv(maxZ+9,tc);tz++) {
                 WorldGenerator.Tree t=snap.generator().treeForCell(tx,tz);
                 if(t==null)continue;
                 int tip=snap.generator().surface(t.x(),t.z()).surfaceY()+1+t.trunkHeight();
                 int layer=leafLayer(t.type());
-                for(int dy=-2;dy<=1;dy++) {
-                    int radius=t.type()==WorldGenerator.TreeType.PINE ? (dy==1?0:dy==0?1:2) : (dy==1?1:2);
-                    for(int dx=-radius;dx<=radius;dx++)for(int dz=-radius;dz<=radius;dz++) {
-                        if(dx*dx+dz*dz>radius*radius+1 || (dx==0 && dz==0 && dy<=0))continue;
-                        int x=t.x()+dx,z=t.z()+dz,y=tip+dy;
-                        if(x<minX||x>maxX||z<minZ||z>maxZ||y<1||y>=WORLD_HEIGHT||y/SECTION_HEIGHT!=section)continue;
-                        if(snapshotBlockAt(snap,x,y,z)!=BlockType.AIR)continue;
-                        leafCube(data,x,y,z,layer);
-                    }
+                if(t.type()==WorldGenerator.TreeType.OAK || t.type()==WorldGenerator.TreeType.MAPLE
+                        || t.type()==WorldGenerator.TreeType.WILLOW) {
+                    appendBranchCrown(snap,data,section,t,tip,layer,minX,maxX,minZ,maxZ);
+                    continue;
+                }
+                // Shape-specific 3D crowns, not a single shared leaf sphere.
+                // Larger crowns are generated only into their own visible section.
+                int height=t.trunkHeight();
+                int halfWidth=switch(t.type()) {
+                    case OAK -> 5 + (height>=14?1:0);
+                    case MAPLE -> 5 + (height>=14?1:0);
+                    case PINE -> height>=19?4:3;
+                    case WILLOW -> 7;
+                    case CYPRESS -> height>=19?4:3;
+                };
+                int crownDepth=switch(t.type()) {
+                    case OAK,MAPLE -> Math.max(5,height*3/5);
+                    case PINE -> Math.max(7,height*2/3);
+                    case WILLOW -> 5;
+                    case CYPRESS -> Math.max(9,height*3/4);
+                };
+                for(int dy=-crownDepth;dy<=2;dy++) {
+                    // Evergreens terminate at the trunk top: no floating tufts above it.
+                    if ((t.type()==WorldGenerator.TreeType.PINE || t.type()==WorldGenerator.TreeType.CYPRESS) && dy>0) continue;
+                    int y=tip+dy;
+                    if(y<1||y>=WORLD_HEIGHT||y/SECTION_HEIGHT!=section)continue;
+                    for(int dx=-halfWidth;dx<=halfWidth;dx++)
+                        for(int dz=-halfWidth;dz<=halfWidth;dz++) {
+                            int x=t.x()+dx,z=t.z()+dz;
+                            if(x<minX||x>maxX||z<minZ||z>maxZ)continue;
+                            double radial=Math.sqrt(dx*dx+dz*dz);
+                            double limit;
+                            double fill;
+                            switch(t.type()) {
+                                case OAK -> {
+                                    limit=halfWidth * Math.sqrt(Math.max(0,1.0-Math.pow((dy+crownDepth*.42)/(crownDepth*.70),2)));
+                                    fill=.69;
+                                }
+                                case MAPLE -> {
+                                    limit=halfWidth * Math.sqrt(Math.max(0,1.0-Math.pow((dy+crownDepth*.48)/(crownDepth*.66),2)));
+                                    fill=.83;
+                                }
+                                case PINE -> {
+                                    int fromTop=-dy;
+                                    // Cohesive tapered whorls: the central crown is continuous;
+                                    // only the outer fringe receives sparse breakup.
+                                    double taper=Math.min(1.0,(fromTop+2.0)/(crownDepth+2.0));
+                                    limit=Math.max(1.25,halfWidth*taper)
+                                            * ((fromTop%4==0 && fromTop>3)?0.79:1.0);
+                                    fill=.82;
+                                }
+                                case CYPRESS -> {
+                                    int fromTop=-dy;
+                                    limit=Math.max(1.1,halfWidth*Math.min(1.0,(fromTop+2.0)/(crownDepth+2.0)))
+                                            * ((fromTop%3==0 && fromTop>3)?0.83:1.0);
+                                    fill=.82;
+                                }
+                                case WILLOW -> {
+                                    limit=halfWidth * Math.sqrt(Math.max(0,1.0-Math.pow((dy+1.0)/4.0,2)));
+                                    // Hanging curtains, spaced apart rather than a solid ring.
+                                    if(dy < -2) limit=halfWidth * 0.83;
+                                    fill=dy < -2 ? .20 : .58;
+                                }
+                                default -> throw new IllegalStateException();
+                            }
+                            if(radial>limit+0.25 || (dx==0&&dz==0&&dy<=0))continue;
+                            long h=(((long)x*0x9E3779B97F4A7C15L)^((long)z*0xC2B2AE3D27D4EB4FL)
+                                    ^((long)y*0x165667B19E3779F9L)^((long)t.x()*0xD6E8FEB86659FD93L));
+                            h^=h>>>33;h*=0xff51afd7ed558ccdL;h^=h>>>33;
+                            double chance=(h>>>11)*0x1.0p-53;
+                            // A solid inner core joins every evergreen foliage layer;
+                            // irregularity belongs primarily at the crown perimeter.
+                            boolean evergreen=t.type()==WorldGenerator.TreeType.PINE
+                                    || t.type()==WorldGenerator.TreeType.CYPRESS;
+                            if(chance>=fill && (!evergreen || radial>Math.max(1.25,limit*.57)))continue;
+                            if(snapshotBlockAt(snap,x,y,z)!=BlockType.AIR)continue;
+                            leafCube(data,x,y,z,layer);
+                        }
                 }
             }
         int pc=WorldGenerator.PLANT_CELL_SIZE;
@@ -734,6 +939,45 @@ public final class TerrainMesh {
                 if(snapshotBlockAt(snap,p.x(),y-1,p.z())==BlockType.AIR)continue;
                 crossPlant(data,p.x(),y,p.z(),layer,p.tall()?1.0f:0.78f);
             }
+    }
+    /** Leaf clusters follow branch endpoints rather than a single floating sphere. */
+    private void appendBranchCrown(MeshSnapshot snap,FloatArrayBuilder data,int section,
+            WorldGenerator.Tree t,int trunkTip,int layer,int minX,int maxX,int minZ,int maxZ) {
+        int total=branchCount(t);
+        for(int b=-1;b<total;b++) {
+            int[] offset=b<0?new int[]{0,-1,0}:branchTip(t,b);
+            int cx=t.x()+offset[0],cy=trunkTip+offset[1],cz=t.z()+offset[2];
+            int radius=(t.type()==WorldGenerator.TreeType.WILLOW)?3:((b<0)?3:2+(t.trunkHeight()>13?1:0));
+            for(int dx=-radius;dx<=radius;dx++)for(int dz=-radius;dz<=radius;dz++)
+                for(int dy=-radius;dy<=radius;dy++) {
+                    int x=cx+dx,y=cy+dy,z=cz+dz;
+                    if(x<minX||x>maxX||z<minZ||z>maxZ||y<1||y>=WORLD_HEIGHT
+                            ||y/SECTION_HEIGHT!=section)continue;
+                    double shape=(dx*dx+dz*dz)/(double)(radius*radius)
+                            +(dy*dy)/(double)Math.max(1,(radius-1)*(radius-1));
+                    if(shape>1.20)continue;
+                    long hash=((long)x*0x9E3779B97F4A7C15L)^((long)y*0xC2B2AE3D27D4EB4FL)
+                            ^((long)z*0x165667B19E3779F9L)^((long)t.x()*0xD6E8FEB86659FD93L);
+                    hash^=hash>>>33;hash*=0xff51afd7ed558ccdL;hash^=hash>>>33;
+                    double rnd=(hash>>>11)*0x1.0p-53;
+                    double density=t.type()==WorldGenerator.TreeType.MAPLE?.87:.76;
+                    if(rnd>density && shape>.48)continue;
+                    if(snapshotBlockAt(snap,x,y,z)!=BlockType.AIR)continue;
+                    leafCube(data,x,y,z,layer);
+                }
+        }
+        if(t.type()==WorldGenerator.TreeType.WILLOW) {
+            // Sparse hanging curtains anchored to the outer branches.
+            for(int b=0;b<total;b++) {
+                int[] off=branchTip(t,b);
+                int x=t.x()+off[0],z=t.z()+off[2],top=trunkTip+off[1]-2;
+                for(int d=0;d<3+(b%3);d++) {
+                    int y=top-d;
+                    if(x>=minX&&x<=maxX&&z>=minZ&&z<=maxZ&&y>0&&y/SECTION_HEIGHT==section
+                            &&snapshotBlockAt(snap,x,y,z)==BlockType.AIR)leafCube(data,x,y,z,layer);
+                }
+            }
+        }
     }
     private static int leafLayer(WorldGenerator.TreeType type) {
         return switch(type) {

@@ -1,0 +1,42 @@
+{
+  "id": "wildforge:emberglass_wastes",
+  "name": "Emberglass Wastes",
+  "map_color": "3c414e",
+  "criteria": {
+    "temperature": [
+      0.23,
+      1.0
+    ],
+    "rainfall": [
+      0.0,
+      0.65
+    ],
+    "height_above_sea": [
+      7,
+      155
+    ],
+    "geology": [
+      "VOLCANIC"
+    ],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 32
+  },
+  "surface": {
+    "top": "obsidian",
+    "filler": "basalt"
+  },
+  "decorations": {
+    "tree_density": 0.0,
+    "plant_density": 0.025,
+    "max_tree_slope": 4,
+    "max_plant_slope": 4,
+    "trees": [],
+    "plants": [
+      {
+        "id": "dry_scrub",
+        "weight": 1
+      }
+    ]
+  }
+}

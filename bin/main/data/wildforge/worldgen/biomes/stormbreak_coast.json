@@ -1,0 +1,48 @@
+{
+  "id": "wildforge:stormbreak_coast",
+  "name": "Stormbreak Coast",
+  "map_color": "657d88",
+  "criteria": {
+    "temperature": [
+      0.12,
+      0.76
+    ],
+    "rainfall": [
+      0.28,
+      0.9
+    ],
+    "height_above_sea": [
+      -8,
+      29
+    ],
+    "geology": [],
+    "coastal": true,
+    "floodplain": false,
+    "priority": 21
+  },
+  "surface": {
+    "top": "slate",
+    "filler": "gravel"
+  },
+  "decorations": {
+    "tree_density": 0.02,
+    "plant_density": 0.13,
+    "max_tree_slope": 6,
+    "max_plant_slope": 5,
+    "trees": [],
+    "plants": [
+      {
+        "id": "dry_scrub",
+        "weight": 3
+      },
+      {
+        "id": "lichen_patch",
+        "weight": 3
+      },
+      {
+        "id": "small_grass",
+        "weight": 1
+      }
+    ]
+  }
+}

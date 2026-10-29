@@ -1,0 +1,69 @@
+{
+  "id": "wildforge:mossveil_rainwood",
+  "name": "Mossveil Rainwood",
+  "map_color": "296b53",
+  "criteria": {
+    "temperature": [
+      0.45,
+      0.92
+    ],
+    "rainfall": [
+      0.78,
+      1.0
+    ],
+    "height_above_sea": [
+      3,
+      52
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 16
+  },
+  "surface": {
+    "top": "moss_block",
+    "filler": "forest_loam"
+  },
+  "decorations": {
+    "tree_density": 0.85,
+    "plant_density": 0.95,
+    "max_tree_slope": 3,
+    "max_plant_slope": 4,
+    "trees": [
+      {
+        "id": "oak",
+        "weight": 4
+      },
+      {
+        "id": "willow",
+        "weight": 4
+      },
+      {
+        "id": "maple",
+        "weight": 2
+      }
+    ],
+    "plants": [
+      {
+        "id": "fern",
+        "weight": 8
+      },
+      {
+        "id": "forest_mushroom",
+        "weight": 4
+      },
+      {
+        "id": "flower_orchid",
+        "weight": 2
+      },
+      {
+        "id": "dripping_lichen",
+        "weight": 2
+      },
+      {
+        "id": "small_grass",
+        "weight": 3
+      }
+    ]
+  }
+}

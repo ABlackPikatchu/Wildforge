@@ -1,0 +1,44 @@
+{
+  "id": "wildforge:sunscorch_saltpan",
+  "name": "Sunscorch Saltpan",
+  "map_color": "d6c9a5",
+  "criteria": {
+    "temperature": [
+      0.7,
+      1.0
+    ],
+    "rainfall": [
+      0.0,
+      0.28
+    ],
+    "height_above_sea": [
+      -10,
+      22
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 21
+  },
+  "surface": {
+    "top": "salt_crust",
+    "filler": "gypsum"
+  },
+  "decorations": {
+    "tree_density": 0.0,
+    "plant_density": 0.04,
+    "max_tree_slope": 2,
+    "max_plant_slope": 2,
+    "trees": [],
+    "plants": [
+      {
+        "id": "dead_bush",
+        "weight": 2
+      },
+      {
+        "id": "desert_succulent",
+        "weight": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "id": "wildforge:goldgrass_steppe",
+  "name": "Goldgrass Steppe",
+  "map_color": "b7a46a",
+  "criteria": {
+    "temperature": [
+      0.48,
+      0.9
+    ],
+    "rainfall": [
+      0.16,
+      0.48
+    ],
+    "height_above_sea": [
+      1,
+      65
+    ],
+    "geology": [],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 14
+  },
+  "surface": {
+    "top": "grass_top",
+    "filler": "dirt"
+  },
+  "decorations": {
+    "tree_density": 0.025,
+    "plant_density": 0.69,
+    "max_tree_slope": 3,
+    "max_plant_slope": 4,
+    "trees": [
+      {
+        "id": "oak",
+        "weight": 1
+      }
+    ],
+    "plants": [
+      {
+        "id": "dune_grass",
+        "weight": 7
+      },
+      {
+        "id": "wild_wheat",
+        "weight": 6
+      },
+      {
+        "id": "tall_grass",
+        "weight": 4
+      },
+      {
+        "id": "dry_scrub",
+        "weight": 2
+      },
+      {
+        "id": "small_grass",
+        "weight": 3
+      }
+    ]
+  }
+}

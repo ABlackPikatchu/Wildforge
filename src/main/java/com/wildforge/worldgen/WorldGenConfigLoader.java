@@ -22,8 +22,8 @@ public final class WorldGenConfigLoader {
                 JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
                 return new WorldGenSettings(
                         json.get("min_y").getAsInt(),
-                        json.get("max_y").getAsInt(),
-                        json.get("sea_level").getAsInt(),
+                        511,
+                        json.get("sea_level").getAsInt() + 160,
                         json.get("continent_scale").getAsDouble(),
                         json.get("hills_scale").getAsDouble(),
                         json.get("mountains_scale").getAsDouble(),

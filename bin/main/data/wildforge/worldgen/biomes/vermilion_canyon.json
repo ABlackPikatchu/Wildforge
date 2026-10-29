@@ -1,0 +1,51 @@
+{
+  "id": "wildforge:vermilion_canyon",
+  "name": "Vermilion Canyon",
+  "map_color": "b66e52",
+  "criteria": {
+    "temperature": [
+      0.55,
+      1.0
+    ],
+    "rainfall": [
+      0.02,
+      0.4
+    ],
+    "height_above_sea": [
+      10,
+      110
+    ],
+    "geology": [
+      "SANDSTONE",
+      "SHALE"
+    ],
+    "coastal": false,
+    "floodplain": false,
+    "priority": 24
+  },
+  "surface": {
+    "top": "red_sandstone",
+    "filler": "red_sandstone"
+  },
+  "decorations": {
+    "tree_density": 0.0,
+    "plant_density": 0.12,
+    "max_tree_slope": 6,
+    "max_plant_slope": 4,
+    "trees": [],
+    "plants": [
+      {
+        "id": "dead_bush",
+        "weight": 4
+      },
+      {
+        "id": "dry_scrub",
+        "weight": 3
+      },
+      {
+        "id": "desert_succulent",
+        "weight": 1
+      }
+    ]
+  }
+}
