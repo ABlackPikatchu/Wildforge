@@ -26,7 +26,7 @@ public final class TerrainMesh {
     private static final long DEFAULT_SEED=0x57494C44464F5247L;
     /** Generator revision is independent of the binary save format. Never change an
      * old revision's semantics silently; reject incompatible future saves. */
-    public static final int WORLDGEN_REVISION=5;
+    public static final int WORLDGEN_REVISION=6;
     private int worldgenRevision=WORLDGEN_REVISION;
     public int worldgenRevision(){return worldgenRevision;}
     private final LinkedHashMap<Long,Chunk> chunks = new LinkedHashMap<>();
@@ -946,16 +946,19 @@ public final class TerrainMesh {
         // Continuous multi-scale noise with soft weighted competition. Independent
         // coherent fields avoid visible square patch boundaries at 9-block intervals.
         // Use small-scale variation only as a perturbation, not a cell selector.
-        double warpX=depositNoise.fbm2(x/135.0,z/135.0,3,0x39e3L)*13.0;
-        double warpZ=depositNoise.fbm2(x/135.0,z/135.0,3,0x7bd2L)*13.0;
-        double u=(x+warpX)/32.0,v=(z+warpZ)/32.0;
+        // Two independent continuous warps break up straight mineral borders.
+        // Smaller, organic lenses blend at shallow and deep-ocean transitions.
+        double warpX=depositNoise.fbm2(x/115.0,z/115.0,3,0x39e3L)*15.0;
+        double warpZ=depositNoise.fbm2(x/115.0,z/115.0,3,0x7bd2L)*15.0;
+        double u=(x+warpX)/25.0,v=(z+warpZ)/25.0;
         double best=Double.NEGATIVE_INFINITY;
         BlockType selected=palette[0];
         for(int i=0;i<palette.length;i++) {
             long salt=0x523eaL+0x9E3779B97F4A7C15L*i;
             double coarse=depositNoise.fbm2(u,v,3,salt);
             double detail=depositNoise.fbm2(u*2.7,v*2.7,2,salt^0x72feL);
-            double score=Math.log(weights[i])+2.3*coarse+0.24*detail;
+            // Weight remains meaningful without overwhelming local variation.
+            double score=0.75*Math.log(weights[i])+2.6*coarse+0.30*detail;
             if(score>best){best=score;selected=palette[i];}
         }
         return selected;
@@ -1557,7 +1560,14 @@ public final class TerrainMesh {
                 if(v>=3){int savedHeight=in.readInt();if(savedHeight!=WORLD_HEIGHT)throw new IOException("Unsupported saved world height: "+savedHeight);}
                 if(v>=5) {
                     incomingRevision=in.readInt();
-                    if(incomingRevision!=WORLDGEN_REVISION)
+                    if(incomingRevision==5 && WORLDGEN_REVISION==6) {
+                        // v5->v6 uses the same numeric blocks and sparse-edit layout.
+                        // Accept the world and upgrade its generator revision at the
+                        // next save. Unmodified terrain may change: advise backup.
+                        System.err.println("[Wildforge] Upgrading worldgen 5 -> 6. Back up your world: "
+                                + "unmodified rivers and seabeds may regenerate differently.");
+                        incomingRevision=WORLDGEN_REVISION;
+                    } else if(incomingRevision!=WORLDGEN_REVISION)
                         throw new IOException("World generator revision "+incomingRevision+
                                 " is incompatible with this build ("+WORLDGEN_REVISION+"). Back up the save and use a matching version.");
                 }
@@ -1739,6 +1749,15 @@ public final class TerrainMesh {
                             case 3 -> face(data,x+1,bottom,z+1,x+1,bottom,z,x+1,top,z,x+1,top,z+1,tex,shade[side]);
                         }
                     }
+                    continue;
+                }
+                if(shape==BlockModels.Shape.TALL_CROSS_PLANT) {
+                    // The bottom cell owns the plant; upper geometry is drawn
+                    // only into available air, with no duplicate inventory state.
+                    // This keeps saves compatible and avoids cross-chunk plants.
+                    boolean freeAbove=y+1<WORLD_HEIGHT && blocks[column+y+1]==air;
+                    crossPlant(data,worldX,y,worldZ,type.getSideTextureLayer(),
+                            freeAbove?1.82f:0.88f);
                     continue;
                 }
                 if(shape==BlockModels.Shape.CROSS_PLANT || shape==BlockModels.Shape.CEILING_ATTACHMENT) {

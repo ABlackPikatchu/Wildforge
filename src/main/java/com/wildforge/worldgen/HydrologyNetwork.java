@@ -66,7 +66,11 @@ public final class HydrologyNetwork {
                 distance=Math.hypot(x-(seg.ax+t*vx),z-(seg.az+t*vz));
                 core=seg.width;bank=core+8;
                 if(distance>bank)continue;
-                waterY=Math.floor(seg.aY+(seg.bY-seg.aY)*t-1.4);
+                // The path's downhill water line is primary. Limit raised water
+                // where small-scale relief drops away from the traced centerline;
+                // free water physics, not worldgen, handles actual cliff falls.
+                double routedLevel = seg.aY+(seg.bY-seg.aY)*t-1.65;
+                waterY=Math.floor(Math.min(routedLevel,baseHeight+0.9));
                 kind=Kind.RIVER;
             } else {
                 Lake lake=(Lake)shape;
@@ -77,9 +81,14 @@ public final class HydrologyNetwork {
                 kind=Kind.LAKE;
             }
             // A river cannot float above its banks; suppress disconnected raised water.
-            if(waterY>baseHeight+2.0 || waterY<sea-1)continue;
+            if(waterY>baseHeight+1.0 || waterY<sea-1)continue;
             double contribution=1.0-smooth(clamp((distance-core)/(bank-core),0,1));
-            double target=Math.min(baseHeight,waterY-3.0);
+            // Round-bottom channels: a deeper center, shallow shoulders and a
+            // smooth bank. Avoid excavating a flat 3-block-deep trench everywhere.
+            double channelDepth=kind==Kind.RIVER
+                    ? 1.7 + 1.0*(1.0-smooth(clamp(distance/Math.max(1.0,core),0,1)))
+                    : 2.7;
+            double target=Math.min(baseHeight,waterY-channelDepth);
             double incised=baseHeight+(target-baseHeight)*contribution;
             double weight=contribution*(1.0-distance/bank);
             if(weight>strongest) {

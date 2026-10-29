@@ -597,9 +597,18 @@ public final class WorldGenerator {
         Surface surface = surface(x, z);
         if (surface.waterBody() != WaterBody.LAND) return null;
         BiomeProfile profile = biomes.get(surface.biome());
-        if (slopeAt(x,z) > profile.maxPlantSlope()) return null;
+        int slope=slopeAt(x,z);
+        if (slope > profile.maxPlantSlope()) return null;
         double local = clamp(0.85 + noise.noise2(x / 75.0, z / 75.0, PLANTS) * .5, .20,1.0);
         // A 4x4 feature grid places at most one plant per 16 surface cells.
+        // Riparian reeds only belong near rivers/lakes, on their actual dry
+        // banks. Use the same seeded hydrology signal as the channel geometry.
+        // Stable world-coordinate samples prevent chunk-boundary clusters.
+        double bank=hydrology.sample(x,z,baseTerrainHeight(x,z)).drainage();
+        if(bank>0.28 && slope<=2 &&
+                noise.unit(cellX,5,cellZ,PLANTS^0x2C4L)<0.62)
+            return new Plant(x,z,noise.unit(cellX,6,cellZ,PLANTS^0x531L)<0.5
+                    ? "cattails" : "marsh_reeds",true);
         // Raise coverage in vegetated biomes without forcing plants into deserts or cliffs.
         double coverage=surface.rainfall()>0.4 ? 1.65 : 1.15;
         double chance = clamp(profile.plantDensity() * settings.plantDensity() * local * coverage,0,0.88);

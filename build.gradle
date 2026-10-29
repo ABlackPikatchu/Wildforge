@@ -259,3 +259,13 @@ tasks.register('worldgenPatch4Check', JavaExec) {
     mainClass = 'com.wildforge.world.WorldgenPatch4SmokeTest'
 }
 tasks.named('check') { dependsOn tasks.named('worldgenPatch4Check') }
+
+// Patch 4.5: headless drainage/channel and tall-plant model regressions.
+tasks.register('riverModelCheck', JavaExec) {
+    group = 'verification'
+    description = 'Checks channel incision and the tall-plant model metadata.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.worldgen.RiverModelSmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('riverModelCheck') }

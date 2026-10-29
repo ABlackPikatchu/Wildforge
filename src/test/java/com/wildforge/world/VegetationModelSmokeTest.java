@@ -33,9 +33,19 @@ public final class VegetationModelSmokeTest {
             require(!plant.isSolid() && plant.isBreakable() && plant.getDropItem()!=null,
                     "missing newly registered vegetation: "+plant);
             require(plant.getDropItem().getPlacedBlock()==plant,"new plant cannot be replanted: "+plant);
-            require(BlockModels.modelFor(BlockState.fromLegacy(plant)).shape()==BlockModels.Shape.CROSS_PLANT,
-                    "new plant must render as cutout: "+plant);
+            BlockModels.Model model = BlockModels.modelFor(BlockState.fromLegacy(plant));
+            BlockModels.Shape expectedShape = (plant == BlockType.TALL_GRASS_PLANT
+                    || plant == BlockType.CATTAIL_PLANT)
+                    ? BlockModels.Shape.TALL_CROSS_PLANT : BlockModels.Shape.CROSS_PLANT;
+            require(model.shape() == expectedShape && model.pass() == BlockModels.Pass.CUTOUT
+                    && !model.fullCubeOcclusion(),
+                    "new plant must use its configured cutout model: " + plant);
         }
+        BlockModels.Model reedModel = BlockModels.modelFor(BlockState.fromLegacy(BlockType.REED_PLANT));
+        require(reedModel.shape() == BlockModels.Shape.TALL_CROSS_PLANT
+                        && reedModel.pass() == BlockModels.Pass.CUTOUT
+                        && !reedModel.fullCubeOcclusion(),
+                "reeds must use the tall cutout plant model");
         for(WorldGenerator.TreeType species:WorldGenerator.TreeType.values()) {
             BlockType leaves=TreeFoliage.leafFor(species);
             require(leaves.getDropItem()!=null,"leaves missing item: "+species);

@@ -14,7 +14,7 @@ import java.io.InputStream;
 public final class BlockModels {
     private BlockModels() {}
 
-    public enum Shape { CUBE, FLUID, CROSS_PLANT, WALL_ATTACHMENT, CEILING_ATTACHMENT, SPIKE, CRYSTAL, CUSTOM }
+    public enum Shape { CUBE, FLUID, CROSS_PLANT, TALL_CROSS_PLANT, WALL_ATTACHMENT, CEILING_ATTACHMENT, SPIKE, CRYSTAL, CUSTOM }
     public enum Pass { OPAQUE, CUTOUT, TRANSLUCENT }
     public enum Face {
         WEST(0), EAST(0), DOWN(1), UP(1), NORTH(2), SOUTH(2);
@@ -56,7 +56,8 @@ public final class BlockModels {
                 if (!occlusionText.equals("true") && !occlusionText.equals("false"))
                     throw new IllegalStateException("Bad block occlusion flag for " + name);
                 if (shape != Shape.CUBE && shape != Shape.FLUID && shape != Shape.CUSTOM
-                        && shape != Shape.CROSS_PLANT && shape != Shape.CEILING_ATTACHMENT
+                        && shape != Shape.CROSS_PLANT && shape != Shape.TALL_CROSS_PLANT
+                        && shape != Shape.CEILING_ATTACHMENT
                         && shape != Shape.SPIKE && shape != Shape.CRYSTAL)
                     throw new IllegalStateException("Model shape is not implemented: " + name + " / " + shape);
                 if (shape != Shape.CUBE && Boolean.parseBoolean(occlusionText))
