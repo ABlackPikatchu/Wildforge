@@ -1,7 +1,7 @@
 {
   "id": "wildforge:pine_leaves",
   "numeric_id": 156,
-  "solid": false,
+  "solid": true,
   "breakable": true,
   "hardness": 0.3,
   "model": "wildforge:block/leaves",

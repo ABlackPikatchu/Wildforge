@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:dry_scrub",
+  "numeric_id": 193,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/cross_plant",
+  "textures": {
+    "top": "wildforge:dry_scrub",
+    "side": "wildforge:dry_scrub",
+    "bottom": "wildforge:dry_scrub"
+  },
+  "drops": [
+    {
+      "item": "wildforge:dry_scrub_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:dry_scrub_block"
+}

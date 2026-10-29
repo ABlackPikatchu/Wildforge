@@ -179,7 +179,22 @@
     "data/wildforge/blocks/stalagmite.json",
     "data/wildforge/blocks/hanging_roots.json",
     "data/wildforge/blocks/sporecap_fungus.json",
-    "data/wildforge/blocks/crystal_cluster.json"
+    "data/wildforge/blocks/crystal_cluster.json",
+    "data/wildforge/blocks/snow_layer_1.json",
+    "data/wildforge/blocks/snow_layer_2.json",
+    "data/wildforge/blocks/snow_layer_3.json",
+    "data/wildforge/blocks/snow_layer_4.json",
+    "data/wildforge/blocks/snow_layer_5.json",
+    "data/wildforge/blocks/snow_layer_6.json",
+    "data/wildforge/blocks/snow_layer_7.json",
+    "data/wildforge/blocks/clover_plant.json",
+    "data/wildforge/blocks/tall_grass_plant.json",
+    "data/wildforge/blocks/cattail_plant.json",
+    "data/wildforge/blocks/cornflower.json",
+    "data/wildforge/blocks/orchid_flower.json",
+    "data/wildforge/blocks/frost_shrub.json",
+    "data/wildforge/blocks/dry_scrub.json",
+    "data/wildforge/blocks/lichen_patch.json"
   ],
   "items": [
     "data/wildforge/items/grass_block.json",
@@ -375,7 +390,15 @@
     "data/wildforge/items/stalagmite_block.json",
     "data/wildforge/items/hanging_roots_block.json",
     "data/wildforge/items/sporecap_fungus_block.json",
-    "data/wildforge/items/crystal_cluster_block.json"
+    "data/wildforge/items/crystal_cluster_block.json",
+    "data/wildforge/items/clover_plant_block.json",
+    "data/wildforge/items/tall_grass_plant_block.json",
+    "data/wildforge/items/cattail_plant_block.json",
+    "data/wildforge/items/cornflower_block.json",
+    "data/wildforge/items/orchid_flower_block.json",
+    "data/wildforge/items/frost_shrub_block.json",
+    "data/wildforge/items/dry_scrub_block.json",
+    "data/wildforge/items/lichen_patch_block.json"
   ],
   "block_tags": [
     "data/wildforge/tags/blocks/crafted_blocks.json",

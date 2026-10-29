@@ -1,7 +1,7 @@
 {
   "id": "wildforge:mangrove_leaves",
   "numeric_id": 164,
-  "solid": false,
+  "solid": true,
   "breakable": true,
   "hardness": 0.3,
   "model": "wildforge:block/leaves",

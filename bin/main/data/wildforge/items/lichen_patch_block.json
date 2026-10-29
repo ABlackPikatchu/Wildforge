@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:lichen_patch_block",
+  "numeric_id": 203,
+  "max_stack_size": 64,
+  "places_block": "wildforge:lichen_patch",
+  "model": "wildforge:item/block"
+}

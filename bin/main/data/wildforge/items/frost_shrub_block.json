@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:frost_shrub_block",
+  "numeric_id": 201,
+  "max_stack_size": 64,
+  "places_block": "wildforge:frost_shrub",
+  "model": "wildforge:item/block"
+}

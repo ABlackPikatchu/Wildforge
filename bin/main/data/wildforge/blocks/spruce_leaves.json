@@ -1,7 +1,7 @@
 {
   "id": "wildforge:spruce_leaves",
   "numeric_id": 161,
-  "solid": false,
+  "solid": true,
   "breakable": true,
   "hardness": 0.3,
   "model": "wildforge:block/leaves",

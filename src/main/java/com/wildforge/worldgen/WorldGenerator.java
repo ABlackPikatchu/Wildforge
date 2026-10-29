@@ -599,7 +599,10 @@ public final class WorldGenerator {
         BiomeProfile profile = biomes.get(surface.biome());
         if (slopeAt(x,z) > profile.maxPlantSlope()) return null;
         double local = clamp(0.85 + noise.noise2(x / 75.0, z / 75.0, PLANTS) * .5, .20,1.0);
-        double chance = profile.plantDensity() * settings.plantDensity() * local;
+        // A 4x4 feature grid places at most one plant per 16 surface cells.
+        // Raise coverage in vegetated biomes without forcing plants into deserts or cliffs.
+        double coverage=surface.rainfall()>0.4 ? 1.65 : 1.15;
+        double chance = clamp(profile.plantDensity() * settings.plantDensity() * local * coverage,0,0.88);
         if (noise.unit(cellX, 2, cellZ, PLANTS) >= chance) return null;
         String species = BiomeProfile.chooseFeature(profile.plants(),
                 noise.unit(cellX, 3, cellZ, PLANTS));

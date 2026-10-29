@@ -22,8 +22,13 @@ public final class TerrainMesh {
     // Fluid sections use a separate mesh stream (section + FLUID_SECTION_OFFSET).
     // No block IDs or save indexes change.
     public static final int FLUID_SECTION_OFFSET=SECTION_COUNT;
-    private static final int MAGIC=0x57464F52, SAVE_VERSION=4;
+    private static final int MAGIC=0x57464F52, SAVE_VERSION=5;
     private static final long DEFAULT_SEED=0x57494C44464F5247L;
+    /** Generator revision is independent of the binary save format. Never change an
+     * old revision's semantics silently; reject incompatible future saves. */
+    public static final int WORLDGEN_REVISION=5;
+    private int worldgenRevision=WORLDGEN_REVISION;
+    public int worldgenRevision(){return worldgenRevision;}
     private final LinkedHashMap<Long,Chunk> chunks = new LinkedHashMap<>();
     private final HashMap<Long,HashMap<Integer,Byte>> edits = new HashMap<>();
     private WorldGenerator generator;
@@ -206,7 +211,7 @@ public final class TerrainMesh {
         return withinSimulation(x,z) && isColumnLoaded(x,z);
     }
     public long seed(){return seed;}
-    public void resetWorld(){legacyVerticalMigration=false;cancelGeneration();edits.clear();fluidLevels.clear();seed=DEFAULT_SEED;initializeGenerator();chunks.clear();generateSpawnChunk(16,27);version++;}
+    public void resetWorld(){legacyVerticalMigration=false;cancelGeneration();edits.clear();fluidLevels.clear();seed=DEFAULT_SEED;worldgenRevision=WORLDGEN_REVISION;initializeGenerator();chunks.clear();generateSpawnChunk(16,27);version++;}
     /** Nonblocking player-centered streaming: one worker produces raw columns, main thread owns meshes. */
     public void streamAround(float x,float z){
         int cx=Math.floorDiv((int)Math.floor(x),CHUNK_SIZE);
@@ -453,7 +458,7 @@ public final class TerrainMesh {
                         case PINE, SPRUCE -> BlockType.PINE_NEEDLE_LITTER;
                         case MAPLE -> surface.biome()==Biome.EMBERLEAF_WOODLAND
                                 ? BlockType.AUTUMN_LEAF_LITTER : BlockType.LEAF_LITTER;
-                        case OAK, BIRCH, ALDER -> BlockType.LEAF_LITTER;
+                        case OAK, BIRCH -> BlockType.LEAF_LITTER;
                         default -> null;
                     };
                     if(litter==null)continue;
@@ -509,9 +514,34 @@ public final class TerrainMesh {
         generateOreVeins(c);
         placeNaturalFluids(c);
         populateCaveDecorations(c);
+        populateSnowCover(c);
         // Edits are applied when the completed chunk is installed on the main thread.
         return c;
     }
+    /** Deterministic 1..8-height snow cover, placed only on exposed cold ground.
+     * Layer state is encoded in append-only numeric block IDs for existing saves.
+     */
+    private void populateSnowCover(Chunk c) {
+        for(int lx=0;lx<CHUNK_SIZE;lx++)for(int lz=0;lz<CHUNK_SIZE;lz++) {
+            int wx=c.cx*CHUNK_SIZE+lx,wz=c.cz*CHUNK_SIZE+lz;
+            WorldGenerator.Surface s=generator.surface(wx,wz);
+            if(s.waterBody()!=WorldGenerator.WaterBody.LAND)continue;
+            int ground=s.surfaceY(),y=ground+1;
+            if(y>=WORLD_HEIGHT-1 || y<2 || c.get(index(lx,y,lz))!=BlockType.AIR.id)continue;
+            BlockType support=BlockType.fromId(c.get(index(lx,ground,lz)));
+            if(!support.isSolid() || support.isSnowLayer() || support.isFluid())continue;
+            boolean snowy=s.biome()==Biome.SNOWMANTLE_WOODS ||
+                    s.biome()==Biome.FROSTMOOR_TUNDRA ||
+                    s.biome()==Biome.FROSTSPIRE_HIGHLANDS ||
+                    s.temperature()<0.23;
+            if(!snowy || generator.slopeAt(wx,wz)>5)continue;
+            double drifts=depositNoise.fbm2(wx/19.0,wz/19.0,3,0x534e4f575f34L);
+            double small=depositNoise.fbm2(wx/6.0,wz/6.0,2,0x4452494654L);
+            int layers=Math.max(1,Math.min(8,(int)Math.round(3.4+drifts*3.0+small*1.2)));
+            c.set(index(lx,y,lz),BlockType.snowLayer(layers).id);
+        }
+    }
+
     /** Deterministic static water: submerged ocean/river terrain and rare cave pools.
      * This runs on the generation worker and never enqueues millions of ocean cells.
      */
@@ -529,27 +559,9 @@ public final class TerrainMesh {
                     int at=index(lx,y,lz);
                     if(c.blocks[at]==BlockType.AIR.id)c.blocks[at]=BlockType.WATER.id;
                 }
-                // On a sharp downhill step, extend a bounded sheet of flowing
-                // water from the upstream river level. Neighbor sampling uses
-                // world coordinates, so waterfalls continue across chunk seams.
-                if(surface.waterBody()==WorldGenerator.WaterBody.RIVER) {
-                    int upstream=surfaceLevel;
-                    for(int[] d : new int[][]{{1,0},{-1,0},{0,1},{0,-1}}) {
-                        WorldGenerator.Surface neighbor=generator.surface(wx+d[0],wz+d[1]);
-                        if(neighbor.waterBody()==WorldGenerator.WaterBody.RIVER)
-                            upstream=Math.max(upstream,neighbor.waterSurfaceY());
-                    }
-                    if(upstream>=surfaceLevel+4) {
-                        // A small spill lip, not an artificial ten-block-tall water wall.
-                        // The active fluid queue handles continuing downward spread.
-                        int fallTop=Math.min(WORLD_HEIGHT-2,Math.min(upstream-1,surfaceLevel+3));
-                        for(int y=surfaceLevel+1;y<=fallTop;y++) {
-                            int at=index(lx,y,lz);
-                            if(c.blocks[at]!=BlockType.AIR.id)break;
-                            c.blocks[at]=BlockType.FLOWING_WATER.id;
-                        }
-                    }
-                }
+                // Hydrology's incised stream bed already defines the water column.
+                // Never inject an upstream-height water pillar over a downstream bank;
+                // active fluid simulation handles free waterfalls at actual openings.
             }
             // Rare underground water-table pockets, inside already carved caves.
             // Shared world-coordinate region cells keep chunk seams consistent.
@@ -785,6 +797,14 @@ public final class TerrainMesh {
             BlockType b=getBlockAt(task.x,task.y,task.z);
             if(!b.isFluid())continue;
             int strength=getFluidLevelAt(task.x,task.y,task.z);
+            // Renewable water sources form only from two horizontal sources and
+            // a supporting floor (solid block or water source); never in midair.
+            if(b==BlockType.FLOWING_WATER && canFormWaterSource(task.x,task.y,task.z)) {
+                if(setBlock(task.x,task.y,task.z,BlockType.WATER)) {
+                    scheduleFluid(task.x,task.y,task.z);
+                    continue;
+                }
+            }
             BlockType flow=b.isWater()?BlockType.FLOWING_WATER:BlockType.FLOWING_LAVA;
             // Downward flow takes precedence; allow horizontal spreading once supported.
             if(tryFluid(task.x,task.y-1,task.z,flow,strength))continue;
@@ -796,6 +816,26 @@ public final class TerrainMesh {
             tryFluid(task.x,task.y,task.z-1,flow,next);
         }
     }
+    /** Two horizontally adjacent sources replenish a supported flowing cell.
+     * Unlike lava, water is renewable; negative world coordinates work normally.
+     */
+    public boolean canFormWaterSource(int x,int y,int z) {
+        if(getBlockAt(x,y,z)!=BlockType.FLOWING_WATER || y<1)return false;
+        return supportedWaterSource(getBlockAt(x,y-1,z),
+            getBlockAt(x+1,y,z),getBlockAt(x-1,y,z),
+            getBlockAt(x,y,z+1),getBlockAt(x,y,z-1));
+    }
+
+    /** Pure rule used by fluid ticks and regression tests. */
+    static boolean supportedWaterSource(BlockType below, BlockType east,
+            BlockType west, BlockType south, BlockType north) {
+        if(!below.isSolid() && below!=BlockType.WATER)return false;
+        int sources=0;
+        for(BlockType neighbor:new BlockType[]{east,west,south,north})
+            if(neighbor==BlockType.WATER)sources++;
+        return sources>=2;
+    }
+
     /** Currents follow falling water and higher-to-lower liquid levels.
      * Solid shore banks are impermeable, NOT high-pressure water sources.
      * Source oceans surrounded by equal-level water therefore stay calm.
@@ -903,13 +943,22 @@ public final class TerrainMesh {
             case VOLCANIC -> {palette=new BlockType[]{BlockType.OCEAN_BASALT_PEBBLES,BlockType.OCEAN_ABYSSAL_SILT,BlockType.OCEAN_DEAD_CORAL_RUBBLE,BlockType.OCEAN_ALGAE_STONE};weights=new int[]{55,20,15,10};}
             default -> throw new IllegalStateException();
         }
-        // Domain-warped ~9-block material patches. No salt-and-pepper block selection.
-        double wx=depositNoise.fbm2(x/62.0,z/62.0,2,0x39e3L)*7.0;
-        double wz=depositNoise.fbm2(x/62.0,z/62.0,2,0x7bd2L)*7.0;
-        int px=(int)Math.floor((x+wx)/9.0),pz=(int)Math.floor((z+wz)/9.0);
-        double roll=depositNoise.unit(px,1,pz,0x523eaL)*100.0;
-        for(int i=0;i<palette.length;i++) {roll-=weights[i];if(roll<0)return palette[i];}
-        return palette[palette.length-1];
+        // Continuous multi-scale noise with soft weighted competition. Independent
+        // coherent fields avoid visible square patch boundaries at 9-block intervals.
+        // Use small-scale variation only as a perturbation, not a cell selector.
+        double warpX=depositNoise.fbm2(x/135.0,z/135.0,3,0x39e3L)*13.0;
+        double warpZ=depositNoise.fbm2(x/135.0,z/135.0,3,0x7bd2L)*13.0;
+        double u=(x+warpX)/32.0,v=(z+warpZ)/32.0;
+        double best=Double.NEGATIVE_INFINITY;
+        BlockType selected=palette[0];
+        for(int i=0;i<palette.length;i++) {
+            long salt=0x523eaL+0x9E3779B97F4A7C15L*i;
+            double coarse=depositNoise.fbm2(u,v,3,salt);
+            double detail=depositNoise.fbm2(u*2.7,v*2.7,2,salt^0x72feL);
+            double score=Math.log(weights[i])+2.3*coarse+0.24*detail;
+            if(score>best){best=score;selected=palette[i];}
+        }
+        return selected;
     }
     private static long rockHash(int x,int y,int z) {
         long v=((long)x*0x9E3779B97F4A7C15L)^((long)y*0xD6E8FEB86659FD93L)
@@ -1041,6 +1090,14 @@ public final class TerrainMesh {
     }
     private static BlockType plantBlock(String species) {
         String name=species.toLowerCase(Locale.ROOT);
+        if(name.contains("clover"))return BlockType.CLOVER_PLANT;
+        if(name.contains("tall_grass") || name.contains("wild_wheat"))return BlockType.TALL_GRASS_PLANT;
+        if(name.contains("cattail"))return BlockType.CATTAIL_PLANT;
+        if(name.contains("cornflower"))return BlockType.CORNFLOWER;
+        if(name.contains("orchid"))return BlockType.ORCHID_FLOWER;
+        if(name.contains("frost_shrub") || name.contains("snow_grass"))return BlockType.FROST_SHRUB;
+        if(name.contains("dry_scrub") || name.contains("dry_shrub") || name.contains("desert_succulent"))return BlockType.DRY_SCRUB;
+        if(name.contains("lichen"))return BlockType.LICHEN_PATCH;
         if(name.contains("fern"))return BlockType.FERN_PLANT;
         if(name.contains("reeds")||name.contains("cattail"))return BlockType.REED_PLANT;
         if(name.contains("dead_bush")||name.contains("dry_shrub"))return BlockType.DEAD_BUSH_PLANT;
@@ -1195,7 +1252,10 @@ public final class TerrainMesh {
     public float getHeightAt(float x,float z){
         int bx=(int)Math.floor(x),bz=(int)Math.floor(z);
         // Spawn queries may precede streaming into a new area.
-        for(int y=WORLD_HEIGHT-1;y>=0;y--)if(getBlockAt(bx,y,bz).isSolid())return y+1;
+        for(int y=WORLD_HEIGHT-1;y>=0;y--){
+            BlockType b=getBlockAt(bx,y,bz);
+            if(b.isSolid())return y+b.collisionHeight();
+        }
         return Math.max(1,Math.min(WORLD_HEIGHT-2,generator.surface(bx,bz).surfaceY()+1));
     }
     /** Read-only mesh descriptions; mesh arrays are replaced, never mutated. */
@@ -1434,7 +1494,7 @@ public final class TerrainMesh {
         return result;
     }
     public void newWorld(long newSeed){
-        cancelGeneration();edits.clear();fluidLevels.clear();seed=newSeed;initializeGenerator();chunks.clear();
+        cancelGeneration();edits.clear();fluidLevels.clear();seed=newSeed;worldgenRevision=WORLDGEN_REVISION;initializeGenerator();chunks.clear();
         generateSpawnChunk(16,27);version++;
     }
     public int getVersion(){return version;}
@@ -1459,7 +1519,7 @@ public final class TerrainMesh {
         Path p=path.toAbsolutePath();Files.createDirectories(p.getParent());Path temp=p.resolveSibling(p.getFileName()+".tmp");
         try{
             try(DataOutputStream out=new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(temp)))){
-                out.writeInt(MAGIC);out.writeInt(SAVE_VERSION);out.writeLong(seed);out.writeInt(WORLD_HEIGHT);out.writeInt(edits.size());
+                out.writeInt(MAGIC);out.writeInt(SAVE_VERSION);out.writeLong(seed);out.writeInt(WORLD_HEIGHT);out.writeInt(worldgenRevision);out.writeInt(edits.size());
                 for(var entry:edits.entrySet()){
                     out.writeLong(entry.getKey());out.writeInt(entry.getValue().size());
                     for(var change:entry.getValue().entrySet()){out.writeInt(change.getKey());out.writeByte(change.getValue());}
@@ -1479,7 +1539,7 @@ public final class TerrainMesh {
     public void loadFrom(Path path)throws IOException{
         HashMap<Long,HashMap<Integer,Byte>> incoming=new HashMap<>();
         HashMap<Long,HashMap<Integer,Byte>> incomingFluidLevels=new HashMap<>();
-        long newSeed=DEFAULT_SEED;boolean migrateLegacy=false;
+        long newSeed=DEFAULT_SEED;boolean migrateLegacy=false;int incomingRevision=WORLDGEN_REVISION;
         try(DataInputStream in=new DataInputStream(new BufferedInputStream(Files.newInputStream(path)))){
             if(in.readInt()!=MAGIC)throw new IOException("Not a Wildforge world save");
             int v=in.readInt();
@@ -1492,9 +1552,15 @@ public final class TerrainMesh {
                     int cx=x/16,cz=z/16,i=index(x%16,y+160,z%16);
                     incoming.computeIfAbsent(key(cx,cz),k->new HashMap<>()).put(i,b);
                 }
-            }else if(v==2 || v==3 || v==4){
+            }else if(v==2 || v==3 || v==4 || v==5){
                 newSeed=in.readLong();
                 if(v>=3){int savedHeight=in.readInt();if(savedHeight!=WORLD_HEIGHT)throw new IOException("Unsupported saved world height: "+savedHeight);}
+                if(v>=5) {
+                    incomingRevision=in.readInt();
+                    if(incomingRevision!=WORLDGEN_REVISION)
+                        throw new IOException("World generator revision "+incomingRevision+
+                                " is incompatible with this build ("+WORLDGEN_REVISION+"). Back up the save and use a matching version.");
+                }
                 int count=in.readInt();
                 if(count<0||count>1000000)throw new IOException("Invalid chunk count");
                 for(int n=0;n<count;n++){
@@ -1511,7 +1577,7 @@ public final class TerrainMesh {
                         changes.put(upgraded,b);
                     }
                 }
-                if(v==4) {
+                if(v>=4) {
                     int regions=in.readInt();
                     if(regions<0||regions>1000000)throw new IOException("Invalid fluid region count");
                     for(int n=0;n<regions;n++) {
@@ -1536,7 +1602,7 @@ public final class TerrainMesh {
         }
         // Commit only after complete validation.
         legacyVerticalMigration=migrateLegacy;
-        cancelGeneration();seed=newSeed;initializeGenerator();edits.clear();edits.putAll(incoming);
+        cancelGeneration();seed=newSeed;worldgenRevision=incomingRevision;initializeGenerator();edits.clear();edits.putAll(incoming);
         fluidLevels.clear();fluidLevels.putAll(incomingFluidLevels);
         chunks.clear();generateSpawnChunk(16,27);version++;
     }
@@ -1652,6 +1718,29 @@ public final class TerrainMesh {
                 if(id==air)continue;
                 BlockType type=BlockType.fromId(id);
                 BlockModels.Shape shape=BlockModels.modelFor(BlockState.fromLegacy(type)).shape();
+                if(type.isSnowLayer()) {
+                    float top=y+type.collisionHeight();
+                    int x=worldX,z=worldZ,tex=type.getTopTextureLayer();
+                    BlockType above=y==WORLD_HEIGHT-1?BlockType.AIR:BlockType.fromId(blocks[column+y+1]);
+                    if(above==BlockType.AIR || (above.isSnowLayer() && above.collisionHeight()<type.collisionHeight()))
+                        face(data,x,top,z+1,x+1,top,z+1,x+1,top,z,x,top,z,tex,1f);
+                    byte[][] neighbors={northSource,southSource,westSource,eastSource};
+                    int[] offsets={northColumn+y,southColumn+y,westColumn+y,eastColumn+y};
+                    float[] shade={.75f,.85f,.8f,.8f};
+                    for(int side=0;side<4;side++) {
+                        BlockType neighbor=neighbors[side]==null?BlockType.AIR:BlockType.fromId(neighbors[side][offsets[side]]);
+                        float h=neighbor.isSnowLayer()?neighbor.collisionHeight():(neighbor.isSolid()?1f:0f);
+                        if(h>=type.collisionHeight())continue;
+                        float bottom=y+h;
+                        switch(side) {
+                            case 0 -> face(data,x+1,bottom,z,x,bottom,z,x,top,z,x+1,top,z,tex,shade[side]);
+                            case 1 -> face(data,x,bottom,z+1,x+1,bottom,z+1,x+1,top,z+1,x,top,z+1,tex,shade[side]);
+                            case 2 -> face(data,x,bottom,z,x,bottom,z+1,x,top,z+1,x,top,z,tex,shade[side]);
+                            case 3 -> face(data,x+1,bottom,z+1,x+1,bottom,z,x+1,top,z,x+1,top,z+1,tex,shade[side]);
+                        }
+                    }
+                    continue;
+                }
                 if(shape==BlockModels.Shape.CROSS_PLANT || shape==BlockModels.Shape.CEILING_ATTACHMENT) {
                     crossPlantAt(data,worldX,y,worldZ,type.getSideTextureLayer(),
                             shape==BlockModels.Shape.CEILING_ATTACHMENT);

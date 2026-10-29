@@ -226,17 +226,17 @@ public final class ContentDataGenerator {
         orientedLog("palm_log_x", 153, "palm_log_block", "palm_log_top", "palm_log_side");
         orientedLog("palm_log_z", 154, "palm_log_block", "palm_log_top", "palm_log_side");
         // Patch 3B: cutout leaf and decoration blocks; IDs append-only.
-        nonSolidBlockWithItem("oak_leaves", 155, 171, 0.3f).textures("oak_leaves", "oak_leaves", "oak_leaves");
-        nonSolidBlockWithItem("pine_leaves", 156, 172, 0.3f).textures("pine_leaves", "pine_leaves", "pine_leaves");
-        nonSolidBlockWithItem("maple_leaves", 157, 173, 0.3f).textures("maple_leaves", "maple_leaves", "maple_leaves");
-        nonSolidBlockWithItem("willow_leaves", 158, 174, 0.3f).textures("willow_leaves", "willow_leaves", "willow_leaves");
-        nonSolidBlockWithItem("cypress_leaves", 159, 175, 0.3f).textures("cypress_leaves", "cypress_leaves", "cypress_leaves");
-        nonSolidBlockWithItem("birch_leaves", 160, 176, 0.3f).textures("birch_leaves", "birch_leaves", "birch_leaves");
-        nonSolidBlockWithItem("spruce_leaves", 161, 177, 0.3f).textures("spruce_leaves", "spruce_leaves", "spruce_leaves");
-        nonSolidBlockWithItem("acacia_leaves", 162, 178, 0.3f).textures("acacia_leaves", "acacia_leaves", "acacia_leaves");
-        nonSolidBlockWithItem("alder_leaves", 163, 179, 0.3f).textures("alder_leaves", "alder_leaves", "alder_leaves");
-        nonSolidBlockWithItem("mangrove_leaves", 164, 180, 0.3f).textures("mangrove_leaves", "mangrove_leaves", "mangrove_leaves");
-        nonSolidBlockWithItem("palm_leaves", 165, 181, 0.3f).textures("palm_leaves", "palm_leaves", "palm_leaves");
+        collidableLeavesWithItem("oak_leaves", 155, 171, 0.3f).textures("oak_leaves", "oak_leaves", "oak_leaves");
+        collidableLeavesWithItem("pine_leaves", 156, 172, 0.3f).textures("pine_leaves", "pine_leaves", "pine_leaves");
+        collidableLeavesWithItem("maple_leaves", 157, 173, 0.3f).textures("maple_leaves", "maple_leaves", "maple_leaves");
+        collidableLeavesWithItem("willow_leaves", 158, 174, 0.3f).textures("willow_leaves", "willow_leaves", "willow_leaves");
+        collidableLeavesWithItem("cypress_leaves", 159, 175, 0.3f).textures("cypress_leaves", "cypress_leaves", "cypress_leaves");
+        collidableLeavesWithItem("birch_leaves", 160, 176, 0.3f).textures("birch_leaves", "birch_leaves", "birch_leaves");
+        collidableLeavesWithItem("spruce_leaves", 161, 177, 0.3f).textures("spruce_leaves", "spruce_leaves", "spruce_leaves");
+        collidableLeavesWithItem("acacia_leaves", 162, 178, 0.3f).textures("acacia_leaves", "acacia_leaves", "acacia_leaves");
+        collidableLeavesWithItem("alder_leaves", 163, 179, 0.3f).textures("alder_leaves", "alder_leaves", "alder_leaves");
+        collidableLeavesWithItem("mangrove_leaves", 164, 180, 0.3f).textures("mangrove_leaves", "mangrove_leaves", "mangrove_leaves");
+        collidableLeavesWithItem("palm_leaves", 165, 181, 0.3f).textures("palm_leaves", "palm_leaves", "palm_leaves");
         nonSolidBlockWithItem("grass_tuft", 166, 182, 0.3f).textures("small_grass", "small_grass", "small_grass");
         nonSolidBlockWithItem("fern_plant", 167, 183, 0.3f).textures("fern", "fern", "fern");
         nonSolidBlockWithItem("reed_plant", 168, 184, 0.3f).textures("dune_grass", "dune_grass", "dune_grass");
@@ -251,6 +251,27 @@ public final class ContentDataGenerator {
         nonSolidBlockWithItem("hanging_roots", 177, 193, 0.3f).textures("hanging_roots", "hanging_roots", "hanging_roots");
         nonSolidBlockWithItem("sporecap_fungus", 178, 194, 0.3f).textures("sporecap_fungus", "sporecap_fungus", "sporecap_fungus");
         nonSolidBlockWithItem("crystal_cluster", 179, 195, 0.8f).textures("quartz_vein", "quartz_vein", "quartz_vein");
+        // Append-only snow-height states, no new inventory IDs: each drops a Snow item.
+        for(int layers=1;layers<=7;layers++) {
+            String name="snow_layer_"+layers;
+            int id=179+layers;
+            BlockBuilder block=blockWithoutItem(name,id,true,true,0.1f);
+            block.textures("snow","snow","snow");
+            JsonArray drops=new JsonArray();
+            JsonObject drop=new JsonObject();
+            drop.addProperty("item",id("snow_block"));
+            drop.addProperty("count",1);
+            drops.add(drop);
+            block.json.add("drops",drops);
+        }
+        nonSolidBlockWithItem("clover_plant", 187, 196, 0.3f).textures("clover","clover","clover");
+        nonSolidBlockWithItem("tall_grass_plant", 188, 197, 0.3f).textures("tall_grass","tall_grass","tall_grass");
+        nonSolidBlockWithItem("cattail_plant", 189, 198, 0.3f).textures("cattails","cattails","cattails");
+        nonSolidBlockWithItem("cornflower", 190, 199, 0.3f).textures("flower_cornflower","flower_cornflower","flower_cornflower");
+        nonSolidBlockWithItem("orchid_flower", 191, 200, 0.3f).textures("flower_orchid","flower_orchid","flower_orchid");
+        nonSolidBlockWithItem("frost_shrub", 192, 201, 0.3f).textures("frost_shrub","frost_shrub","frost_shrub");
+        nonSolidBlockWithItem("dry_scrub", 193, 202, 0.3f).textures("dry_scrub","dry_scrub","dry_scrub");
+        nonSolidBlockWithItem("lichen_patch", 194, 203, 0.3f).textures("lichen_patch","lichen_patch","lichen_patch");
         item("brick", 108, 64, "brick");
         item("diamond", 109, 64, "diamond");
         item("gold_ingot", 110, 64, "gold_ingot");
@@ -310,7 +331,7 @@ public final class ContentDataGenerator {
         blockTag("soil", "grass", "dirt", "tundra_grass", "snow_grass", "rich_humus", "peat", "fertile_loam", "mud", "wet_mud", "silt", "red_clay", "cracked_earth", "root_mat");
         blockTag("sediment", "sand", "red_sand", "gravel", "riverbed_sediment", "shell_sand", "beach_pebbles", "wet_sand", "submerged_scree", "silt", "cave_clay", "clay", "ocean_silty_sand", "ocean_shell_grit", "ocean_cold_gravel", "ocean_algae_stone", "ocean_dark_silt", "ocean_basalt_pebbles", "ocean_coral_sand", "ocean_reef_limestone", "ocean_dead_coral_rubble", "ocean_abyssal_silt");
         blockTag("loose_rock", "gravel", "scree", "sandstone_rubble", "limestone_rubble", "beach_pebbles", "pumice");
-        blockTag("snow_ice", "snow", "snow_grass", "packed_snow", "snow_crust", "ice", "glacial_ice", "permafrost", "frozen_peat");
+        blockTag("snow_ice", "snow", "snow_grass", "packed_snow", "snow_crust", "ice", "glacial_ice", "permafrost", "frozen_peat", "snow_layer_1", "snow_layer_2", "snow_layer_3", "snow_layer_4", "snow_layer_5", "snow_layer_6", "snow_layer_7");
         blockTag("geological", "fossil_shale", "fault_breccia", "iron_stained_stone", "cracked_basalt", "basalt_column", "magma_crust", "obsidian", "scoria", "volcanic_ash", "sulfur_rock", "quartz_vein", "gypsum", "rock_salt", "salt_crust", "mineral_matrix", "flowstone", "coal_dust_deposit");
         blockTag("mossy", "moss_block", "mossy_rock", "cave_moss", "alpine_moss", "lichen_stone", "mycelial_mat", "exposed_root_stone");
         blockTag("logs", "oak_log", "pine_log", "maple_log", "willow_log", "cypress_log", "rotten_wood", "oak_log_x", "oak_log_z", "pine_log_x", "pine_log_z", "maple_log_x", "maple_log_z", "willow_log_x", "willow_log_z", "cypress_log_x", "cypress_log_z", "birch_log", "spruce_log", "acacia_log", "alder_log", "mangrove_log", "palm_log", "birch_log_x", "birch_log_z", "spruce_log_x", "spruce_log_z", "acacia_log_x", "acacia_log_z", "alder_log_x", "alder_log_z", "mangrove_log_x", "mangrove_log_z", "palm_log_x", "palm_log_z");
@@ -364,6 +385,13 @@ public final class ContentDataGenerator {
         drops.add(drop);
         block.json.add("drops", drops);
         addItem(blockItem, itemId, 64, name, null);
+        return block;
+    }
+
+    /** Foliage occupies a full voxel for collision but uses cutout texture rendering. */
+    private BlockBuilder collidableLeavesWithItem(String name,int blockId,int itemId,float hardness) {
+        BlockBuilder block=nonSolidBlockWithItem(name,blockId,itemId,hardness);
+        block.json.addProperty("solid",true);
         return block;
     }
 

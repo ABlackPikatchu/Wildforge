@@ -260,7 +260,7 @@ public final class DroppedItemEntity extends Entity {
                             continue;
                         }
 
-                        float top = by + 1.0f;
+                        float top = by + terrain.getBlockAt(bx, by, bz).collisionHeight();
 
                         if (oldBottom >= top - 0.0001f
                                 && nextBottom <= top

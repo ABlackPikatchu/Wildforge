@@ -8,6 +8,13 @@
     "wildforge:ice",
     "wildforge:glacial_ice",
     "wildforge:permafrost",
-    "wildforge:frozen_peat"
+    "wildforge:frozen_peat",
+    "wildforge:snow_layer_1",
+    "wildforge:snow_layer_2",
+    "wildforge:snow_layer_3",
+    "wildforge:snow_layer_4",
+    "wildforge:snow_layer_5",
+    "wildforge:snow_layer_6",
+    "wildforge:snow_layer_7"
   ]
 }

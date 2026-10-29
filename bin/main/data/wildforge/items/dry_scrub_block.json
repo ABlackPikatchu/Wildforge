@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:dry_scrub_block",
+  "numeric_id": 202,
+  "max_stack_size": 64,
+  "places_block": "wildforge:dry_scrub",
+  "model": "wildforge:item/block"
+}

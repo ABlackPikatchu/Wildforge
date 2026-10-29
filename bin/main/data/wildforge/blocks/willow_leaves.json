@@ -1,7 +1,7 @@
 {
   "id": "wildforge:willow_leaves",
   "numeric_id": 158,
-  "solid": false,
+  "solid": true,
   "breakable": true,
   "hardness": 0.3,
   "model": "wildforge:block/leaves",

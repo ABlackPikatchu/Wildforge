@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:cornflower",
+  "numeric_id": 190,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/cross_plant",
+  "textures": {
+    "top": "wildforge:flower_cornflower",
+    "side": "wildforge:flower_cornflower",
+    "bottom": "wildforge:flower_cornflower"
+  },
+  "drops": [
+    {
+      "item": "wildforge:cornflower_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:cornflower_block"
+}

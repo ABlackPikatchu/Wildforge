@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:frost_shrub",
+  "numeric_id": 192,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/cross_plant",
+  "textures": {
+    "top": "wildforge:frost_shrub",
+    "side": "wildforge:frost_shrub",
+    "bottom": "wildforge:frost_shrub"
+  },
+  "drops": [
+    {
+      "item": "wildforge:frost_shrub_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:frost_shrub_block"
+}

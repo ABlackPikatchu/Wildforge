@@ -255,7 +255,15 @@ public final class BlockTextures implements AutoCloseable {
         "/textures/hanging_roots.png",
         "/textures/stalactite.png",
         "/textures/stalagmite.png",
-        "/textures/sporecap_fungus.png"
+        "/textures/sporecap_fungus.png",
+        "/textures/clover.png",
+        "/textures/tall_grass.png",
+        "/textures/cattails.png",
+        "/textures/flower_cornflower.png",
+        "/textures/flower_orchid.png",
+        "/textures/frost_shrub.png",
+        "/textures/dry_scrub.png",
+        "/textures/lichen_patch.png"
     };
 
     /** Icon layers appended after terrain textures. IDs remain unchanged. */

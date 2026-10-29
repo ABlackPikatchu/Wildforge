@@ -17,15 +17,24 @@ public final class VegetationModelSmokeTest {
             require(ids.add(Byte.toUnsignedInt(block.getId())),"duplicate block save ID "+block);
             require(BlockType.fromId(block.getId())==block,"invalid legacy encoding "+block);
         }
-        require(BlockType.values().length==180,"expected 180 blocks");
-        require(ItemType.values().length==194,"expected 194 items");
+        require(BlockType.values().length==195,"expected 195 blocks");
+        require(ItemType.values().length==202,"expected 202 items");
         for(int id=155;id<=178;id++) {
             BlockType block=BlockType.fromId((byte)id);
-            require(block!=BlockType.AIR && !block.isSolid() && block.isBreakable(),"missing harvestable flora: "+id);
+            require(block!=BlockType.AIR && block.isBreakable() && block.isSolid()==(id<=165),
+                    "wrong foliage collision: "+id);
             require(block.getDropItem()!=null && block.getDropCount()==1,"missing harvested item: "+block);
             require(block.getDropItem().getPlacedBlock()==block,"cannot replant: "+block);
             BlockModels.Model model=BlockModels.modelFor(BlockState.fromLegacy(block));
             require(model.pass()==BlockModels.Pass.CUTOUT && !model.fullCubeOcclusion(),"bad model pass: "+block);
+        }
+        for(int id=187;id<=194;id++) {
+            BlockType plant=BlockType.fromId((byte)id);
+            require(!plant.isSolid() && plant.isBreakable() && plant.getDropItem()!=null,
+                    "missing newly registered vegetation: "+plant);
+            require(plant.getDropItem().getPlacedBlock()==plant,"new plant cannot be replanted: "+plant);
+            require(BlockModels.modelFor(BlockState.fromLegacy(plant)).shape()==BlockModels.Shape.CROSS_PLANT,
+                    "new plant must render as cutout: "+plant);
         }
         for(WorldGenerator.TreeType species:WorldGenerator.TreeType.values()) {
             BlockType leaves=TreeFoliage.leafFor(species);
@@ -55,6 +64,6 @@ public final class VegetationModelSmokeTest {
                 ==BlockModels.Shape.CROSS_PLANT,"fern must be a crossed plant model");
         require(BlockType.fromId((byte)0)==BlockType.AIR && BlockType.fromId((byte)154)==BlockType.PALM_LOG_Z,
                 "historical save ID changed");
-        System.out.println("Vegetation check passed: 25 harvestable types, 11 deterministic canopy layouts, 180 save-stable block IDs");
+        System.out.println("Vegetation check passed: 33 harvestable types, 11 deterministic canopy layouts, 195 save-stable block IDs");
     }
 }

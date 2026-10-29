@@ -1,7 +1,7 @@
 {
   "id": "wildforge:palm_leaves",
   "numeric_id": 165,
-  "solid": false,
+  "solid": true,
   "breakable": true,
   "hardness": 0.3,
   "model": "wildforge:block/leaves",

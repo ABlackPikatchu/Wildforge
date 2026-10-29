@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:tall_grass_plant_block",
+  "numeric_id": 197,
+  "max_stack_size": 64,
+  "places_block": "wildforge:tall_grass_plant",
+  "model": "wildforge:item/block"
+}

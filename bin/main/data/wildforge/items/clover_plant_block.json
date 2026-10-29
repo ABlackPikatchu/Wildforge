@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:clover_plant_block",
+  "numeric_id": 196,
+  "max_stack_size": 64,
+  "places_block": "wildforge:clover_plant",
+  "model": "wildforge:item/block"
+}

@@ -941,18 +941,19 @@ private float findHighestGroundUnderFootprint(
     int minZ = (int) Math.floor(centerZ - PLAYER_RADIUS + 0.001f);
     int maxZ = (int) Math.floor(centerZ + PLAYER_RADIUS - 0.001f);
 
+    // Fractional snow surfaces may lie inside the block at the current feet Y.
     int highestBlockToCheck = Math.min(
             TerrainMesh.WORLD_HEIGHT - 1,
-            (int) Math.floor(highestAllowedSurface - 1.0f + 0.001f));
+            (int) Math.floor(highestAllowedSurface + 0.001f));
 
     float highestGround = Float.NEGATIVE_INFINITY;
 
     for (int bx = minX; bx <= maxX; bx++) {
         for (int bz = minZ; bz <= maxZ; bz++) {
             for (int by = highestBlockToCheck; by >= 0; by--) {
-                if (terrain.getBlockAt(bx, by, bz).isSolid()) {
-                    highestGround = Math.max(
-                            highestGround, by + 1.0f);
+                BlockType floor=terrain.getBlockAt(bx,by,bz);
+                if (floor.isSolid() && by+floor.collisionHeight() <= highestAllowedSurface+0.001f) {
+                    highestGround = Math.max(highestGround, by+floor.collisionHeight());
                     break;
                 }
             }
@@ -1000,7 +1001,9 @@ private boolean canOccupy(
             // through the streaming frontier until collision data is ready.
             if (!terrain.isColumnLoaded(bx, bz)) return false;
             for (int by = minY; by <= maxY; by++) {
-                if (terrain.getBlockAt(bx, by, bz).isSolid()) {
+                BlockType obstacle = terrain.getBlockAt(bx, by, bz);
+                if (obstacle.isSolid() && targetFeetY < by + obstacle.collisionHeight() - 0.0001f
+                        && targetFeetY + PLAYER_HEIGHT > by + 0.0001f) {
                     return false;
                 }
             }

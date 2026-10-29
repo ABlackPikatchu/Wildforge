@@ -1,7 +1,7 @@
 {
   "id": "wildforge:oak_leaves",
   "numeric_id": 155,
-  "solid": false,
+  "solid": true,
   "breakable": true,
   "hardness": 0.3,
   "model": "wildforge:block/leaves",

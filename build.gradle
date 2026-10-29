@@ -250,3 +250,12 @@ tasks.register('hydrologyLodCheck', JavaExec) {
     mainClass = 'com.wildforge.world.HydrologyLodSmokeTest'
 }
 tasks.named('check') { dependsOn tasks.named('hydrologyLodCheck') }
+
+// Patch 4: enforce append-only snow states and foliage collision in the normal check.
+tasks.register('worldgenPatch4Check', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wildforge.world.WorldgenPatch4SmokeTest'
+}
+tasks.named('check') { dependsOn tasks.named('worldgenPatch4Check') }

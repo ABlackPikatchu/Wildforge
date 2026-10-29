@@ -75,11 +75,11 @@ public final class BiomeDistribution {
             // Temperate landscapes keep a continuous grassy surface. Rock belongs
             // on cliff faces and rare outcrops, not broad exposed level carpets.
             if(slope>=8) return exposure>0.10 ? BlockType.STONE : BlockType.GRAVEL;
-            if(slope>=5 && exposure>0.48) return BlockType.STONE;
+            if(slope>=7 && exposure>0.53) return BlockType.STONE;
             double variation=noise.fbm2(x/43.0,z/43.0,3,0x4ad091L);
             double smallPatch=noise.fbm2(x/13.0,z/13.0,2,0x5279L);
             // Keep species-specific litter in the tree-local feature pass.
-            if(slope<=3 && variation+0.32*smallPatch<0.62)
+            if(slope<=5 && variation+0.20*smallPatch<0.90)
                 return BlockType.GRASS;
             if(chosen==BlockType.STONE || chosen==BlockType.SLATE ||
                chosen==BlockType.SHALE || chosen==BlockType.SCREE)
@@ -92,7 +92,7 @@ public final class BiomeDistribution {
                 palette.top.containsKey("forest_loam") ||
                 palette.top.containsKey("autumn_leaf_litter") ||
                 palette.top.containsKey("pine_needle_litter"));
-        if(verdant && slope<=3 && (chosen==BlockType.STONE || chosen==BlockType.SLATE ||
+        if(verdant && slope<=5 && (chosen==BlockType.STONE || chosen==BlockType.SLATE ||
                 chosen==BlockType.SHALE || chosen==BlockType.GRAVEL ||
                 chosen==BlockType.SCREE || chosen==BlockType.GABBRO ||
                 chosen==BlockType.ANDESITE)) return BlockType.GRASS;

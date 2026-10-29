@@ -1,7 +1,7 @@
 {
   "id": "wildforge:acacia_leaves",
   "numeric_id": 162,
-  "solid": false,
+  "solid": true,
   "breakable": true,
   "hardness": 0.3,
   "model": "wildforge:block/leaves",

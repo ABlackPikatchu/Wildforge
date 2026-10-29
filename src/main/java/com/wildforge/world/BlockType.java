@@ -166,17 +166,17 @@ public enum BlockType {
     MANGROVE_LOG_Z(152, 167, 1, true, true, 194, 193, 194),
     PALM_LOG_X(153, 169, 1, true, true, 198, 197, 198),
     PALM_LOG_Z(154, 169, 1, true, true, 198, 197, 198),
-    OAK_LEAVES(155, 171, 1, false, true, 116, 116, 116),
-    PINE_LEAVES(156, 172, 1, false, true, 117, 117, 117),
-    MAPLE_LEAVES(157, 173, 1, false, true, 118, 118, 118),
-    WILLOW_LEAVES(158, 174, 1, false, true, 119, 119, 119),
-    CYPRESS_LEAVES(159, 175, 1, false, true, 120, 120, 120),
-    BIRCH_LEAVES(160, 176, 1, false, true, 180, 180, 180),
-    SPRUCE_LEAVES(161, 177, 1, false, true, 184, 184, 184),
-    ACACIA_LEAVES(162, 178, 1, false, true, 188, 188, 188),
-    ALDER_LEAVES(163, 179, 1, false, true, 192, 192, 192),
-    MANGROVE_LEAVES(164, 180, 1, false, true, 196, 196, 196),
-    PALM_LEAVES(165, 181, 1, false, true, 200, 200, 200),
+    OAK_LEAVES(155, 171, 1, true, true, 116, 116, 116),
+    PINE_LEAVES(156, 172, 1, true, true, 117, 117, 117),
+    MAPLE_LEAVES(157, 173, 1, true, true, 118, 118, 118),
+    WILLOW_LEAVES(158, 174, 1, true, true, 119, 119, 119),
+    CYPRESS_LEAVES(159, 175, 1, true, true, 120, 120, 120),
+    BIRCH_LEAVES(160, 176, 1, true, true, 180, 180, 180),
+    SPRUCE_LEAVES(161, 177, 1, true, true, 184, 184, 184),
+    ACACIA_LEAVES(162, 178, 1, true, true, 188, 188, 188),
+    ALDER_LEAVES(163, 179, 1, true, true, 192, 192, 192),
+    MANGROVE_LEAVES(164, 180, 1, true, true, 196, 196, 196),
+    PALM_LEAVES(165, 181, 1, true, true, 200, 200, 200),
     GRASS_TUFT(166, 182, 1, false, true, 121, 121, 121),
     FERN_PLANT(167, 183, 1, false, true, 122, 122, 122),
     REED_PLANT(168, 184, 1, false, true, 123, 123, 123),
@@ -190,7 +190,22 @@ public enum BlockType {
     STALAGMITE(176, 192, 1, false, true, 228, 228, 228),
     HANGING_ROOTS(177, 193, 1, false, true, 226, 226, 226),
     SPORECAP_FUNGUS(178, 194, 1, false, true, 229, 229, 229),
-    CRYSTAL_CLUSTER(179, 195, 1, false, true, 49, 49, 49);
+    CRYSTAL_CLUSTER(179, 195, 1, false, true, 49, 49, 49),
+    SNOW_LAYER_1(180, 21, 1, true, true, 20, 20, 20),
+    SNOW_LAYER_2(181, 21, 1, true, true, 20, 20, 20),
+    SNOW_LAYER_3(182, 21, 1, true, true, 20, 20, 20),
+    SNOW_LAYER_4(183, 21, 1, true, true, 20, 20, 20),
+    SNOW_LAYER_5(184, 21, 1, true, true, 20, 20, 20),
+    SNOW_LAYER_6(185, 21, 1, true, true, 20, 20, 20),
+    SNOW_LAYER_7(186, 21, 1, true, true, 20, 20, 20),
+    CLOVER_PLANT(187, 196, 1, false, true, 230, 230, 230),
+    TALL_GRASS_PLANT(188, 197, 1, false, true, 231, 231, 231),
+    CATTAIL_PLANT(189, 198, 1, false, true, 232, 232, 232),
+    CORNFLOWER(190, 199, 1, false, true, 233, 233, 233),
+    ORCHID_FLOWER(191, 200, 1, false, true, 234, 234, 234),
+    FROST_SHRUB(192, 201, 1, false, true, 235, 235, 235),
+    DRY_SCRUB(193, 202, 1, false, true, 236, 236, 236),
+    LICHEN_PATCH(194, 203, 1, false, true, 237, 237, 237);
 
     // Texture-array layer IDs. Keep these aligned with BlockTextures.
     public static final int GRASS_TOP_TEXTURE = 0;
@@ -285,6 +300,25 @@ public enum BlockType {
 
     public boolean isSolid() {
         return solid;
+    }
+
+    /** Fractional top surface for accumulating snow, full-height for ordinary blocks. */
+    public float collisionHeight() {
+        return isSnowLayer() ? snowLayers() / 8f : (solid ? 1f : 0f);
+    }
+
+    public boolean isSnowLayer() {
+        int id = Byte.toUnsignedInt(this.id);
+        return id >= 180 && id <= 186;
+    }
+
+    public int snowLayers() {
+        return isSnowLayer() ? Byte.toUnsignedInt(id) - 179 : this == SNOW ? 8 : 0;
+    }
+
+    public static BlockType snowLayer(int count) {
+        if (count < 1 || count > 8) throw new IllegalArgumentException("Snow layers: " + count);
+        return count == 8 ? SNOW : fromId((byte)(179 + count));
     }
 
     public boolean isBreakable() {

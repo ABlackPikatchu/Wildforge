@@ -1,0 +1,19 @@
+{
+  "id": "wildforge:snow_layer_7",
+  "numeric_id": 186,
+  "solid": true,
+  "breakable": true,
+  "hardness": 0.1,
+  "model": "wildforge:block/cube",
+  "textures": {
+    "top": "wildforge:snow",
+    "side": "wildforge:snow",
+    "bottom": "wildforge:snow"
+  },
+  "drops": [
+    {
+      "item": "wildforge:snow_block",
+      "count": 1
+    }
+  ]
+}

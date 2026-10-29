@@ -1,0 +1,20 @@
+{
+  "id": "wildforge:orchid_flower",
+  "numeric_id": 191,
+  "solid": false,
+  "breakable": true,
+  "hardness": 0.3,
+  "model": "wildforge:block/cross_plant",
+  "textures": {
+    "top": "wildforge:flower_orchid",
+    "side": "wildforge:flower_orchid",
+    "bottom": "wildforge:flower_orchid"
+  },
+  "drops": [
+    {
+      "item": "wildforge:orchid_flower_block",
+      "count": 1
+    }
+  ],
+  "block_item": "wildforge:orchid_flower_block"
+}

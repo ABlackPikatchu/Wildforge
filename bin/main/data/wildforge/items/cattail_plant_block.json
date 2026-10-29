@@ -1,0 +1,7 @@
+{
+  "id": "wildforge:cattail_plant_block",
+  "numeric_id": 198,
+  "max_stack_size": 64,
+  "places_block": "wildforge:cattail_plant",
+  "model": "wildforge:item/block"
+}

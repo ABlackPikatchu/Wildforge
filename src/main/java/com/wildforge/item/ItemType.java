@@ -206,7 +206,15 @@ public enum ItemType {
     STALAGMITE_BLOCK(192, "Stalagmite", 64, BlockType.STALAGMITE),
     HANGING_ROOTS_BLOCK(193, "Hanging Roots", 64, BlockType.HANGING_ROOTS),
     SPORECAP_FUNGUS_BLOCK(194, "Sporecap Fungus", 64, BlockType.SPORECAP_FUNGUS),
-    CRYSTAL_CLUSTER_BLOCK(195, "Crystal Cluster", 64, BlockType.CRYSTAL_CLUSTER);
+    CRYSTAL_CLUSTER_BLOCK(195, "Crystal Cluster", 64, BlockType.CRYSTAL_CLUSTER),
+    CLOVER_PLANT_BLOCK(196, "Clover Plant", 64, BlockType.CLOVER_PLANT),
+    TALL_GRASS_PLANT_BLOCK(197, "Tall Grass Plant", 64, BlockType.TALL_GRASS_PLANT),
+    CATTAIL_PLANT_BLOCK(198, "Cattail Plant", 64, BlockType.CATTAIL_PLANT),
+    CORNFLOWER_BLOCK(199, "Cornflower", 64, BlockType.CORNFLOWER),
+    ORCHID_FLOWER_BLOCK(200, "Orchid Flower", 64, BlockType.ORCHID_FLOWER),
+    FROST_SHRUB_BLOCK(201, "Frost Shrub", 64, BlockType.FROST_SHRUB),
+    DRY_SCRUB_BLOCK(202, "Dry Scrub", 64, BlockType.DRY_SCRUB),
+    LICHEN_PATCH_BLOCK(203, "Lichen Patch", 64, BlockType.LICHEN_PATCH);
 
     private final int id;
     private final String displayName;
